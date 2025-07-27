@@ -8,7 +8,12 @@ from fastapi.responses import PlainTextResponse
 
 from app.config import settings
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
+from app.infrastructure.openai.client import OpenAIClient
 from app.application.usecases.process_incoming_message import ProcessIncomingMessageUseCase
+from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+from app.application.usecases.analyze_message_intent import AnalyzeMessageIntentUseCase
+from app.application.usecases.generate_intelligent_response import GenerateIntelligentResponseUseCase
+from memory.lead_memory import MemoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +26,67 @@ app = FastAPI(
 
 # Instanciar dependencias
 twilio_client = TwilioWhatsAppClient()
-process_message_use_case = ProcessIncomingMessageUseCase(twilio_client)
+
+# Crear manager de memoria y caso de uso
+memory_manager = MemoryManager(memory_dir="memorias")
+memory_use_case = ManageUserMemoryUseCase(memory_manager)
+
+# Intentar inicializar sistema completo
+try:
+    # Inicializar cliente OpenAI
+    openai_client = OpenAIClient()
+    intent_analyzer = AnalyzeMessageIntentUseCase(openai_client, memory_use_case)
+    
+    # Intentar inicializar sistema de cursos
+    course_query_use_case = None
+    try:
+        from app.application.usecases.query_course_information import QueryCourseInformationUseCase
+        course_query_use_case = QueryCourseInformationUseCase()
+        
+        # Inicializar conexión a BD de cursos en background
+        course_init_success = False
+        try:
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            course_init_success = loop.run_until_complete(course_query_use_case.initialize())
+            loop.close()
+        except Exception as course_init_error:
+            logger.warning(f"⚠️ No se pudo inicializar sistema de cursos: {course_init_error}")
+            course_query_use_case = None
+        
+        if course_init_success:
+            logger.info("✅ Sistema de consulta de cursos inicializado")
+        else:
+            logger.warning("⚠️ Sistema de cursos no disponible, usando respuestas estándar")
+            course_query_use_case = None
+            
+    except ImportError as e:
+        logger.warning(f"⚠️ Dependencias de PostgreSQL no disponibles: {e}")
+        course_query_use_case = None
+    
+    # Crear generador de respuestas inteligentes (con o sin sistema de cursos)
+    intelligent_response_use_case = GenerateIntelligentResponseUseCase(
+        intent_analyzer, twilio_client, course_query_use_case
+    )
+    
+    # Crear caso de uso de procesamiento con capacidades inteligentes
+    process_message_use_case = ProcessIncomingMessageUseCase(
+        twilio_client, memory_use_case, intelligent_response_use_case
+    )
+    
+    if course_query_use_case:
+        logger.info("✅ Sistema inteligente completo (OpenAI + Cursos) inicializado correctamente")
+    else:
+        logger.info("✅ Sistema inteligente básico (OpenAI sin BD de cursos) inicializado correctamente")
+    
+except Exception as e:
+    logger.warning(f"⚠️ No se pudo inicializar OpenAI, usando modo básico: {e}")
+    
+    # Crear caso de uso de procesamiento básico sin IA
+    process_message_use_case = ProcessIncomingMessageUseCase(twilio_client, memory_use_case)
+    
+    logger.info("📱 Sistema básico (sin OpenAI ni BD de cursos) inicializado correctamente")
 
 
 @app.get("/")

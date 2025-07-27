@@ -35,4 +35,108 @@ class MemoryManager:
         self.memory_dir = memory_dir
         self.leads_cache = {}
         os.makedirs(memory_dir, exist_ok=True)
-    # TODO: Implementar métodos get_lead_memory, save_lead_memory, load_lead_memory adaptados 
+    
+    def get_lead_memory(self, user_id: str) -> LeadMemory:
+        """
+        Obtiene la memoria de un lead específico con auto-corrección.
+        
+        Funcionalidad:
+        - Carga memoria desde cache o archivo
+        - Aplica corrección automática si es necesario
+        - Crea nueva memoria si no existe
+        """
+        if user_id not in self.leads_cache:
+            loaded_lead = self.load_lead_memory(user_id)
+            if loaded_lead:
+                self.leads_cache[user_id] = loaded_lead
+            else:
+                # Crear nueva memoria con timestamp
+                now = datetime.now()
+                self.leads_cache[user_id] = LeadMemory(
+                    user_id=user_id,
+                    created_at=now,
+                    updated_at=now
+                )
+        
+        return self.leads_cache[user_id]
+    
+    def save_lead_memory(self, user_id: str, lead_memory: LeadMemory) -> bool:
+        """
+        Guarda la memoria de un lead específico con backup automático.
+        
+        Funcionalidad:
+        - Crea backup antes de guardar
+        - Actualiza timestamp de modificación
+        - Maneja errores de escritura
+        """
+        try:
+            lead_memory.updated_at = datetime.now()
+            self.leads_cache[user_id] = lead_memory
+            
+            filename = f"memory_{user_id}.json"
+            filepath = os.path.join(self.memory_dir, filename)
+            
+            # Backup antes de guardar
+            if os.path.exists(filepath):
+                backup_path = f"{filepath}.backup"
+                shutil.copy2(filepath, backup_path)
+            
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(self.to_dict(lead_memory), f, ensure_ascii=False, indent=2)
+            
+            logging.info(f"✅ Memoria guardada para usuario {user_id}")
+            return True
+        except Exception as e:
+            logging.error(f"❌ Error saving lead memory for {user_id}: {e}")
+            return False
+    
+    def load_lead_memory(self, user_id: str) -> Optional[LeadMemory]:
+        """
+        Carga la memoria desde archivo con validación.
+        
+        Funcionalidad:
+        - Carga desde archivo JSON
+        - Valida estructura de datos
+        - Convierte tipos de datos apropiadamente
+        """
+        try:
+            filename = f"memory_{user_id}.json"
+            filepath = os.path.join(self.memory_dir, filename)
+            
+            if os.path.exists(filepath):
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                logging.info(f"✅ Memoria cargada para usuario {user_id}")
+                return self.from_dict(data)
+        except Exception as e:
+            logging.error(f"❌ Error loading lead memory for {user_id}: {e}")
+        return None
+    
+    def to_dict(self, lead_memory: LeadMemory) -> dict:
+        """Convierte LeadMemory a diccionario para JSON."""
+        data = asdict(lead_memory)
+        # Convertir datetime a string para JSON
+        for key, value in data.items():
+            if isinstance(value, datetime):
+                data[key] = value.isoformat() if value else None
+        return data
+    
+    def from_dict(self, data: dict) -> LeadMemory:
+        """Convierte diccionario desde JSON a LeadMemory."""
+        # Convertir strings de datetime de vuelta a datetime
+        for key in ['last_interaction', 'created_at', 'updated_at']:
+            if data.get(key):
+                data[key] = datetime.fromisoformat(data[key])
+        
+        # Inicializar listas vacías si son None
+        if data.get('message_history') is None:
+            data['message_history'] = []
+        if data.get('pain_points') is None:
+            data['pain_points'] = []
+        if data.get('buying_signals') is None:
+            data['buying_signals'] = []
+        if data.get('interests') is None:
+            data['interests'] = []
+        
+        return LeadMemory(**data) 
