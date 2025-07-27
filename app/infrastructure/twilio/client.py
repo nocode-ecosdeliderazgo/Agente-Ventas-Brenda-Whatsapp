@@ -12,6 +12,14 @@ from app.domain.entities.message import OutgoingMessage, MessageType
 
 logger = logging.getLogger(__name__)
 
+def debug_print(message: str, function_name: str = "", file_name: str = "twilio_client.py"):
+    """Print de debug visual para consola"""
+    print(f"\n{'='*80}")
+    print(f"📱 DEBUG [{file_name}::{function_name}]")
+    print(f"{'='*80}")
+    print(f"📋 {message}")
+    print(f"{'='*80}\n")
+
 
 class TwilioWhatsAppClient:
     """Cliente especializado para WhatsApp via Twilio."""
@@ -35,19 +43,25 @@ class TwilioWhatsAppClient:
             Dict con el resultado del envío
         """
         try:
+            debug_print(f"📤 ENVIANDO MENSAJE WHATSAPP\n👤 A: {message.to_number}\n💬 Texto: '{message.body[:100]}{'...' if len(message.body) > 100 else ''}'", "send_message", "twilio_client.py")
+            
             # Preparar datos para Twilio
             twilio_data = {
                 'body': message.body,
                 'from_': self.from_number,
                 'to': f'whatsapp:{message.to_number}'
             }
+            debug_print(f"⚙️ Datos preparados para Twilio:\n📞 From: {self.from_number}\n📞 To: whatsapp:{message.to_number}", "send_message", "twilio_client.py")
             
             # Agregar multimedia si existe
             if message.media_url:
                 twilio_data['media_url'] = [message.media_url]
+                debug_print(f"🖼️ Multimedia incluida: {message.media_url}", "send_message", "twilio_client.py")
             
             # Enviar mensaje
+            debug_print("🚀 Llamando API de Twilio...", "send_message", "twilio_client.py")
             twilio_message = self.client.messages.create(**twilio_data)
+            debug_print(f"✅ MENSAJE ENVIADO EXITOSAMENTE!\n🔗 SID: {twilio_message.sid}\n📊 Status: {twilio_message.status}", "send_message", "twilio_client.py")
             
             logger.info(f"Mensaje enviado exitosamente. SID: {twilio_message.sid}")
             
@@ -60,7 +74,7 @@ class TwilioWhatsAppClient:
             }
             
         except TwilioException as e:
-            logger.error(f"Error de Twilio enviando mensaje: {e}")
+            debug_print(f"❌ ERROR DE TWILIO: {e}", "send_message", "twilio_client.py")
             return {
                 'success': False,
                 'message_sid': None,
@@ -69,7 +83,7 @@ class TwilioWhatsAppClient:
                 'error': str(e)
             }
         except Exception as e:
-            logger.error(f"Error inesperado enviando mensaje: {e}")
+            debug_print(f"💥 ERROR INESPERADO: {e}", "send_message", "twilio_client.py")
             return {
                 'success': False,
                 'message_sid': None,

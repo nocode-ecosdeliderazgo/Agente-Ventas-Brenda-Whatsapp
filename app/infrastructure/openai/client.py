@@ -17,6 +17,14 @@ from prompts.agent_prompts import (
 
 logger = logging.getLogger(__name__)
 
+def debug_print(message: str, function_name: str = "", file_name: str = "openai_client.py"):
+    """Print de debug visual para consola"""
+    print(f"\n{'='*80}")
+    print(f"🤖 DEBUG [{file_name}::{function_name}]")
+    print(f"{'='*80}")
+    print(f"📋 {message}")
+    print(f"{'='*80}\n")
+
 
 class OpenAIClient:
     """
@@ -57,11 +65,16 @@ class OpenAIClient:
             Dict con análisis de intención estructurado
         """
         try:
+            debug_print(f"🔍 ANALIZANDO INTENCIÓN\n💬 Mensaje: '{user_message}'\n👤 Usuario: {user_memory.name if user_memory.name else 'Anónimo'}", "analyze_intent", "openai_client.py")
+            
             prompt = get_intent_analysis_prompt(user_message, user_memory, recent_messages)
             config = PromptConfig.get_config('intent_analysis')
             
-            self.logger.info(f"🔍 Analizando intención: '{user_message[:50]}...'")
+            debug_print(f"⚙️ Configuración OpenAI:\n🤖 Modelo: {config['model']}\n🌡️ Temperature: {config['temperature']}\n📏 Max tokens: {config['max_tokens']}", "analyze_intent", "openai_client.py")
             
+            debug_print(f"📝 PROMPT ENVIADO A OPENAI:\n{prompt[:500]}{'...' if len(prompt) > 500 else ''}", "analyze_intent", "openai_client.py")
+            
+            debug_print("🚀 Enviando petición a OpenAI...", "analyze_intent", "openai_client.py")
             response = await self.client.chat.completions.create(
                 model=config['model'],
                 temperature=config['temperature'],
@@ -73,17 +86,19 @@ class OpenAIClient:
             )
             
             content = response.choices[0].message.content.strip()
+            debug_print(f"📥 RESPUESTA CRUDA DE OPENAI:\n{content}", "analyze_intent", "openai_client.py")
             
             # Intentar parsear JSON
             try:
+                debug_print("🔄 Parseando respuesta JSON...", "analyze_intent", "openai_client.py")
                 intent_data = json.loads(content)
-                self.logger.info(f"✅ Intención detectada: {intent_data.get('category', 'UNKNOWN')}")
+                debug_print(f"✅ JSON PARSEADO EXITOSAMENTE!\n🎯 Categoría: {intent_data.get('category', 'UNKNOWN')}\n📊 Confianza: {intent_data.get('confidence', 'N/A')}", "analyze_intent", "openai_client.py")
                 return intent_data
             except json.JSONDecodeError as e:
-                self.logger.error(f"❌ Error parseando JSON de intención: {e}")
-                self.logger.error(f"Respuesta recibida: {content}")
+                debug_print(f"❌ ERROR PARSEANDO JSON: {e}\n📄 Respuesta recibida: {content}", "analyze_intent", "openai_client.py")
                 
                 # Fallback con intención genérica
+                debug_print("🔄 Usando respuesta FALLBACK genérica", "analyze_intent", "openai_client.py")
                 return {
                     "category": "GENERAL_QUESTION",
                     "confidence": 0.5,
@@ -95,8 +110,12 @@ class OpenAIClient:
                 }
                 
         except Exception as e:
-            self.logger.error(f"💥 Error en análisis de intención: {e}")
+            debug_print(f"💥 ERROR CRÍTICO EN ANÁLISIS: {e}", "analyze_intent", "openai_client.py")
+            import traceback
+            debug_print(f"📜 Traceback completo: {traceback.format_exc()}", "analyze_intent", "openai_client.py")
+            
             # Fallback para asegurar que el bot funcione
+            debug_print("🚨 Usando FALLBACK CRÍTICO", "analyze_intent", "openai_client.py")
             return {
                 "category": "GENERAL_QUESTION",
                 "confidence": 0.3,

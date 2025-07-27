@@ -13,6 +13,14 @@ from prompts.agent_prompts import WhatsAppMessageTemplates
 
 logger = logging.getLogger(__name__)
 
+def debug_print(message: str, function_name: str = "", file_name: str = "generate_intelligent_response.py"):
+    """Print de debug visual para consola"""
+    print(f"\n{'='*80}")
+    print(f"💬 DEBUG [{file_name}::{function_name}]")
+    print(f"{'='*80}")
+    print(f"📋 {message}")
+    print(f"{'='*80}\n")
+
 
 class GenerateIntelligentResponseUseCase:
     """
@@ -63,30 +71,44 @@ class GenerateIntelligentResponseUseCase:
             Dict con resultado del procesamiento y respuesta enviada
         """
         try:
-            self.logger.info(f"💬 Generando respuesta inteligente para usuario {user_id}")
+            debug_print(f"💬 GENERANDO RESPUESTA INTELIGENTE\n👤 Usuario: {user_id}\n📨 Mensaje: '{incoming_message.body}'", "execute", "generate_intelligent_response.py")
             
             # 1. Analizar intención del mensaje
+            debug_print("🧠 Ejecutando análisis de intención...", "execute", "generate_intelligent_response.py")
             analysis_result = await self.intent_analyzer.execute(
                 user_id, incoming_message, context_info
             )
             
             if not analysis_result['success']:
-                self.logger.error(f"❌ Fallo análisis de intención: {analysis_result.get('error')}")
+                debug_print(f"❌ FALLO ANÁLISIS DE INTENCIÓN: {analysis_result.get('error')}", "execute", "generate_intelligent_response.py")
                 response_text = WhatsAppMessageTemplates.error_fallback()
+                debug_print(f"🔄 Usando respuesta de FALLBACK: {response_text}", "execute", "generate_intelligent_response.py")
             else:
+                debug_print(f"✅ Análisis completado - Intención: {analysis_result.get('intent_analysis', {}).get('category', 'N/A')}", "execute", "generate_intelligent_response.py")
+                
                 # 2. Generar respuesta basada en análisis
+                debug_print("📝 Generando respuesta contextual...", "execute", "generate_intelligent_response.py")
                 response_text = await self._generate_contextual_response(
                     analysis_result, incoming_message, user_id
                 )
+                debug_print(f"✅ Respuesta generada: {response_text[:100]}{'...' if len(response_text) > 100 else ''}", "execute", "generate_intelligent_response.py")
             
             # 3. Enviar respuesta principal
+            debug_print(f"📤 Enviando respuesta a WhatsApp: {incoming_message.from_number}", "execute", "generate_intelligent_response.py")
             send_result = await self._send_response(
                 incoming_message.from_number, response_text
             )
             
+            if send_result['success']:
+                debug_print(f"✅ MENSAJE ENVIADO EXITOSAMENTE!\n🔗 SID: {send_result.get('message_sid', 'N/A')}", "execute", "generate_intelligent_response.py")
+            else:
+                debug_print(f"❌ ERROR ENVIANDO MENSAJE: {send_result.get('error', 'Error desconocido')}", "execute", "generate_intelligent_response.py")
+            
             # 4. Ejecutar acciones adicionales si es necesario
+            recommended_actions = analysis_result.get('recommended_actions', [])
+            debug_print(f"🎬 Ejecutando acciones adicionales: {recommended_actions}", "execute", "generate_intelligent_response.py")
             additional_actions = await self._execute_additional_actions(
-                analysis_result.get('recommended_actions', []),
+                recommended_actions,
                 user_id,
                 incoming_message.from_number,
                 analysis_result.get('updated_memory')

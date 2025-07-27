@@ -17,6 +17,14 @@ from memory.lead_memory import MemoryManager
 
 logger = logging.getLogger(__name__)
 
+def debug_print(message: str, function_name: str = "", file_name: str = "webhook.py"):
+    """Print de debug visual para consola"""
+    print(f"\n{'='*80}")
+    print(f"🔍 DEBUG [{file_name}::{function_name}]")
+    print(f"{'='*80}")
+    print(f"📋 {message}")
+    print(f"{'='*80}\n")
+
 # Crear instancia de FastAPI
 app = FastAPI(
     title="Bot Brenda - Webhook WhatsApp",
@@ -25,68 +33,91 @@ app = FastAPI(
 )
 
 # Instanciar dependencias
+debug_print("Inicializando cliente Twilio...", "startup", "webhook.py")
 twilio_client = TwilioWhatsAppClient()
+debug_print("✅ Cliente Twilio inicializado correctamente", "startup", "webhook.py")
 
 # Crear manager de memoria y caso de uso
+debug_print("Inicializando sistema de memoria...", "startup", "webhook.py")
 memory_manager = MemoryManager(memory_dir="memorias")
 memory_use_case = ManageUserMemoryUseCase(memory_manager)
+debug_print("✅ Sistema de memoria inicializado correctamente", "startup", "webhook.py")
 
 # Intentar inicializar sistema completo
 try:
+    debug_print("🤖 Inicializando cliente OpenAI...", "startup", "webhook.py")
     # Inicializar cliente OpenAI
     openai_client = OpenAIClient()
+    debug_print("✅ Cliente OpenAI inicializado correctamente", "startup", "webhook.py")
+    
+    debug_print("🧠 Inicializando analizador de intención...", "startup", "webhook.py")
     intent_analyzer = AnalyzeMessageIntentUseCase(openai_client, memory_use_case)
+    debug_print("✅ Analizador de intención inicializado correctamente", "startup", "webhook.py")
     
     # Intentar inicializar sistema de cursos
+    debug_print("🗄️ Intentando inicializar sistema de cursos PostgreSQL...", "startup", "webhook.py")
     course_query_use_case = None
     try:
         from app.application.usecases.query_course_information import QueryCourseInformationUseCase
         course_query_use_case = QueryCourseInformationUseCase()
+        debug_print("📦 Clase QueryCourseInformationUseCase cargada", "startup", "webhook.py")
         
         # Inicializar conexión a BD de cursos en background
         course_init_success = False
         try:
+            debug_print("🔌 Intentando conectar a PostgreSQL...", "startup", "webhook.py")
             import asyncio
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             course_init_success = loop.run_until_complete(course_query_use_case.initialize())
             loop.close()
+            
+            if course_init_success:
+                debug_print("✅ Conexión PostgreSQL establecida exitosamente", "startup", "webhook.py")
+            else:
+                debug_print("❌ Falló la conexión a PostgreSQL", "startup", "webhook.py")
+                
         except Exception as course_init_error:
-            logger.warning(f"⚠️ No se pudo inicializar sistema de cursos: {course_init_error}")
+            debug_print(f"❌ Error conectando PostgreSQL: {course_init_error}", "startup", "webhook.py")
             course_query_use_case = None
         
         if course_init_success:
-            logger.info("✅ Sistema de consulta de cursos inicializado")
+            debug_print("✅ Sistema de consulta de cursos inicializado", "startup", "webhook.py")
         else:
-            logger.warning("⚠️ Sistema de cursos no disponible, usando respuestas estándar")
+            debug_print("⚠️ Sistema de cursos no disponible, usando respuestas estándar", "startup", "webhook.py")
             course_query_use_case = None
             
     except ImportError as e:
-        logger.warning(f"⚠️ Dependencias de PostgreSQL no disponibles: {e}")
+        debug_print(f"❌ Dependencias de PostgreSQL no disponibles: {e}", "startup", "webhook.py")
         course_query_use_case = None
     
     # Crear generador de respuestas inteligentes (con o sin sistema de cursos)
+    debug_print("🧩 Creando generador de respuestas inteligentes...", "startup", "webhook.py")
     intelligent_response_use_case = GenerateIntelligentResponseUseCase(
         intent_analyzer, twilio_client, course_query_use_case
     )
+    debug_print("✅ Generador de respuestas inteligentes creado", "startup", "webhook.py")
     
     # Crear caso de uso de procesamiento con capacidades inteligentes
+    debug_print("⚙️ Creando procesador de mensajes principal...", "startup", "webhook.py")
     process_message_use_case = ProcessIncomingMessageUseCase(
         twilio_client, memory_use_case, intelligent_response_use_case
     )
+    debug_print("✅ Procesador de mensajes principal creado", "startup", "webhook.py")
     
     if course_query_use_case:
-        logger.info("✅ Sistema inteligente completo (OpenAI + Cursos) inicializado correctamente")
+        debug_print("🎉 SISTEMA COMPLETO: OpenAI + PostgreSQL + Cursos inicializado correctamente", "startup", "webhook.py")
     else:
-        logger.info("✅ Sistema inteligente básico (OpenAI sin BD de cursos) inicializado correctamente")
+        debug_print("🎉 SISTEMA BÁSICO: OpenAI sin BD de cursos inicializado correctamente", "startup", "webhook.py")
     
 except Exception as e:
-    logger.warning(f"⚠️ No se pudo inicializar OpenAI, usando modo básico: {e}")
+    debug_print(f"❌ ERROR INICIALIZANDO OPENAI: {e}", "startup", "webhook.py")
+    debug_print("🔄 Iniciando modo FALLBACK (sin OpenAI)...", "startup", "webhook.py")
     
     # Crear caso de uso de procesamiento básico sin IA
     process_message_use_case = ProcessIncomingMessageUseCase(twilio_client, memory_use_case)
     
-    logger.info("📱 Sistema básico (sin OpenAI ni BD de cursos) inicializado correctamente")
+    debug_print("⚠️ SISTEMA FALLBACK: Sin OpenAI ni BD de cursos inicializado correctamente", "startup", "webhook.py")
 
 
 @app.get("/")
@@ -122,10 +153,11 @@ async def whatsapp_webhook(
     se reciba un mensaje en el número de WhatsApp configurado.
     """
     try:
-        logger.info(f"📨 Webhook recibido de {From}: {Body}")
+        debug_print(f"📨 MENSAJE RECIBIDO!\n📱 Desde: {From}\n💬 Texto: '{Body}'\n🆔 SID: {MessageSid}", "whatsapp_webhook", "webhook.py")
         
         # Verificar firma del webhook si está habilitado
         if settings.webhook_verify_signature:
+            debug_print("🔐 Verificando firma de seguridad del webhook...", "whatsapp_webhook", "webhook.py")
             signature = request.headers.get('X-Twilio-Signature', '')
             url = str(request.url)
             
@@ -134,10 +166,13 @@ async def whatsapp_webhook(
             params = dict(form_data)
             
             if not twilio_client.verify_webhook_signature(signature, url, params):
-                logger.warning(f"⚠️ Firma de webhook inválida desde {From}")
+                debug_print(f"❌ FIRMA INVÁLIDA desde {From}", "whatsapp_webhook", "webhook.py")
                 raise HTTPException(status_code=403, detail="Invalid signature")
+            else:
+                debug_print("✅ Firma de webhook verificada correctamente", "whatsapp_webhook", "webhook.py")
         
         # Preparar datos del webhook
+        debug_print("📦 Preparando datos del webhook...", "whatsapp_webhook", "webhook.py")
         webhook_data = {
             'MessageSid': MessageSid,
             'From': From,
@@ -149,20 +184,23 @@ async def whatsapp_webhook(
             'ProfileName': ProfileName,
             'WaId': WaId
         }
+        debug_print("✅ Datos del webhook preparados correctamente", "whatsapp_webhook", "webhook.py")
         
         # Procesar mensaje en background para responder rápido a Twilio
+        debug_print("🚀 Iniciando procesamiento en background...", "whatsapp_webhook", "webhook.py")
         background_tasks.add_task(
             process_message_in_background,
             webhook_data
         )
         
         # Responder inmediatamente a Twilio (requerido)
+        debug_print("✅ Respondiendo OK a Twilio (200)", "whatsapp_webhook", "webhook.py")
         return PlainTextResponse("OK", status_code=200)
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"💥 Error en webhook: {e}")
+        debug_print(f"💥 ERROR EN WEBHOOK: {e}", "whatsapp_webhook", "webhook.py")
         # Siempre responder 200 a Twilio para evitar reintentos
         return PlainTextResponse("ERROR", status_code=200)
 
@@ -175,21 +213,28 @@ async def process_message_in_background(webhook_data: Dict[str, Any]):
         webhook_data: Datos del webhook de Twilio
     """
     try:
-        logger.info("🔄 Procesando mensaje en background...")
+        debug_print("🔄 INICIANDO PROCESAMIENTO EN BACKGROUND", "process_message_in_background", "webhook.py")
+        debug_print(f"📋 Datos recibidos: From={webhook_data.get('From')}, Body='{webhook_data.get('Body')}'", "process_message_in_background", "webhook.py")
         
         # Ejecutar caso de uso
+        debug_print("⚙️ Ejecutando caso de uso principal (process_message_use_case)...", "process_message_in_background", "webhook.py")
         result = await process_message_use_case.execute(webhook_data)
+        debug_print(f"📊 Resultado del procesamiento: {result}", "process_message_in_background", "webhook.py")
         
         if result['success'] and result['processed']:
-            logger.info(
-                f"✅ Mensaje procesado exitosamente. "
-                f"Respuesta enviada: {result['response_sent']}"
+            debug_print(
+                f"✅ MENSAJE PROCESADO EXITOSAMENTE!\n"
+                f"📤 Respuesta enviada: {result['response_sent']}\n"
+                f"🔗 SID respuesta: {result.get('response_sid', 'N/A')}", 
+                "process_message_in_background", "webhook.py"
             )
         else:
-            logger.warning(f"⚠️ Mensaje no procesado: {result}")
+            debug_print(f"⚠️ MENSAJE NO PROCESADO: {result}", "process_message_in_background", "webhook.py")
             
     except Exception as e:
-        logger.error(f"💥 Error en background processing: {e}")
+        debug_print(f"💥 ERROR EN BACKGROUND PROCESSING: {e}", "process_message_in_background", "webhook.py")
+        import traceback
+        debug_print(f"📜 Traceback: {traceback.format_exc()}", "process_message_in_background", "webhook.py")
 
 
 @app.get("/webhook/whatsapp")

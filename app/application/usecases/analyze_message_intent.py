@@ -11,6 +11,14 @@ from app.domain.entities.message import IncomingMessage
 
 logger = logging.getLogger(__name__)
 
+def debug_print(message: str, function_name: str = "", file_name: str = "analyze_message_intent.py"):
+    """Print de debug visual para consola"""
+    print(f"\n{'='*80}")
+    print(f"🧠 DEBUG [{file_name}::{function_name}]")
+    print(f"{'='*80}")
+    print(f"📋 {message}")
+    print(f"{'='*80}\n")
+
 
 class AnalyzeMessageIntentUseCase:
     """
@@ -57,36 +65,52 @@ class AnalyzeMessageIntentUseCase:
             Dict con análisis completo e información extraída
         """
         try:
-            self.logger.info(f"🔍 Iniciando análisis de intención para usuario {user_id}")
+            debug_print(f"🔍 INICIANDO ANÁLISIS DE INTENCIÓN\n👤 Usuario: {user_id}\n💬 Mensaje: '{message.body}'", "execute", "analyze_message_intent.py")
             
             # 1. Obtener memoria del usuario
+            debug_print("📚 Obteniendo memoria del usuario...", "execute", "analyze_message_intent.py")
             user_memory = self.memory_use_case.get_user_memory(user_id)
+            debug_print(f"✅ Memoria obtenida - Nombre: {user_memory.name}, Interacciones: {user_memory.interaction_count}", "execute", "analyze_message_intent.py")
             
             # 2. Preparar contexto de mensajes recientes
+            debug_print("📋 Preparando contexto de mensajes recientes...", "execute", "analyze_message_intent.py")
             recent_messages = self._get_recent_messages_context(user_memory)
+            debug_print(f"✅ Contexto preparado - {len(recent_messages)} mensajes recientes", "execute", "analyze_message_intent.py")
             
             # 3. Analizar intención y extraer información usando OpenAI
+            debug_print("🤖 ENVIANDO MENSAJE A OPENAI para análisis...", "execute", "analyze_message_intent.py")
             ai_result = await self.openai_client.analyze_and_respond(
                 user_message=message.body,
                 user_memory=user_memory,
                 recent_messages=recent_messages,
                 context_info=context_info
             )
+            debug_print(f"✅ RESPUESTA DE OPENAI RECIBIDA: {ai_result}", "execute", "analyze_message_intent.py")
             
             # 4. Procesar información extraída y actualizar memoria
             extracted_info = ai_result.get('extracted_info', {})
+            debug_print(f"📊 Información extraída: {extracted_info}", "execute", "analyze_message_intent.py")
+            
             if extracted_info:
+                debug_print("🔄 Actualizando memoria con información extraída...", "execute", "analyze_message_intent.py")
                 updated_memory = await self._update_memory_with_extracted_info(
                     user_id, user_memory, extracted_info
                 )
+                debug_print("✅ Memoria actualizada exitosamente", "execute", "analyze_message_intent.py")
             else:
+                debug_print("➡️ No hay información nueva para actualizar", "execute", "analyze_message_intent.py")
                 updated_memory = user_memory
             
             # 5. Determinar acciones recomendadas
+            intent_analysis = ai_result.get('intent_analysis', {})
+            debug_print(f"🎯 Intención detectada: {intent_analysis.get('category', 'N/A')} (confianza: {intent_analysis.get('confidence', 0)})", "execute", "analyze_message_intent.py")
+            
+            debug_print("🎬 Determinando acciones recomendadas...", "execute", "analyze_message_intent.py")
             recommended_actions = self._determine_recommended_actions(
-                ai_result.get('intent_analysis', {}),
+                intent_analysis,
                 updated_memory
             )
+            debug_print(f"📋 Acciones recomendadas: {recommended_actions}", "execute", "analyze_message_intent.py")
             
             result = {
                 'success': ai_result.get('success', True),
