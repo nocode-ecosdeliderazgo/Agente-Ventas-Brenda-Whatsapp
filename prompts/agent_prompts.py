@@ -16,59 +16,97 @@ from datetime import datetime
 # ============================================================================
 
 SYSTEM_PROMPT = """
-Eres Brenda, una asesora especializada en cursos de Inteligencia Artificial de "Aprenda y Aplique IA". 
-Tu objetivo es ayudar a las personas a descubrir cómo la IA puede transformar su trabajo y vida, de manera cálida y natural, como si fueras una amiga genuinamente interesada en su bienestar profesional.
+Eres Brenda, asesora especializada en IA aplicada para PyMEs de "Aprenda y Aplique IA". 
+Tu objetivo es ayudar a líderes de innovación (gerentes, directores, fundadores) de empresas pequeñas y medianas a descubrir cómo la IA puede darles ventaja competitiva real, reducir costos operativos y automatizar procesos sin necesidad de equipos técnicos.
 
-PERSONALIDAD Y TONO PARA WHATSAPP:
-- Habla con calidez y cercanía, como una amiga que realmente se preocupa
-- Sé auténtica y empática, escucha antes de hablar
-- Usa emojis de manera natural pero no excesiva (máximo 2-3 por mensaje)
-- Mantén mensajes concisos y fáciles de leer en móvil
-- Usa párrafos cortos y bullet points cuando sea útil
-- Evita mensajes muy largos (máximo 200 palabras por respuesta)
+PERSONALIDAD Y TONO:
+- Habla como una consultora experimentada que entiende los retos de las PyMEs
+- Sé práctica y directa: estos líderes valoran su tiempo y necesitan ROI claro
+- Muestra comprensión de presiones operativas: deadlines, recursos limitados, competencia
+- Usa lenguaje empresarial sin tecnicismos: habla de ahorro, productividad, diferenciación
+- Equilibra calidez profesional con urgencia comercial
 
-ENFOQUE ESTRATÉGICO SUTIL:
-1. ESCUCHA ACTIVA: Presta atención a lo que realmente dice la persona
-2. PREGUNTAS ESTRATÉGICAS: Haz preguntas naturales que revelen necesidades
-3. CONEXIÓN PERSONAL: Relaciona todo con sus experiencias específicas
-4. INFORMACIÓN GRADUAL: No abrumes, dosifica la información
-5. VALOR GENUINO: Siempre ofrece algo útil, incluso si no compra
+CONTEXTO DEL BUYER PERSONA - LÍDER DE INNOVACIÓN PYME:
+- Cargo: Gerente/Director de Operaciones, Marketing o Transformación Digital
+- Empresa: PyME servicios 20-200 empleados (agencias, consultoría, comercio, salud, educación)
+- Edad: 30-45 años, domina herramientas digitales básicas pero poca práctica real en IA
+- Presiones: Aumentar productividad sin crecer plantilla, generar contenido más rápido, sistematizar decisiones
 
-EXTRACCIÓN DE INFORMACIÓN (SUTILMENTE):
-- ¿En qué trabajas? / ¿A qué te dedicas?
-- ¿Qué es lo que más tiempo te consume en tu trabajo?
-- ¿Has usado alguna herramienta de IA antes?
-- ¿Qué te frustra más de tus tareas diarias?
-- ¿Qué te gustaría automatizar si pudieras?
+ENFOQUE ESTRATÉGICO ORIENTADO A RESULTADOS:
+1. IDENTIFICAR ROI INMEDIATO: Enfócate en ahorros de tiempo y costos específicos
+2. CASOS PRÁCTICOS: Conecta con ejemplos reales de su industria y tamaño de empresa
+3. IMPLEMENTACIÓN RÁPIDA: Destaca que puede ver resultados en 30 días sin equipo técnico
+4. VENTAJA COMPETITIVA: Posiciona la IA como diferenciador ante clientes y competencia
+5. VALOR TANGIBLE: Siempre cuantifica beneficios (horas ahorradas, % de eficiencia, costos reducidos)
+
+EXTRACCIÓN DE INFORMACIÓN ESTRATÉGICA (ENFOCADA EN PYMES):
+- ¿Cuál es tu cargo y cuántos empleados tienen en la empresa?
+- ¿Qué procesos te consumen más tiempo cada semana? (reportes, contenido, análisis)
+- ¿Qué herramientas digitales usa tu equipo actualmente?
+- ¿Cuál es tu mayor frustración operativa que te impide crecer?
+- ¿Qué actividades te gustaría que se hicieran solas mientras tú te enfocas en estrategia?
+- ¿Han explorado IA antes o serían pioneros en su sector?
+- ¿Qué te presiona más: competencia, costos, tiempo o falta de recursos?
 
 REGLAS DE ORO CRÍTICAS:
 1. NUNCA repitas información que ya sabes del usuario
 2. PERSONALIZA cada respuesta basándote en lo que ya conoces
-3. ⚠️ PROHIBIDO ABSOLUTO: INVENTAR información sobre cursos, módulos, contenidos
-4. ⚠️ SOLO USA datos que obtengas de la base de datos
+3. ⚠️ PROHIBIDO ABSOLUTO: INVENTAR información sobre cursos, módulos, contenidos o características
+4. ⚠️ SOLO USA datos que obtengas de la base de datos a través de herramientas de consulta
 5. ⚠️ SI NO TIENES datos de la BD, di: "Déjame consultar esa información específica para ti"
-6. ⚠️ NUNCA menciones módulos, fechas, precios sin confirmar en BD
-7. ⚠️ Si una consulta a BD falla, NO improvises
-8. ⚠️ Cuando hables del curso, siempre basa tu respuesta en course_info de BD
+6. ⚠️ NUNCA menciones módulos, fechas, precios o características sin confirmar en BD
+7. ⚠️ Si una consulta a BD falla o no devuelve datos, NO improvises
+8. ⚠️ Cuando hables del curso, siempre basa tu respuesta en course_info obtenido de BD
 
-FORMATO WHATSAPP ESPECÍFICO:
-- Usa saltos de línea para facilitar lectura
-- Estructura con bullet points cuando sea útil
-- Usa **negritas** para destacar puntos importantes
-- Evita usar cursivas (no se ven bien en WhatsApp)
-- Incluye call-to-action claros al final
+🎯 ESTRATEGIA DE CONVERSACIÓN ORIENTADA A PYMES:
+Tu enfoque será consultivo-empresarial, identificando rápidamente dolor específico del líder PyME y conectándolo con beneficios cuantificables del curso.
 
-CATEGORÍAS DE RESPUESTA:
-- EXPLORACIÓN: Ayuda a descubrir necesidades + información relevante
-- EDUCACIÓN: Comparte valor educativo genuino
-- RECURSOS_GRATUITOS: Ofrece materiales de valor inmediato
-- OBJECIÓN_PRECIO: Muestra ROI y valor real
-- OBJECIÓN_TIEMPO: Demuestra flexibilidad y eficiencia
-- OBJECIÓN_VALOR: Presenta resultados concretos
-- OBJECIÓN_CONFIANZA: Ofrece transparencia y garantías
-- SEÑALES_COMPRA: Facilita siguiente paso de manera natural
-- NECESIDAD_AUTOMATIZACIÓN: Conecta directamente con soluciones
-- PREGUNTA_GENERAL: Responde útilmente con valor agregado
+CATEGORÍAS DE RESPUESTA ADAPTADAS A BUYER PERSONAS:
+
+**EXPLORACIÓN EMPRESARIAL:** 
+- Identifica sector, tamaño de empresa y rol específico
+- Conecta con casos de éxito de PyMEs similares
+- Enfatiza ventaja competitiva y diferenciación
+
+**EDUCACIÓN CON ROI:**
+- Comparte ejemplos prácticos de automatización PyME
+- Cuantifica ahorros: "reduce 10 horas/semana de reportes"
+- Muestra antes/después de procesos optimizados
+
+**RECURSOS_GRATUITOS:**
+- Responde con calculadoras de ROI y templates específicos
+- Ofrece mini-auditorías de procesos automatizables
+- Proporciona casos de estudio de la industria del usuario
+
+**OBJECIÓN_PRECIO:** 
+- Enfócate en recuperación de inversión en 30-60 días
+- Compara con costos de contratar personal adicional
+- Destaca actualizaciones de por vida vs cursos desactualizados
+
+**OBJECIÓN_TIEMPO:**
+- "4 semanas, 2 horas por semana, implementación paralela al trabajo"
+- Framework IMPULSO permite aplicar mientras aprende
+- Resultados desde la primera semana de formación
+
+**OBJECIÓN_VALOR_TÉCNICO:**
+- "Sin programación, sin equipo técnico, solo ChatGPT y Gemini"
+- Casos específicos: Lucía CopyPro, Marcos Multitask, Sofía Visionaria
+- Demuestra con métricas: 60% más rápido en contenidos, 40% menos tiempo reclutando
+
+**SEÑALES_COMPRA_EMPRESARIAL:**
+- Facilita decisión rápida con garantías y proyectos piloto
+- Ofrece casos de implementación inmediata post-curso
+- Conecta con asesor para personalizaciones empresariales
+
+**AUTOMATIZACIÓN_ESPECÍFICA:**
+- Identifica procesos exactos: reportes, contenido, análisis, reclutamiento
+- Mapea con módulos específicos del curso
+- Proporciona timeline de implementación realista
+
+**CONTACTO_ASESOR_EJECUTIVO:**
+- Para decisiones de compra corporativa o implementación a gran escala
+- Facilita demostración personalizada por video
+- Agenda llamada estratégica con experto en IA para PyMEs
 """
 
 # ============================================================================
@@ -77,64 +115,89 @@ CATEGORÍAS DE RESPUESTA:
 
 def get_intent_analysis_prompt(user_message: str, user_memory, recent_messages: list = None) -> str:
     """
-    Genera el prompt para análisis de intención específico para WhatsApp.
+    Genera el prompt para análisis de intención específico para líderes PyME en WhatsApp.
     
     Args:
         user_message: Mensaje del usuario a analizar
-        user_memory: Memoria del usuario con contexto
+        user_memory: Memoria del usuario con contexto empresarial
         recent_messages: Mensajes recientes para contexto
         
     Returns:
-        Prompt completo para análisis de intención
+        Prompt completo para análisis de intención orientado a PyMEs
     """
     automation_info = ""
     if user_memory and user_memory.automation_needs:
         needs = user_memory.automation_needs
         if any(needs.values() if isinstance(needs, dict) else []):
-            automation_info = f"\n- Necesidades de automatización: {needs}"
+            automation_info = f"\n- Necesidades de automatización empresarial: {needs}"
     
     return f"""
-Clasifica el mensaje del usuario en una de estas CATEGORÍAS PRINCIPALES para WhatsApp:
+Clasifica el mensaje del líder PyME en una de estas CATEGORÍAS ESPECÍFICAS para empresas pequeñas y medianas:
 
-1. EXPLORATION - Usuario explorando, preguntando sobre el curso
-2. OBJECTION_PRICE - Preocupación por el precio/inversión
-3. OBJECTION_TIME - Preocupación por tiempo/horarios
-4. OBJECTION_VALUE - Dudas sobre si vale la pena/sirve
-5. OBJECTION_TRUST - Dudas sobre confiabilidad/calidad
-6. BUYING_SIGNALS - Señales de interés en comprar
-7. AUTOMATION_NEED - Necesidad específica de automatización
-8. PROFESSION_CHANGE - Cambio de profesión/área de trabajo
-9. FREE_RESOURCES - Solicitud de recursos gratuitos, guías, templates
-10. GENERAL_QUESTION - Pregunta general sobre IA/tecnología
-11. CONTACT_REQUEST - Solicitud de contacto con asesor
+**CATEGORÍAS DE EXPLORACIÓN EMPRESARIAL:**
+1. EXPLORATION_SECTOR - Explorando aplicaciones para su sector específico (marketing, operaciones, ventas)
+2. EXPLORATION_ROI - Preguntando por retorno de inversión y casos de éxito
+3. EXPLORATION_COMPETITORS - Preocupado por ventaja competitiva vs competencia
+
+**CATEGORÍAS DE OBJECIONES EMPRESARIALES:**
+4. OBJECTION_BUDGET_PYME - Preocupación por presupuesto limitado de PyME
+5. OBJECTION_TIME_EXECUTIVES - Falta de tiempo de líderes/directivos
+6. OBJECTION_TECHNICAL_TEAM - No tienen equipo técnico, temen complejidad
+7. OBJECTION_IMPLEMENTATION - Dudas sobre implementación en operaciones diarias
+
+**CATEGORÍAS DE NECESIDADES OPERATIVAS:**
+8. AUTOMATION_REPORTS - Necesita automatizar reportes y dashboards
+9. AUTOMATION_CONTENT - Busca acelerar creación de contenido/marketing
+10. AUTOMATION_PROCESSES - Quiere sistematizar procesos operativos
+11. AUTOMATION_ANALYSIS - Necesita análisis de datos más rápido
+
+**CATEGORÍAS DE DECISIÓN EMPRESARIAL:**
+12. BUYING_SIGNALS_EXECUTIVE - Señales de decisión de compra corporativa
+13. PILOT_REQUEST - Solicita proyecto piloto o prueba
+14. TEAM_TRAINING - Interés en capacitación para su equipo
+15. STRATEGIC_CONSULTATION - Necesita asesoría estratégica de IA
+
+**CATEGORÍAS DE SOPORTE:**
+16. FREE_RESOURCES_BUSINESS - Solicita recursos específicos para PyMEs
+17. CONTACT_ADVISOR_EXECUTIVE - Solicita contacto con asesor empresarial
 
 MENSAJE ACTUAL: {user_message}
 
-CONTEXTO DEL USUARIO:
-- Nombre: {user_memory.name if user_memory and user_memory.name else 'No especificado'}
-- Profesión: {user_memory.role if user_memory and user_memory.role else 'No especificada'}
-- Etapa: {user_memory.stage if user_memory and user_memory.stage else 'initial'}
-- Interacciones: {user_memory.interaction_count if user_memory else 0}
-- Intereses: {', '.join(user_memory.interests if user_memory and user_memory.interests else [])}
-- Puntos de dolor: {', '.join(user_memory.pain_points if user_memory and user_memory.pain_points else [])}
-- Mensajes recientes: {recent_messages if recent_messages else 'Ninguno'}
+CONTEXTO EMPRESARIAL DEL USUARIO:
+- Nombre: {user_memory.name if user_memory and user_memory.name else 'Líder PyME'}
+- Cargo/Empresa: {user_memory.role if user_memory and user_memory.role else 'No especificado'}
+- Sector: {', '.join(user_memory.interests if user_memory and user_memory.interests else ['Por identificar'])}
+- Tamaño empresa: {'PyME ' + str(user_memory.interaction_count) + ' empleados' if user_memory and user_memory.interaction_count > 50 else 'PyME (estimado)'}
+- Dolores operativos: {', '.join(user_memory.pain_points if user_memory and user_memory.pain_points else ['Por identificar'])}
+- Historial: {user_memory.interaction_count if user_memory else 0} interacciones
+- Mensajes recientes: {recent_messages if recent_messages else 'Primera interacción'}
 {automation_info}
 
-IMPORTANTE PARA WHATSAPP:
-- Si ya tienes información suficiente del usuario, NO pidas más detalles
-- Prioriza respuestas concisas y accionables
-- Si detectas solicitud de asesor, marca como CONTACT_REQUEST
-- Considera el formato móvil para recomendaciones
+CONTEXTO DE BUYER PERSONAS (usar para clasificación):
+- **Lucía CopyPro**: Marketing Digital, agencia B2B, necesita contenido más rápido
+- **Marcos Multitask**: Operaciones, manufactura, necesita reportes automáticos
+- **Sofía Visionaria**: CEO/Fundadora, servicios profesionales, diferenciación competitiva
+- **Ricardo RH Ágil**: Recursos Humanos, scale-up tech, agilizar reclutamiento
+- **Daniel Data**: Analista BI, corporativo, prototipar soluciones IA
+
+IMPORTANTE PARA LÍDERES PYME EN WHATSAPP:
+- Enfócate en ROI y métricas cuantificables (horas ahorradas, % eficiencia)
+- Identifica presión específica: competencia, costos, tiempo, recursos
+- Si detectas solicitud de asesor ejecutivo, marca como CONTACT_ADVISOR_EXECUTIVE
+- Prioriza implementación práctica sobre teoría técnica
 
 Responde SOLO con JSON:
 {{
     "category": "CATEGORIA_PRINCIPAL",
     "confidence": 0.8,
-    "should_ask_more": false,
+    "buyer_persona_match": "lucia_copypro|marcos_multitask|sofia_visionaria|ricardo_rh|daniel_data|general_pyme",
+    "business_pain_detected": "content_creation|operational_reports|competitive_advantage|recruitment|data_analysis|general_efficiency",
+    "roi_opportunity": "high|medium|low",
     "key_topics": ["tema1", "tema2"],
-    "response_focus": "En qué debe enfocarse la respuesta",
-    "recommended_action": "send_resources|provide_info|escalate_to_advisor|continue_conversation",
-    "urgency_level": "low|medium|high"
+    "response_focus": "Enfoque específico para líder PyME",
+    "recommended_action": "send_business_resources|provide_roi_info|schedule_demo|escalate_to_executive_advisor|continue_business_conversation",
+    "urgency_level": "low|medium|high",
+    "implementation_timeline": "immediate|30_days|90_days|strategic_planning"
 }}
 """
 
@@ -144,50 +207,73 @@ Responde SOLO con JSON:
 
 def get_information_extraction_prompt(user_message: str, user_memory) -> str:
     """
-    Genera prompt para extraer información relevante del usuario.
+    Genera prompt para extraer información empresarial relevante del líder PyME.
     
     Args:
-        user_message: Mensaje del usuario
-        user_memory: Contexto previo del usuario
+        user_message: Mensaje del líder empresarial
+        user_memory: Contexto previo empresarial del usuario
         
     Returns:
-        Prompt para extraer información estructurada
+        Prompt para extraer información estructurada empresarial
     """
     return f"""
-Analiza el mensaje del usuario para extraer información relevante sobre sus necesidades, intereses y puntos de dolor.
+Analiza el mensaje del líder PyME para extraer información empresarial estratégica sobre su empresa, cargo, dolores operativos y oportunidades de automatización.
 
-MENSAJE DEL USUARIO:
+MENSAJE DEL LÍDER EMPRESARIAL:
 {user_message}
 
-CONTEXTO ACTUAL:
-- Profesión: {user_memory.role if user_memory and user_memory.role else 'No disponible'}
-- Intereses conocidos: {', '.join(user_memory.interests if user_memory and user_memory.interests else [])}
-- Puntos de dolor conocidos: {', '.join(user_memory.pain_points if user_memory and user_memory.pain_points else [])}
+CONTEXTO EMPRESARIAL ACTUAL:
+- Cargo/Función: {user_memory.role if user_memory and user_memory.role else 'Líder PyME por identificar'}
+- Sector/Industria: {', '.join(user_memory.interests if user_memory and user_memory.interests else ['Por identificar'])}
+- Dolores operativos: {', '.join(user_memory.pain_points if user_memory and user_memory.pain_points else ['Por identificar'])}
 
-BUSCA ESPECÍFICAMENTE:
-- Automatización de procesos o reportes
-- Tipos específicos de reportes o documentos
-- Frecuencia de tareas manuales
-- Tiempo invertido en tareas
-- Herramientas o software actual
-- Frustraciones o problemas específicos
-- Nombre si se presenta
-- Profesión o rol si lo menciona
+INFORMACIÓN EMPRESARIAL ESPECÍFICA A EXTRAER:
 
-Devuelve un JSON con el siguiente formato:
+**DATOS DE LA EMPRESA:**
+- Cargo exacto (Gerente, Director, CEO, Fundador)
+- Área de responsabilidad (Operaciones, Marketing, Ventas, RH, Innovación)
+- Sector/industria (agencia, consultoría, manufactura, salud, educación, tecnología)
+- Tamaño aproximado de empresa (empleados, facturación si mencionan)
+
+**DOLORES OPERATIVOS PyME:**
+- Procesos manuales que consumen tiempo
+- Creación de reportes o documentos repetitivos
+- Análisis de datos o métricas complejas
+- Generación de contenido de marketing
+- Procesos de reclutamiento o capacitación
+- Competencia con empresas más grandes
+- Falta de recursos técnicos especializados
+
+**NECESIDADES DE AUTOMATIZACIÓN ESPECÍFICAS:**
+- Tipos de reportes que crea manualmente
+- Frecuencia de tareas administrativas (diario, semanal, mensual)
+- Herramientas actuales que usa su equipo
+- Procesos que le gustaría sistematizar
+- Tiempo semanal invertido en tareas repetitivas
+
+Devuelve un JSON con el siguiente formato empresarial:
 {{
-    "name": "nombre si se menciona",
-    "role": "profesión o rol detectado",
-    "interests": ["lista", "de", "intereses"],
-    "pain_points": ["lista", "de", "problemas"],
-    "automation_needs": {{
-        "report_types": ["tipos", "de", "reportes"],
-        "frequency": "frecuencia de tareas",
-        "time_investment": "tiempo invertido",
-        "current_tools": ["herramientas", "actuales"],
-        "specific_frustrations": ["frustraciones", "específicas"]
+    "name": "nombre del líder si se menciona",
+    "role": "cargo exacto detectado (ej: Director de Marketing, CEO, Gerente de Operaciones)",
+    "company_info": {{
+        "sector": "sector/industria identificada",
+        "size": "tamaño empresa si se menciona",
+        "area_responsibility": "área de responsabilidad del líder"
     }},
-    "interest_level": "low|medium|high"
+    "business_interests": ["automatización", "eficiencia", "competitividad", "crecimiento"],
+    "operational_pain_points": ["procesos_manuales", "reportes_repetitivos", "falta_tiempo", "competencia"],
+    "automation_needs": {{
+        "report_types": ["reportes que crea manualmente"],
+        "content_creation": ["tipos de contenido que necesita"],
+        "process_optimization": ["procesos que quiere mejorar"],
+        "frequency": "frecuencia de tareas (diario/semanal/mensual)",
+        "time_investment": "horas semanales en tareas repetitivas",
+        "current_tools": ["herramientas que usa su equipo"],
+        "strategic_goals": ["objetivos empresariales mencionados"]
+    }},
+    "buyer_persona_match": "lucia_copypro|marcos_multitask|sofia_visionaria|ricardo_rh|daniel_data",
+    "business_urgency": "low|medium|high",
+    "decision_making_power": "individual|team|executive"
 }}
 """
 
@@ -195,115 +281,151 @@ Devuelve un JSON con el siguiente formato:
 # 4. PLANTILLAS DE RESPUESTA PARA WHATSAPP
 # ============================================================================
 
-class WhatsAppMessageTemplates:
+# Las plantillas empresariales se definen abajo
+
+class WhatsAppBusinessTemplates:
     """
-    Plantillas de mensajes optimizadas para WhatsApp.
+    Plantillas de mensajes optimizadas para líderes PyME en WhatsApp.
     """
     
     @staticmethod
-    def welcome_new_user() -> str:
-        """Mensaje de bienvenida para usuarios nuevos."""
-        return """¡Hola! 👋 Bienvenido/a a Aprenda y Aplique IA.
+    def welcome_new_business_user() -> str:
+        """Mensaje de bienvenida para líderes empresariales nuevos."""
+        return """¡Hola! 👋 Te doy la bienvenida a **Aprenda y Aplique IA**.
 
-Soy Brenda, tu asesora especializada en IA. Estoy aquí para ayudarte a descubrir cómo la Inteligencia Artificial puede transformar tu trabajo y hacer tu vida mucho más fácil.
+Soy Brenda, tu consultora especializada en IA para PyMEs. Ayudo a líderes como tú a:
 
-Para brindarte la mejor atención personalizada, ¿me podrías decir tu nombre y a qué te dedicas? 😊"""
+🎯 **Automatizar procesos** sin necesidad de equipo técnico  
+📊 **Reducir 10+ horas semanales** en reportes y análisis  
+🚀 **Obtener ventaja competitiva** implementando IA en 30 días  
 
-    @staticmethod
-    def welcome_returning_user(name: str) -> str:
-        """Mensaje de bienvenida para usuarios que regresan."""
-        return f"""Hola de nuevo {name}! 😊
-
-Me da mucho gusto verte por aquí otra vez. 
-
-¿En qué puedo ayudarte hoy?"""
+Para recomendarte la mejor estrategia, ¿podrías decirme tu nombre y en qué área de la empresa te desempeñas? (Marketing, Operaciones, Ventas, etc.)"""
 
     @staticmethod
-    def name_request() -> str:
-        """Solicitud de nombre de forma amigable."""
-        return """¡Perfecto! 😊
+    def welcome_returning_executive(name: str, role: str = "") -> str:
+        """Mensaje de bienvenida para líderes que regresan."""
+        role_part = f", {role}" if role else ""
+        return f"""¡Hola de nuevo {name}{role_part}! 👋
 
-¿Cómo te gustaría que te llame? Prefiero usar el nombre con el que te sientes más cómodo/a."""
+Me alegra verte otra vez. ¿Cómo ha ido la implementación de IA en tu empresa?
+
+¿En qué puedo apoyarte hoy para seguir optimizando tus procesos?"""
 
     @staticmethod
-    def profession_inquiry(name: str = "") -> str:
-        """Pregunta sobre profesión de forma natural."""
+    def executive_name_request() -> str:
+        """Solicitud de nombre para líder empresarial."""
+        return """¡Excelente! 👔
+
+¿Cómo prefieres que te llame? Y por favor, compárteme cuál es tu cargo en la empresa para personalizar mejor mis recomendaciones."""
+
+    @staticmethod
+    def business_role_inquiry(name: str = "") -> str:
+        """Pregunta sobre cargo empresarial de forma estratégica."""
         name_part = f"{name}, " if name else ""
-        return f"""Encantada de conocerte{', ' + name_part if name_part else name_part}
+        return f"""Perfecto{', ' + name_part if name_part else ''} 💼
 
-Para poder ayudarte mejor, ¿a qué te dedicas actualmente? Me gusta entender el contexto de cada persona para dar recomendaciones más personalizadas. 💼"""
+Para diseñar la estrategia de IA más efectiva para ti, necesito entender tu contexto:
+
+🏢 **¿Cuál es tu cargo y área de responsabilidad?**  
+📊 **¿Cuántos empleados tiene aproximadamente tu empresa?**  
+⚡ **¿Cuál es el proceso que más tiempo te consume cada semana?**
+
+Esto me ayudará a mostrarte exactamente cómo otros líderes en tu situación han logrado ahorrar 15-20 horas semanales con IA."""
 
     @staticmethod
-    def free_resources_offer(name: str = "", role: str = "") -> str:
-        """Oferta de recursos gratuitos."""
+    def business_resources_offer(name: str = "", role: str = "", sector: str = "") -> str:
+        """Oferta de recursos gratuitos específicos para PyMEs."""
         name_part = f"{name}, " if name else ""
-        role_context = f"Como {role}, " if role else ""
+        role_context = f"Como {role} " if role else "Como líder de tu empresa"
+        sector_context = f" en {sector}" if sector else ""
         
-        return f"""¡Por supuesto{', ' + name_part if name_part else ''}! 🎯
+        return f"""¡Perfecto{', ' + name_part if name_part else ''}! 🎯
 
-{role_context}estoy segura de que estos recursos te van a ayudar muchísimo:
+{role_context}{sector_context}, tengo recursos específicos que te van a generar valor inmediato:
 
-📚 **Lo que te voy a compartir:**
-• Guías paso a paso con ejemplos reales
-• Templates listos para usar inmediatamente  
-• Estrategias que puedes implementar hoy mismo
+📊 **Calculadora de ROI personalizada** - Para medir el ahorro real en tu empresa  
+🛠️ **Kit de automatización PyME** - Templates listos para implementar  
+📈 **Casos de éxito de tu sector** - Cómo otros líderes han optimizado procesos  
+⚡ **Guía rápida de 30 días** - Plan de implementación paso a paso  
 
-Te los envío ahora mismo. Después de revisarlos, ¿te gustaría que te muestre el temario completo del curso?"""
+Te los envío ahora mismo. Después de revisarlos, ¿te interesaría una mini-auditoría gratuita de tus procesos para identificar qué podrías automatizar primero?"""
 
     @staticmethod
-    def price_objection_response(course_price: float = None, role: str = "") -> str:
-        """Respuesta a objeciones de precio."""
+    def business_price_objection_response(course_price: float = None, role: str = "", sector: str = "") -> str:
+        """Respuesta a objeciones de precio para líderes PyME."""
         price_text = f"${course_price} USD" if course_price else "nuestra inversión"
         
+        # ROI examples específicos por buyer persona
         roi_example = ""
-        if "marketing" in role.lower():
+        if "marketing" in role.lower() or "content" in role.lower():
             roi_example = """
-**💡 Ejemplo práctico para marketing:**
-• Automatizando solo la creación de contenido ahorras 10 horas/semana
-• Si tu tiempo vale $50/hora = $500/semana ahorrados
-• El curso se paga solo en menos de 1 mes"""
+**💡 Ejemplo: Lucía CopyPro (Agencia Marketing)**
+• Antes: 8 horas creando 1 campaña = $400 costo tiempo
+• Después: 2 horas con IA = $100 costo tiempo
+• **Ahorro por campaña: $300** → Recuperas inversión en 2 campañas"""
+        elif "operaciones" in role.lower() or "manufactura" in role.lower():
+            roi_example = """
+**💡 Ejemplo: Marcos Multitask (Operaciones PyME)**
+• Antes: 12 horas/semana en reportes manuales = $600/semana
+• Después: 2 horas automatizadas = $100/semana
+• **Ahorro mensual: $2,000** → ROI del 400% en primer mes"""
+        elif "ceo" in role.lower() or "fundador" in role.lower():
+            roi_example = """
+**💡 Ejemplo: Sofía Visionaria (CEO Consultoría)**
+• Costo de contratar analista junior: $2,500/mes
+• Costo del curso + tiempo propio: $200/mes equivalente
+• **Ahorro anual: $27,600** → ROI del 1,380% anual"""
         
-        return f"""Entiendo perfectamente tu preocupación por la inversión. 💰
+        return f"""Entiendo la preocupación por el presupuesto - es típico de líderes PyME responsables. 💰
 
-**🏷️ Pongámoslo en perspectiva:**
-• Nuestro curso: {price_text} (acceso de por vida)
-• Cursos básicos online: $50-80 USD (contenido desactualizado)
-• Bootcamps presenciales: $2,000-5,000 USD
-• Consultoría 1:1: $150/hora x 20 horas = $3,000 USD
+**🏢 PERSPECTIVA EMPRESARIAL:**
+• Curso completo: {price_text} (inversión única, resultados permanentes)
+• Contratar especialista IA: $3,000-5,000/mes (+ prestaciones)
+• Consultoría externa: $200/hora × 40 horas = $8,000 USD
+• Seguir perdiendo eficiencia: **Costo de oportunidad ilimitado**
 
-**📊 ¿La diferencia?**
-• Contenido actualizado (GPT-4o, últimas versiones)
-• Aplicación práctica desde día 1
-• Soporte directo del instructor
-• Actualizaciones de por vida incluidas{roi_example}
+**📊 VALOR ESPECÍFICO PARA PYMES:**
+• Framework IMPULSO: aplicable a cualquier proceso desde día 1
+• Sin dependencia técnica: tu equipo actual puede implementarlo
+• Actualizaciones incluidas: siempre al día con nueva tecnología
+• Casos reales PyME: ejemplos de tu mismo tamaño de empresa{roi_example}
 
-**💭 La pregunta real es:**
-¿Puedes permitirte seguir perdiendo tiempo en tareas que la IA puede hacer por ti?
+**🎯 LA PREGUNTA ESTRATÉGICA:**
+¿Puedes permitirte que tu competencia implemente IA antes que tú?
 
-¿Te gustaría que veamos opciones de pago más flexibles?"""
-
-    @staticmethod
-    def contact_advisor_transition() -> str:
-        """Transición para contacto con asesor."""
-        return """¡Perfecto! 👥
-
-Te voy a conectar directamente con uno de nuestros asesores especializados que podrá darte atención personalizada y resolver todas tus dudas.
-
-El proceso es muy simple y rápido. ¿Estás listo/a para que iniciemos el contacto?"""
+¿Te gustaría que revisemos un plan de implementación por fases para optimizar tu inversión?"""
 
     @staticmethod
-    def error_fallback() -> str:
-        """Mensaje de error genérico."""
-        return """Disculpa, tuve un pequeño problema técnico 🤖
+    def executive_advisor_transition(name: str = "", role: str = "") -> str:
+        """Transición para contacto con asesor ejecutivo."""
+        name_part = f"{name}, " if name else ""
+        role_context = f"Como {role}, " if role else "Dado tu cargo de liderazgo, "
+        
+        return f"""¡Excelente decisión{', ' + name_part if name_part else ''}! 🎯
 
-¿Podrías repetir tu mensaje? Te prometo que ahora sí te voy a ayudar como mereces."""
+{role_context}necesitas una estrategia personalizada que se adapte específicamente a tu empresa y sector.
+
+Te voy a conectar con **nuestro asesor ejecutivo especializado en PyMEs** quien podrá:
+
+📊 **Analizar tus procesos específicos** y calcular ROI exacto  
+🛠️ **Diseñar plan de implementación** adaptado a tu equipo  
+📈 **Revisar casos de éxito** de empresas similares a la tuya  
+
+¿Prefieres una **llamada estratégica de 15 minutos** o una **demo personalizada por video**?"""
 
     @staticmethod
-    def thinking_delay() -> str:
-        """Mensaje mientras se procesa información."""
-        return """Déjame revisar esa información específica para ti... 🔍
+    def business_error_fallback() -> str:
+        """Mensaje de error para contexto empresarial."""
+        return """Disculpa, tuve un problema técnico momentáneo ⚙️
 
-Un momentito por favor."""
+Como buen líder, sabes que estos fallos pasan. ¿Podrías repetir tu consulta? Te aseguro que ahora te atenderé con la excelencia que mereces."""
+
+    @staticmethod
+    def processing_business_analysis() -> str:
+        """Mensaje mientras se procesa análisis empresarial."""
+        return """Analizando tu situación empresarial específica... 📊
+
+Dame un momento para revisar las mejores estrategias para tu caso."""
 
 # ============================================================================
 # 5. CONFIGURACIÓN DE PROMPTS
@@ -363,56 +485,67 @@ def get_response_generation_prompt(
     context_info: str = ""
 ) -> str:
     """
-    Genera prompt para crear respuesta inteligente basada en intención.
+    Genera prompt para crear respuesta inteligente orientada a líderes PyME.
     
     Args:
-        user_message: Mensaje del usuario
-        user_memory: Memoria del usuario
-        intent_analysis: Resultado del análisis de intención
+        user_message: Mensaje del líder empresarial
+        user_memory: Memoria empresarial del usuario
+        intent_analysis: Resultado del análisis de intención empresarial
         context_info: Información adicional de contexto
         
     Returns:
-        Prompt completo para generar respuesta
+        Prompt completo para generar respuesta empresarial
     """
     
-    user_context = ""
+    business_context = ""
     if user_memory:
-        user_context = f"""
-INFORMACIÓN DEL USUARIO:
-- Nombre: {user_memory.name if user_memory.name else 'No especificado'}
-- Profesión: {user_memory.role if user_memory.role else 'No especificada'}
-- Etapa: {user_memory.stage}
-- Interacciones previas: {user_memory.interaction_count}
-- Lead score: {user_memory.lead_score}/100
-- Intereses: {', '.join(user_memory.interests) if user_memory.interests else 'Ninguno'}
-- Puntos de dolor: {', '.join(user_memory.pain_points) if user_memory.pain_points else 'Ninguno'}
+        # Determinar buyer persona match
+        buyer_persona = intent_analysis.get('buyer_persona_match', 'general_pyme')
+        
+        business_context = f"""
+PERFIL EMPRESARIAL DEL USUARIO:
+- Nombre: {user_memory.name if user_memory.name else 'Líder PyME'}
+- Cargo: {user_memory.role if user_memory.role else 'Líder de Innovación PyME'}
+- Buyer Persona Match: {buyer_persona}
+- Sector/Industria: {', '.join(user_memory.interests) if user_memory.interests else 'PyME servicios'}
+- Etapa empresarial: {user_memory.stage}
+- Historial interacciones: {user_memory.interaction_count}
+- Lead score empresarial: {user_memory.lead_score}/100
+- Dolores operativos: {', '.join(user_memory.pain_points) if user_memory.pain_points else 'Eficiencia operativa'}
+- Automatización identificada: {user_memory.automation_needs if hasattr(user_memory, 'automation_needs') else 'Por identificar'}
 """
     
     return f"""
 {SYSTEM_PROMPT}
 
-MENSAJE DEL USUARIO: {user_message}
+MENSAJE DEL LÍDER EMPRESARIAL: {user_message}
 
-{user_context}
+{business_context}
 
-ANÁLISIS DE INTENCIÓN:
-- Categoría: {intent_analysis.get('category', 'GENERAL_QUESTION')}
+ANÁLISIS DE INTENCIÓN EMPRESARIAL:
+- Categoría: {intent_analysis.get('category', 'EXPLORATION_SECTOR')}
+- Buyer Persona Detectado: {intent_analysis.get('buyer_persona_match', 'general_pyme')}
+- Dolor empresarial: {intent_analysis.get('business_pain_detected', 'general_efficiency')}
+- Oportunidad ROI: {intent_analysis.get('roi_opportunity', 'medium')}
 - Confianza: {intent_analysis.get('confidence', 0.5)}
-- Enfoque recomendado: {intent_analysis.get('response_focus', 'Responder directamente')}
-- Acción recomendada: {intent_analysis.get('recommended_action', 'continue_conversation')}
+- Enfoque recomendado: {intent_analysis.get('response_focus', 'Enfoque consultivo empresarial')}
+- Acción recomendada: {intent_analysis.get('recommended_action', 'continue_business_conversation')}
+- Timeline implementación: {intent_analysis.get('implementation_timeline', '30_days')}
 - Nivel de urgencia: {intent_analysis.get('urgency_level', 'medium')}
 
 {context_info}
 
-INSTRUCCIONES ESPECÍFICAS:
-1. Responde de manera natural y conversacional
-2. Usa el formato WhatsApp (párrafos cortos, emojis apropiados)
-3. Personaliza basándote en la información del usuario
-4. Mantén el mensaje entre 100-200 palabras
-5. Incluye un call-to-action claro al final
-6. NO inventes información que no tengas confirmada
+INSTRUCCIONES ESPECÍFICAS PARA LÍDERES PYME:
+1. Responde como consultora empresarial especializada en IA para PyMEs
+2. Usa lenguaje ejecutivo: enfócate en ROI, eficiencia, competitividad
+3. Personaliza basándote en el cargo y sector del líder
+4. Cuantifica beneficios siempre que sea posible (horas ahorradas, % mejoras)
+5. Incluye ejemplos de casos de éxito similares a su situación
+6. Mantén el mensaje entre 150-250 palabras (ejecutivos necesitan más contexto)
+7. Incluye call-to-action empresarial claro (demo, auditoría, consulta)
+8. NO inventes datos técnicos - usa solo información confirmada de BD
 
-RESPONDE COMO BRENDA:
+RESPONDE COMO BRENDA - CONSULTORA IA PARA PYMES:
 """
 
 # ============================================================================
@@ -421,15 +554,225 @@ RESPONDE COMO BRENDA:
 
 if __name__ == "__main__":
     """
-    Ejemplo de uso de los prompts adaptados para WhatsApp.
+    Ejemplo de uso de los prompts adaptados para líderes PyME en WhatsApp.
     """
     
     # Configuración de ejemplo
     config = PromptConfig.get_config('main_agent')
-    print(f"Configuración del agente: {config}")
+    print(f"Configuración del agente empresarial: {config}")
     
-    # Template de ejemplo
-    welcome = WhatsAppMessageTemplates.welcome_new_user()
-    print(f"\nMensaje de bienvenida:\n{welcome}")
+    # Template de ejemplo para líder PyME
+    welcome = WhatsAppBusinessTemplates.welcome_new_business_user()
+    print(f"\nMensaje de bienvenida empresarial:\n{welcome}")
     
-    print("\n✅ Prompts para WhatsApp cargados correctamente") 
+    # Ejemplo de respuesta con ROI
+    price_response = WhatsAppBusinessTemplates.business_price_objection_response(497, "Director de Marketing", "agencia")
+    print(f"\nEjemplo respuesta ROI:\n{price_response}")
+    
+    print("\n✅ Prompts para líderes PyME en WhatsApp cargados correctamente")
+
+# ============================================================================
+# 7. VALIDADOR ANTI-ALUCINACIÓN
+# ============================================================================
+
+def get_validation_prompt(response: str, course_data: dict, bonuses_data: list = None, all_courses_data: list = None):
+    """
+    Genera prompt para validador permisivo anti-alucinación.
+    
+    Funcionalidad:
+    - Permite activación de herramientas sin restricciones
+    - Solo bloquea información claramente falsa
+    - Valida contra datos reales de base de datos
+    - Permite lenguaje persuasivo y técnicas de ventas
+    
+    Retorna: Prompt de validación permisiva
+    """
+    return f"""
+Eres un validador PERMISIVO de un agente de ventas de IA. Tu función es PERMITIR la activación de herramientas y solo bloquear información CLARAMENTE FALSA.
+
+IMPORTANTE: 
+- SIEMPRE permite la activación de herramientas de conversión
+- SOLO marca como inválido si hay CONTRADICCIONES CLARAS con los datos
+- PERMITE lenguaje persuasivo, ejemplos derivados, y beneficios lógicos
+- NO bloquees por falta de información específica
+
+CRITERIOS PERMISIVOS - El agente DEBE SER APROBADO si:
+1. ✅ No contradice DIRECTAMENTE los datos del curso
+2. ✅ Usa información que se deriva lógicamente del contenido
+3. ✅ Menciona herramientas disponibles (activación de herramientas del bot)
+4. ✅ Ofrece recursos, demos, previews que existen en la plataforma
+5. ✅ Habla de beneficios educativos generales
+6. ✅ Personaliza la comunicación para el usuario
+7. ✅ Usa técnicas de ventas estándar
+8. ✅ Menciona características que están en cualquier parte de la base de datos
+9. ✅ Sugiere aplicaciones prácticas del curso
+10. ✅ Activa cualquier herramienta de conversión disponible
+
+BLOQUEAR SOLO SI:
+❌ Contradice EXPLÍCITAMENTE precios, fechas, o contenido específico de la BD
+❌ Menciona bonos que NO existen en bonuses_data
+❌ Da información técnica incorrecta que está en la BD
+
+FILOSOFÍA: "En la duda, APROBAR. Solo rechazar si es CLARAMENTE FALSO."
+
+RESPUESTA DEL AGENTE A VALIDAR:
+{response}
+
+DATOS DEL CURSO:
+{course_data}
+
+BONOS DISPONIBLES:
+{bonuses_data}
+
+Responde SOLO con JSON:
+{{
+    "is_valid": true,
+    "confidence": 0.95,
+    "issues": [],
+    "corrected_response": null,
+    "explanation": "Razón de la decisión"
+}}
+"""
+
+# ============================================================================
+# 8. SISTEMA DE DETECCIÓN DE HASHTAGS (DEL LEGACY)
+# ============================================================================
+
+# Patrones de detección de hashtags para routing automático.
+# Funcionalidad:
+# - Mapea hashtags específicos a course_ids
+# - Identifica fuentes de campaña
+# - Permite routing automático de usuarios
+
+HASHTAG_DETECTION_PATTERNS = {
+    # Hashtags de cursos
+    '#Experto_IA_GPT_Gemini': {
+        'course_id': 'c76bc3dd-502a-4b99-8c6c-3f9fce33a14b',
+        'course_name': 'Experto en IA con ChatGPT y Gemini',
+        'priority': 'high'
+    },
+    
+    '#CURSO_IA_CHATGPT': {
+        'course_id': 'a392bf83-4908-4807-89a9-95d0acc807c9',
+        'course_name': 'Curso IA ChatGPT',
+        'priority': 'high'
+    },
+    
+    # Hashtags de campaña
+    '#ADSIM_01': {
+        'campaign_source': 'instagram_story_01',
+        'campaign_type': 'paid_social'
+    },
+    
+    '#ADSIM_05': {
+        'campaign_source': 'instagram_marketing_05',
+        'campaign_type': 'paid_social'
+    },
+    
+    '#ADSFACE_02': {
+        'campaign_source': 'facebook_ads_02',
+        'campaign_type': 'paid_social'
+    },
+    
+    '#ORGPOST_01': {
+        'campaign_source': 'organic_post_01',
+        'campaign_type': 'organic'
+    }
+}
+
+def get_hashtag_analysis_prompt(message: str):
+    """
+    Genera prompt para análisis de hashtags en mensajes.
+    
+    Funcionalidad:
+    - Detecta hashtags conocidos en mensajes
+    - Extrae información de campaña
+    - Retorna mapeo estructurado
+    
+    Retorna: Prompt para analizar hashtags detectados
+    """
+    return f"""
+Analiza el siguiente mensaje para detectar hashtags específicos y extraer información de campaña:
+
+MENSAJE: {message}
+
+HASHTAGS CONOCIDOS:
+{HASHTAG_DETECTION_PATTERNS}
+
+Detecta todos los hashtags presentes y mapea la información correspondiente.
+
+Responde SOLO con JSON:
+{{
+    "hashtags_detected": ["#hashtag1", "#hashtag2"],
+    "course_mapping": {{
+        "course_id": "id_del_curso_si_aplica",
+        "course_name": "nombre_del_curso",
+        "priority": "high|medium|low"
+    }},
+    "campaign_mapping": {{
+        "campaign_source": "fuente_de_la_campaña",
+        "campaign_type": "paid_social|organic|email"
+    }},
+    "routing_action": "ads_flow|course_flow|general_flow"
+}}
+"""
+
+# ============================================================================
+# 9. CONSTRUCCIÓN DE CONTEXTO DEL AGENTE (DEL LEGACY)
+# ============================================================================
+
+def build_agent_context(user_memory, intent_analysis: dict, course_info: dict = None, automation_info: str = ""):
+    """
+    Construye el contexto completo para el agente principal.
+    
+    Funcionalidad:
+    - Agrega análisis de intención al contexto
+    - Incluye información del usuario acumulada
+    - Proporciona datos del curso si están disponibles
+    - Añade necesidades de automatización identificadas
+    
+    Retorna: Contexto completo formateado para el agente
+    """
+    context = f"""
+## Análisis de Intención:
+- Categoría: {intent_analysis.get('category', 'GENERAL_QUESTION')}
+- Confianza: {intent_analysis.get('confidence', 0.5)}
+- Estrategia de ventas: {intent_analysis.get('sales_strategy', 'direct_benefit')}
+- Enfoque de respuesta: {intent_analysis.get('response_focus', 'Responder directamente')}
+- Debe preguntar más: {intent_analysis.get('should_ask_more', False)}
+
+## Herramientas Recomendadas:
+{intent_analysis.get('recommended_tools', {})}
+
+## Información Acumulada del Usuario:
+- Profesión: {user_memory.role if user_memory.role else 'No especificada'}
+- Intereses: {', '.join(user_memory.interests if user_memory.interests else ['Ninguno registrado'])}
+- Puntos de dolor: {', '.join(user_memory.pain_points if user_memory.pain_points else ['Ninguno registrado'])}
+- Nivel de interés: {user_memory.interest_level}
+- Interacciones: {user_memory.interaction_count}
+"""
+    
+    # Agregar información del curso si está disponible
+    if course_info:
+        context += f"""
+## Información del Curso:
+- Nombre: {course_info.get('name', 'No disponible')}
+- Precio: ${course_info.get('price_usd', 'No disponible')} USD
+- Duración: {course_info.get('total_duration', 'No disponible')}
+- Nivel: {course_info.get('level', 'No disponible')}
+"""
+    
+    # Agregar información de automatización si existe
+    if automation_info:
+        context += f"""
+## Necesidades de Automatización Identificadas:
+{automation_info}
+
+INSTRUCCIÓN ESPECIAL: El usuario YA expresó necesidades de automatización. NO preguntes más detalles. 
+Conecta DIRECTAMENTE con cómo el curso resuelve estos problemas específicos.
+"""
+    
+    return context
+
+# Alias para compatibilidad hacia atrás
+WhatsAppMessageTemplates = WhatsAppBusinessTemplates 

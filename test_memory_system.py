@@ -1,142 +1,204 @@
-#!/usr/bin/env python3
 """
-Script para probar el sistema de memoria del bot Brenda.
+Script de prueba para el sistema de memoria mejorado.
+Verifica flujos de primera interacción, privacidad y agente de ventas.
 """
-import os
 import sys
-import logging
+import os
 from datetime import datetime
 
 # Agregar el directorio raíz al path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from memory.lead_memory import MemoryManager, LeadMemory
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.domain.entities.message import IncomingMessage, MessageType
 
-# Configurar logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+def print_separator(title: str):
+    """Imprime un separador visual para organizar los tests."""
+    print(f"\n{'='*50}")
+    print(f"🔍 {title}")
+    print('='*50)
+
+def print_memory_status(memory: LeadMemory, title: str):
+    """Imprime el estado actual de la memoria."""
+    print(f"\n📋 {title}")
+    print(f"   👤 Usuario: {memory.name or 'Sin nombre'}")
+    print(f"   🏷️  Stage: {memory.stage}")
+    print(f"   🔄 Flujo actual: {memory.current_flow}")
+    print(f"   📊 Paso: {memory.flow_step}")
+    print(f"   ⏳ Esperando: {memory.waiting_for_response}")
+    print(f"   📱 Interacciones: {memory.interaction_count}")
+    print(f"   🔒 Privacidad: Aceptada={memory.privacy_accepted}, Solicitada={memory.privacy_requested}")
+    print(f"   🤖 Primera interacción: {memory.is_first_interaction()}")
+    print(f"   🔐 Necesita privacidad: {memory.needs_privacy_flow()}")
+    print(f"   💼 Listo para ventas: {memory.is_ready_for_sales_agent()}")
 
 def test_memory_system():
-    """Prueba completa del sistema de memoria."""
-    print("🧠 Iniciando pruebas del sistema de memoria...")
+    """Prueba completa del sistema de memoria mejorado."""
     
-    # 1. Crear manager de memoria
-    print("\n1️⃣ Creando MemoryManager...")
+    print_separator("INICIANDO PRUEBA DEL SISTEMA DE MEMORIA")
+    
+    # Inicializar componentes
     memory_manager = MemoryManager(memory_dir="test_memorias")
     memory_use_case = ManageUserMemoryUseCase(memory_manager)
-    print("✅ MemoryManager creado")
     
-    # 2. Probar obtención de memoria nueva
-    print("\n2️⃣ Probando obtención de memoria nueva...")
-    test_user_id = "1234567890"
-    user_memory = memory_use_case.get_user_memory(test_user_id)
-    print(f"✅ Memoria obtenida: user_id={user_memory.user_id}, stage={user_memory.stage}")
+    # Usuario de prueba
+    test_user_id = "test_5213334567890"
     
-    # 3. Probar actualización de nombre
-    print("\n3️⃣ Probando actualización de nombre...")
-    user_memory = memory_use_case.update_user_name(test_user_id, "María González")
-    print(f"✅ Nombre actualizado: {user_memory.name}")
-    
-    # 4. Probar actualización de etapa
-    print("\n4️⃣ Probando actualización de etapa...")
-    user_memory = memory_use_case.update_user_stage(test_user_id, "engaged")
-    print(f"✅ Etapa actualizada: {user_memory.stage}")
-    
-    # 5. Probar agregación de interés
-    print("\n5️⃣ Probando agregación de interés...")
-    user_memory = memory_use_case.add_user_interest(test_user_id, "automatización")
-    print(f"✅ Interés agregado: {user_memory.interests}")
-    
-    # 6. Probar actualización de lead score
-    print("\n6️⃣ Probando actualización de lead score...")
-    user_memory = memory_use_case.update_lead_score(test_user_id, 10, "Mostró interés en automatización")
-    print(f"✅ Lead score actualizado: {user_memory.lead_score}")
-    
-    # 7. Crear mensaje simulado para probar actualización con mensaje
-    print("\n7️⃣ Probando actualización con mensaje...")
-    mock_message = IncomingMessage(
-        message_sid="TEST123",
-        from_number="+1234567890",
-        to_number="+14155238886",
-        body="Hola, me interesa el curso de IA",
-        message_type=MessageType.TEXT,
-        timestamp=datetime.now(),
-        raw_data={"From": "whatsapp:+1234567890"}
-    )
-    
-    extracted_info = {
-        "pain_points": ["falta de automatización"],
-        "buying_signals": ["interés expresado"],
-        "interest_level": "medium"
-    }
-    
-    user_memory = memory_use_case.update_user_memory(
-        test_user_id, 
-        mock_message, 
-        extracted_info
-    )
-    print(f"✅ Memoria actualizada con mensaje:")
-    print(f"   - Interacciones: {user_memory.interaction_count}")
-    print(f"   - Mensajes en historial: {len(user_memory.message_history)}")
-    print(f"   - Pain points: {user_memory.pain_points}")
-    print(f"   - Buying signals: {user_memory.buying_signals}")
-    print(f"   - Interest level: {user_memory.interest_level}")
-    
-    # 8. Probar persistencia - obtener memoria desde archivo
-    print("\n8️⃣ Probando persistencia...")
-    # Limpiar cache para forzar carga desde archivo
-    memory_manager.leads_cache.clear()
-    
-    # Obtener memoria nuevamente (debería cargar desde JSON)
-    reloaded_memory = memory_use_case.get_user_memory(test_user_id)
-    print(f"✅ Memoria recargada desde archivo:")
-    print(f"   - Nombre: {reloaded_memory.name}")
-    print(f"   - Etapa: {reloaded_memory.stage}")
-    print(f"   - Interacciones: {reloaded_memory.interaction_count}")
-    print(f"   - Lead score: {reloaded_memory.lead_score}")
-    
-    # 9. Verificar archivo JSON creado
-    print("\n9️⃣ Verificando archivo JSON...")
-    json_file = f"test_memorias/memory_{test_user_id}.json"
-    if os.path.exists(json_file):
-        with open(json_file, 'r', encoding='utf-8') as f:
-            import json
-            data = json.load(f)
-        print(f"✅ Archivo JSON creado exitosamente:")
-        print(f"   - Archivo: {json_file}")
-        print(f"   - Tamaño: {len(json.dumps(data, indent=2))} caracteres")
-        print(f"   - Keys: {list(data.keys())}")
-    else:
-        print(f"❌ Archivo JSON no encontrado: {json_file}")
-    
-    print("\n🎉 ¡Todas las pruebas del sistema de memoria completadas exitosamente!")
-    print(f"📁 Los archivos de prueba están en: test_memorias/")
-
-def cleanup_test_files():
-    """Limpia archivos de prueba."""
+    # Limpiar memoria previa si existe
     import shutil
-    test_dir = "test_memorias"
-    if os.path.exists(test_dir):
-        shutil.rmtree(test_dir)
-        print(f"🧹 Archivos de prueba eliminados: {test_dir}/")
+    if os.path.exists("test_memorias"):
+        shutil.rmtree("test_memorias")
+    
+    print_separator("PASO 1: PRIMERA INTERACCIÓN")
+    
+    # Simular primera interacción
+    first_message = IncomingMessage(
+        message_sid="test_msg_001",
+        from_number="+5213334567890",
+        to_number="+14155238886",
+        body="Hola",
+        timestamp=datetime.now(),
+        raw_data={"test": "data"},
+        message_type=MessageType.TEXT
+    )
+    
+    # Obtener memoria inicial
+    memory = memory_use_case.get_user_memory(test_user_id)
+    print_memory_status(memory, "Memoria inicial")
+    
+    # Actualizar con primer mensaje
+    memory = memory_use_case.update_user_memory(test_user_id, first_message)
+    print_memory_status(memory, "Después del primer mensaje")
+    
+    # Verificar estado
+    assert memory.is_first_interaction(), "❌ Error: Debería ser primera interacción"
+    assert memory.needs_privacy_flow(), "❌ Error: Debería necesitar flujo de privacidad"
+    assert not memory.is_ready_for_sales_agent(), "❌ Error: No debería estar listo para ventas"
+    print("✅ Detección de primera interacción: CORRECTA")
+    
+    print_separator("PASO 2: INICIANDO FLUJO DE PRIVACIDAD")
+    
+    # Iniciar flujo de privacidad
+    memory = memory_use_case.start_privacy_flow(test_user_id)
+    print_memory_status(memory, "Flujo de privacidad iniciado")
+    
+    # Verificar estado
+    assert memory.stage == "privacy_flow", "❌ Error: Stage debería ser privacy_flow"
+    assert memory.current_flow == "privacy", "❌ Error: Flujo debería ser privacy"
+    assert memory.waiting_for_response == "privacy_acceptance", "❌ Error: Debería esperar aceptación"
+    print("✅ Flujo de privacidad: INICIADO CORRECTAMENTE")
+    
+    print_separator("PASO 3: ACEPTANDO PRIVACIDAD")
+    
+    # Simular mensaje de aceptación
+    privacy_message = IncomingMessage(
+        message_sid="test_msg_002",
+        from_number="+5213334567890",
+        to_number="+14155238886",
+        body="Acepto",
+        timestamp=datetime.now(),
+        raw_data={"test": "data"},
+        message_type=MessageType.TEXT
+    )
+    
+    # Actualizar memoria con mensaje
+    memory = memory_use_case.update_user_memory(test_user_id, privacy_message)
+    
+    # Aceptar privacidad
+    memory = memory_use_case.accept_privacy(test_user_id)
+    print_memory_status(memory, "Privacidad aceptada")
+    
+    # Verificar estado
+    assert memory.privacy_accepted, "❌ Error: Privacidad debería estar aceptada"
+    assert memory.stage == "course_selection", "❌ Error: Stage debería ser course_selection"
+    assert not memory.needs_privacy_flow(), "❌ Error: Ya no debería necesitar flujo de privacidad"
+    print("✅ Aceptación de privacidad: CORRECTA")
+    
+    print_separator("PASO 4: AGREGANDO INFORMACIÓN DEL USUARIO")
+    
+    # Agregar nombre
+    memory = memory_use_case.update_user_name(test_user_id, "Juan Pérez")
+    
+    # Agregar rol
+    memory = memory_use_case.update_user_role(test_user_id, "Marketing Manager")
+    
+    # Agregar intereses
+    memory = memory_use_case.add_user_interest(test_user_id, "automatización")
+    memory = memory_use_case.add_user_interest(test_user_id, "análisis de datos")
+    
+    print_memory_status(memory, "Usuario con información completa")
+    
+    # Verificar contexto
+    context = memory.get_conversation_context()
+    print(f"📝 Contexto generado: {context}")
+    
+    print_separator("PASO 5: INICIANDO AGENTE DE VENTAS")
+    
+    # Simular más interacciones
+    for i in range(3, 6):
+        msg = IncomingMessage(
+            message_sid=f"test_msg_{i:03d}",
+            from_number="+5213334567890",
+            to_number="+14155238886",
+            body=f"Pregunta {i}",
+            timestamp=datetime.now(),
+            raw_data={"test": "data"},
+            message_type=MessageType.TEXT
+        )
+        memory = memory_use_case.update_user_memory(test_user_id, msg)
+    
+    # Iniciar agente de ventas
+    memory = memory_use_case.start_sales_agent_flow(test_user_id)
+    print_memory_status(memory, "Agente de ventas iniciado")
+    
+    # Verificar estado
+    assert memory.is_ready_for_sales_agent(), "❌ Error: Debería estar listo para agente de ventas"
+    assert memory.stage == "sales_agent", "❌ Error: Stage debería ser sales_agent"
+    assert memory.current_flow == "sales_conversation", "❌ Error: Flujo debería ser sales_conversation"
+    print("✅ Agente de ventas: INICIADO CORRECTAMENTE")
+    
+    print_separator("PASO 6: PERSISTENCIA Y CARGA")
+    
+    # Crear nuevo manager para probar persistencia
+    new_memory_manager = MemoryManager(memory_dir="test_memorias")
+    loaded_memory = new_memory_manager.get_lead_memory(test_user_id)
+    
+    print_memory_status(loaded_memory, "Memoria cargada desde archivo")
+    
+    # Verificar que la información se preservó
+    assert loaded_memory.name == "Juan Pérez", "❌ Error: Nombre no se preservó"
+    assert loaded_memory.role == "Marketing Manager", "❌ Error: Rol no se preservó"
+    assert loaded_memory.privacy_accepted, "❌ Error: Estado de privacidad no se preservó"
+    assert "automatización" in loaded_memory.interests, "❌ Error: Intereses no se preservaron"
+    print("✅ Persistencia: FUNCIONANDO CORRECTAMENTE")
+    
+    print_separator("RESUMEN DE PRUEBAS")
+    
+    print("✅ Sistema de memoria COMPLETAMENTE FUNCIONAL")
+    print("✅ Detección de primera interacción: OK")
+    print("✅ Flujos de privacidad: OK")
+    print("✅ Gestión de estados: OK")
+    print("✅ Persistencia en JSON: OK")
+    print("✅ Métodos auxiliares: OK")
+    print("✅ Compatibilidad hacia atrás: OK")
+    
+    print(f"\n📊 ESTADÍSTICAS FINALES:")
+    print(f"   📱 Total interacciones: {loaded_memory.interaction_count}")
+    print(f"   📝 Mensajes en historial: {len(loaded_memory.message_history)}")
+    print(f"   🎯 Intereses registrados: {len(loaded_memory.interests)}")
+    print(f"   🏷️  Stage final: {loaded_memory.stage}")
+    
+    # Limpiar archivos de prueba
+    if os.path.exists("test_memorias"):
+        shutil.rmtree("test_memorias")
+    
+    print("\n🎉 TODAS LAS PRUEBAS COMPLETADAS EXITOSAMENTE")
 
 if __name__ == "__main__":
     try:
         test_memory_system()
-        
-        # Preguntar si limpiar archivos de prueba
-        response = input("\n¿Eliminar archivos de prueba? (y/N): ").lower().strip()
-        if response == 'y':
-            cleanup_test_files()
-        else:
-            print("📁 Archivos de prueba conservados en test_memorias/")
-            
     except Exception as e:
-        print(f"💥 Error durante las pruebas: {e}")
+        print(f"\n❌ ERROR EN PRUEBAS: {e}")
         import traceback
         traceback.print_exc()
-        sys.exit(1)

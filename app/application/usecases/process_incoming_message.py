@@ -8,6 +8,8 @@ from app.domain.entities.message import IncomingMessage, OutgoingMessage, Messag
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.application.usecases.generate_intelligent_response import GenerateIntelligentResponseUseCase
+from app.application.usecases.privacy_flow_use_case import PrivacyFlowUseCase
+from app.application.usecases.tool_activation_use_case import ToolActivationUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,9 @@ class ProcessIncomingMessageUseCase:
         self, 
         twilio_client: TwilioWhatsAppClient, 
         memory_use_case: ManageUserMemoryUseCase,
-        intelligent_response_use_case: GenerateIntelligentResponseUseCase = None
+        intelligent_response_use_case: GenerateIntelligentResponseUseCase = None,
+        privacy_flow_use_case: PrivacyFlowUseCase = None,
+        tool_activation_use_case: ToolActivationUseCase = None
     ):
         """
         Inicializa el caso de uso.
@@ -28,10 +32,14 @@ class ProcessIncomingMessageUseCase:
             twilio_client: Cliente de Twilio para envío de respuestas
             memory_use_case: Caso de uso para gestión de memoria
             intelligent_response_use_case: Caso de uso para respuestas inteligentes (opcional)
+            privacy_flow_use_case: Caso de uso para flujo de privacidad (opcional)
+            tool_activation_use_case: Caso de uso para activación de herramientas (opcional)
         """
         self.twilio_client = twilio_client
         self.memory_use_case = memory_use_case
         self.intelligent_response_use_case = intelligent_response_use_case
+        self.privacy_flow_use_case = privacy_flow_use_case
+        self.tool_activation_use_case = tool_activation_use_case
     
     async def execute(self, webhook_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -64,7 +72,49 @@ class ProcessIncomingMessageUseCase:
                     'reason': 'not_whatsapp'
                 }
             
-            # Usar respuesta inteligente si está disponible, sino usar respuesta básica
+            # PRIORIDAD 1: Verificar si el usuario necesita flujo de privacidad
+            if self.privacy_flow_use_case:
+                try:
+                    # Obtener memoria del usuario para verificar su estado
+                    user_memory = self.memory_use_case.get_user_memory(user_id)
+                    
+                    # Verificar si debe manejar el flujo de privacidad
+                    if self.privacy_flow_use_case.should_handle_privacy_flow(user_memory):
+                        logger.info(f"🔐 Iniciando flujo de privacidad para usuario {user_id}")
+                        
+                        privacy_result = await self.privacy_flow_use_case.handle_privacy_flow(
+                            user_id, incoming_message
+                        )
+                        
+                        if privacy_result['success'] and privacy_result['in_privacy_flow']:
+                            logger.info(f"✅ Flujo de privacidad procesado para {user_id}")
+                            return {
+                                'success': True,
+                                'processed': True,
+                                'incoming_message': {
+                                    'from': incoming_message.from_number,
+                                    'body': incoming_message.body,
+                                    'message_sid': incoming_message.message_sid
+                                },
+                                'response_sent': privacy_result.get('message_sent', False),
+                                'response_sid': None,  # Privacy flow doesn't return SID
+                                'response_text': "Privacy flow handled",
+                                'processing_type': 'privacy_flow',
+                                'privacy_stage': privacy_result.get('stage', 'unknown'),
+                                'privacy_flow_completed': privacy_result.get('flow_completed', False)
+                            }
+                        elif not privacy_result['in_privacy_flow'] and privacy_result.get('should_continue_normal_flow'):
+                            logger.info(f"🔄 Usuario {user_id} no está en flujo privacidad, continuando procesamiento normal")
+                            # Continuar con procesamiento normal
+                        else:
+                            logger.error(f"❌ Error en flujo de privacidad para {user_id}: {privacy_result}")
+                            # Continuar con procesamiento normal como fallback
+                            
+                except Exception as e:
+                    logger.error(f"❌ Error procesando flujo de privacidad: {e}")
+                    # Continuar con procesamiento normal como fallback
+            
+            # PRIORIDAD 2: Usar respuesta inteligente si está disponible
             if self.intelligent_response_use_case:
                 # Procesamiento inteligente con OpenAI
                 try:
@@ -75,6 +125,29 @@ class ProcessIncomingMessageUseCase:
                     response_text = intelligent_result.get('response_text', '')
                     response_sent = intelligent_result.get('response_sent', False)
                     response_sid = intelligent_result.get('response_sid')
+                    intent_analysis = intelligent_result.get('intent_analysis', {})
+                    
+                    # PRIORIDAD 2.1: Activar herramientas de conversión si está disponible
+                    tool_results = []
+                    if self.tool_activation_use_case and intent_analysis:
+                        try:
+                            user_memory = self.memory_use_case.get_user_memory(user_id)
+                            
+                            # Verificar si se deben activar herramientas
+                            if self.tool_activation_use_case.should_activate_tools(intent_analysis):
+                                logger.info(f"🛠️ Activando herramientas de conversión para {user_id}")
+                                
+                                tool_results = await self.tool_activation_use_case.activate_tools_by_intent(
+                                    intent_analysis=intent_analysis,
+                                    user_id=user_id,
+                                    incoming_message=incoming_message,
+                                    user_memory=user_memory
+                                )
+                                
+                                logger.info(f"✅ {len(tool_results)} herramientas activadas")
+                        except Exception as e:
+                            logger.error(f"❌ Error activando herramientas: {e}")
+                            # Continuar con respuesta normal si fallan las herramientas
                     
                     logger.info(f"🤖 Respuesta inteligente generada para {user_id}")
                     
@@ -90,8 +163,10 @@ class ProcessIncomingMessageUseCase:
                         'response_sid': response_sid,
                         'response_text': response_text,
                         'processing_type': 'intelligent',
-                        'intent_analysis': intelligent_result.get('intent_analysis', {}),
-                        'extracted_info': intelligent_result.get('extracted_info', {})
+                        'intent_analysis': intent_analysis,
+                        'extracted_info': intelligent_result.get('extracted_info', {}),
+                        'tool_results': tool_results,
+                        'tools_activated': len(tool_results) > 0
                     }
                     
                 except Exception as e:

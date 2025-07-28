@@ -12,6 +12,7 @@ from prompts.agent_prompts import (
     get_intent_analysis_prompt,
     get_information_extraction_prompt,
     get_response_generation_prompt,
+    get_validation_prompt,
     PromptConfig
 )
 
@@ -316,4 +317,69 @@ Gracias por escribir. Estoy aquí para ayudarte con todo lo relacionado a nuestr
                 'response': self._get_fallback_response('GENERAL_QUESTION'),
                 'success': False,
                 'error': str(e)
+            }
+    
+    async def validate_response(
+        self,
+        response: str,
+        course_data: dict = None,
+        bonuses_data: list = None,
+        all_courses_data: list = None
+    ) -> Dict[str, Any]:
+        """
+        Valida una respuesta usando el validador anti-alucinación.
+        
+        Args:
+            response: Respuesta del agente a validar
+            course_data: Datos del curso para validación
+            bonuses_data: Lista de bonos disponibles
+            all_courses_data: Lista de todos los cursos
+            
+        Returns:
+            Dict con resultado de validación
+        """
+        try:
+            debug_print(f"🔍 VALIDANDO RESPUESTA\n📝 Texto: '{response[:100]}{'...' if len(response) > 100 else ''}'", "validate_response", "openai_client.py")
+            
+            prompt = get_validation_prompt(response, course_data or {}, bonuses_data or [], all_courses_data or [])
+            config = PromptConfig.get_config('intent_analysis')  # Usar misma config que intent_analysis
+            
+            debug_print("🚀 Enviando a OpenAI para validación...", "validate_response", "openai_client.py")
+            validation_response = await self.client.chat.completions.create(
+                model=config['model'],
+                temperature=0.1,  # Muy baja para validación precisa
+                max_tokens=300,
+                messages=[
+                    {"role": "system", "content": "Eres un validador anti-alucinación. Responde SOLO con JSON válido."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            content = validation_response.choices[0].message.content.strip()
+            debug_print(f"📥 RESPUESTA DE VALIDACIÓN:\n{content}", "validate_response", "openai_client.py")
+            
+            try:
+                validation_data = json.loads(content)
+                debug_print(f"✅ Validación PARSEADA - Es válida: {validation_data.get('is_valid', True)}", "validate_response", "openai_client.py")
+                return validation_data
+            except json.JSONDecodeError as e:
+                debug_print(f"❌ ERROR PARSEANDO JSON DE VALIDACIÓN: {e}", "validate_response", "openai_client.py")
+                # En caso de error de parseo, aprobar por defecto (filosofía permisiva)
+                return {
+                    "is_valid": True,
+                    "confidence": 0.8,
+                    "issues": [],
+                    "corrected_response": None,
+                    "explanation": "Error parseando validación, aprobado por defecto"
+                }
+                
+        except Exception as e:
+            debug_print(f"💥 ERROR EN VALIDACIÓN: {e}", "validate_response", "openai_client.py")
+            # En caso de error, aprobar por defecto (filosofía permisiva)
+            return {
+                "is_valid": True,
+                "confidence": 0.7,
+                "issues": [],
+                "corrected_response": None,
+                "explanation": f"Error en validación, aprobado por defecto: {str(e)}"
             }

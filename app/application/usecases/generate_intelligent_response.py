@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional
 from app.application.usecases.analyze_message_intent import AnalyzeMessageIntentUseCase
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
+from app.infrastructure.openai.client import OpenAIClient
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
 from prompts.agent_prompts import WhatsAppMessageTemplates
 
@@ -33,6 +34,7 @@ class GenerateIntelligentResponseUseCase:
         self,
         intent_analyzer: AnalyzeMessageIntentUseCase,
         twilio_client: TwilioWhatsAppClient,
+        openai_client: OpenAIClient,
         course_query_use_case: Optional[QueryCourseInformationUseCase] = None
     ):
         """
@@ -41,10 +43,12 @@ class GenerateIntelligentResponseUseCase:
         Args:
             intent_analyzer: Analizador de intención de mensajes
             twilio_client: Cliente Twilio para envío de mensajes
+            openai_client: Cliente OpenAI para validación
             course_query_use_case: Caso de uso para consultar información de cursos
         """
         self.intent_analyzer = intent_analyzer
         self.twilio_client = twilio_client
+        self.openai_client = openai_client
         self.course_query_use_case = course_query_use_case
         self.course_system_available = course_query_use_case is not None
         self.logger = logging.getLogger(__name__)
@@ -172,7 +176,44 @@ class GenerateIntelligentResponseUseCase:
         # Si se debe usar respuesta de IA y está disponible
         if (analysis_result.get('should_use_ai_response', False) and 
             analysis_result.get('generated_response')):
-            return analysis_result['generated_response']
+            # Validar respuesta de IA antes de enviarla
+            ai_response = analysis_result['generated_response']
+            debug_print(f"🛡️ Validando respuesta de IA...", "_generate_contextual_response", "generate_intelligent_response.py")
+            
+            # Obtener datos de curso para validación si es relevante para cursos
+            course_data = {}
+            if category in ['EXPLORATION', 'BUYING_SIGNALS'] and self.course_system_available:
+                try:
+                    # Buscar curso recomendado para validación
+                    recommended_courses = await self.course_query_use_case.get_recommended_courses(
+                        user_interests=user_memory.interests if user_memory and user_memory.interests else [],
+                        limit=1
+                    )
+                    if recommended_courses:
+                        course_data = recommended_courses[0]
+                except Exception as e:
+                    debug_print(f"⚠️ Error obteniendo datos de curso para validación: {e}", "_generate_contextual_response", "generate_intelligent_response.py")
+            
+            # Validar respuesta
+            validation_result = await self.openai_client.validate_response(
+                response=ai_response,
+                course_data=course_data
+            )
+            
+            debug_print(f"🔍 Validación completada - Es válida: {validation_result.get('is_valid', True)}", "_generate_contextual_response", "generate_intelligent_response.py")
+            
+            if validation_result.get('is_valid', True):
+                # Si hay respuesta corregida, usar esa
+                if validation_result.get('corrected_response'):
+                    debug_print("✏️ Usando respuesta corregida por validador", "_generate_contextual_response", "generate_intelligent_response.py")
+                    return validation_result['corrected_response']
+                else:
+                    debug_print("✅ Respuesta de IA aprobada sin cambios", "_generate_contextual_response", "generate_intelligent_response.py")
+                    return ai_response
+            else:
+                debug_print(f"❌ Respuesta de IA rechazada: {validation_result.get('explanation', 'Sin explicación')}", "_generate_contextual_response", "generate_intelligent_response.py")
+                debug_print("🔄 Cayendo a templates como fallback", "_generate_contextual_response", "generate_intelligent_response.py")
+                # Caer a templates si la validación falla
         
         # Agregar información de cursos si es relevante
         enhanced_response = await self._enhance_response_with_course_info(

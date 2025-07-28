@@ -244,3 +244,148 @@ class ManageUserMemoryUseCase:
             if memory.automation_needs is None:
                 memory.automation_needs = {}
             memory.automation_needs.update(extracted_info["automation_needs"])
+    
+    def start_privacy_flow(self, user_id: str) -> LeadMemory:
+        """
+        Inicia el flujo de privacidad para un usuario.
+        
+        Args:
+            user_id: Identificador único del usuario
+            
+        Returns:
+            LeadMemory: Memoria actualizada con flujo de privacidad iniciado
+        """
+        try:
+            memory = self.get_user_memory(user_id)
+            memory.stage = "privacy_flow"
+            memory.current_flow = "privacy"
+            memory.flow_step = 1
+            memory.privacy_requested = True
+            memory.waiting_for_response = "privacy_acceptance"
+            memory.updated_at = datetime.now()
+            
+            self.memory_manager.save_lead_memory(user_id, memory)
+            self.logger.info(f"✅ Flujo de privacidad iniciado para usuario {user_id}")
+            return memory
+        except Exception as e:
+            self.logger.error(f"❌ Error iniciando flujo de privacidad para {user_id}: {e}")
+            raise
+    
+    def accept_privacy(self, user_id: str) -> LeadMemory:
+        """
+        Marca la privacidad como aceptada y avanza al siguiente flujo.
+        
+        Args:
+            user_id: Identificador único del usuario
+            
+        Returns:
+            LeadMemory: Memoria actualizada
+        """
+        try:
+            memory = self.get_user_memory(user_id)
+            memory.privacy_accepted = True
+            memory.stage = "course_selection"
+            memory.current_flow = "course_selection"
+            memory.flow_step = 1
+            memory.waiting_for_response = "course_interest"
+            memory.updated_at = datetime.now()
+            
+            self.memory_manager.save_lead_memory(user_id, memory)
+            self.logger.info(f"✅ Privacidad aceptada para usuario {user_id}")
+            return memory
+        except Exception as e:
+            self.logger.error(f"❌ Error aceptando privacidad para {user_id}: {e}")
+            raise
+    
+    def start_sales_agent_flow(self, user_id: str) -> LeadMemory:
+        """
+        Inicia el flujo del agente de ventas inteligente.
+        
+        Args:
+            user_id: Identificador único del usuario
+            
+        Returns:
+            LeadMemory: Memoria actualizada
+        """
+        try:
+            memory = self.get_user_memory(user_id)
+            memory.stage = "sales_agent"
+            memory.current_flow = "sales_conversation"
+            memory.flow_step = 1
+            memory.waiting_for_response = ""  # El agente inteligente maneja las respuestas
+            memory.updated_at = datetime.now()
+            
+            self.memory_manager.save_lead_memory(user_id, memory)
+            self.logger.info(f"✅ Agente de ventas iniciado para usuario {user_id}")
+            return memory
+        except Exception as e:
+            self.logger.error(f"❌ Error iniciando agente de ventas para {user_id}: {e}")
+            raise
+    
+    def update_user_role(self, user_id: str, role: str) -> LeadMemory:
+        """
+        Actualiza el rol/profesión del usuario.
+        
+        Args:
+            user_id: Identificador único del usuario
+            role: Rol o profesión del usuario
+            
+        Returns:
+            LeadMemory: Memoria actualizada
+        """
+        try:
+            memory = self.get_user_memory(user_id)
+            memory.role = role.strip()
+            memory.updated_at = datetime.now()
+            
+            self.memory_manager.save_lead_memory(user_id, memory)
+            self.logger.info(f"✅ Rol actualizado para usuario {user_id}: {role}")
+            return memory
+        except Exception as e:
+            self.logger.error(f"❌ Error actualizando rol para {user_id}: {e}")
+            raise
+    
+    def set_waiting_for_response(self, user_id: str, response_type: str) -> LeadMemory:
+        """
+        Establece qué tipo de respuesta se está esperando del usuario.
+        
+        Args:
+            user_id: Identificador único del usuario
+            response_type: Tipo de respuesta esperada (name, privacy_acceptance, course_choice, etc.)
+            
+        Returns:
+            LeadMemory: Memoria actualizada
+        """
+        try:
+            memory = self.get_user_memory(user_id)
+            memory.waiting_for_response = response_type
+            memory.updated_at = datetime.now()
+            
+            self.memory_manager.save_lead_memory(user_id, memory)
+            self.logger.info(f"✅ Esperando respuesta '{response_type}' de usuario {user_id}")
+            return memory
+        except Exception as e:
+            self.logger.error(f"❌ Error estableciendo tipo de respuesta para {user_id}: {e}")
+            raise
+    
+    def advance_flow_step(self, user_id: str) -> LeadMemory:
+        """
+        Avanza al siguiente paso del flujo actual.
+        
+        Args:
+            user_id: Identificador único del usuario
+            
+        Returns:
+            LeadMemory: Memoria actualizada
+        """
+        try:
+            memory = self.get_user_memory(user_id)
+            memory.flow_step += 1
+            memory.updated_at = datetime.now()
+            
+            self.memory_manager.save_lead_memory(user_id, memory)
+            self.logger.info(f"✅ Flujo avanzado para usuario {user_id} - Paso: {memory.flow_step}")
+            return memory
+        except Exception as e:
+            self.logger.error(f"❌ Error avanzando flujo para {user_id}: {e}")
+            raise

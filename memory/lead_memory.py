@@ -11,8 +11,9 @@ class LeadMemory:
     user_id: str = ""
     name: str = ""
     selected_course: str = ""
-    stage: str = "initial"
+    stage: str = "first_contact"  # first_contact, privacy_flow, course_selection, sales_agent, converted
     privacy_accepted: bool = False
+    privacy_requested: bool = False  # Nueva: si ya se le pidió aceptar privacidad
     lead_score: int = 50
     interaction_count: int = 0
     message_history: Optional[List[Dict]] = None
@@ -26,6 +27,36 @@ class LeadMemory:
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     brenda_introduced: bool = False
+    
+    # Nuevos campos para flujos personalizados
+    current_flow: str = "none"  # none, privacy, course_selection, sales_conversation
+    flow_step: int = 0  # paso actual dentro del flujo
+    waiting_for_response: str = ""  # qué tipo de respuesta espera (name, privacy_acceptance, course_choice, etc.)
+    
+    def is_first_interaction(self) -> bool:
+        """Verifica si es la primera interacción del usuario."""
+        return self.interaction_count <= 1 and self.stage == "first_contact"
+    
+    def needs_privacy_flow(self) -> bool:
+        """Verifica si necesita pasar por el flujo de privacidad."""
+        return not self.privacy_accepted and not self.privacy_requested
+    
+    def is_ready_for_sales_agent(self) -> bool:
+        """Verifica si está listo para el agente de ventas inteligente."""
+        return (self.privacy_accepted and 
+                self.interaction_count > 1 and 
+                self.stage not in ["first_contact", "privacy_flow"])
+    
+    def get_conversation_context(self) -> str:
+        """Obtiene contexto resumido para el agente."""
+        context = f"Usuario: {self.name or 'Anónimo'}"
+        if self.role:
+            context += f", {self.role}"
+        if self.interests:
+            context += f", Intereses: {', '.join(self.interests)}"
+        if self.pain_points:
+            context += f", Necesidades: {', '.join(self.pain_points[:3])}"
+        return context
 
 class MemoryManager:
     """
@@ -72,6 +103,9 @@ class MemoryManager:
         try:
             lead_memory.updated_at = datetime.now()
             self.leads_cache[user_id] = lead_memory
+            
+            # Asegurar que el directorio existe
+            os.makedirs(self.memory_dir, exist_ok=True)
             
             filename = f"memory_{user_id}.json"
             filepath = os.path.join(self.memory_dir, filename)
@@ -138,5 +172,19 @@ class MemoryManager:
             data['buying_signals'] = []
         if data.get('interests') is None:
             data['interests'] = []
+        
+        # Valores por defecto para nuevos campos (compatibilidad hacia atrás)
+        if 'privacy_requested' not in data:
+            data['privacy_requested'] = False
+        if 'current_flow' not in data:
+            data['current_flow'] = "none"
+        if 'flow_step' not in data:
+            data['flow_step'] = 0
+        if 'waiting_for_response' not in data:
+            data['waiting_for_response'] = ""
+        
+        # Migrar stage antiguo a nuevo sistema
+        if data.get('stage') == 'initial':
+            data['stage'] = 'first_contact'
         
         return LeadMemory(**data) 

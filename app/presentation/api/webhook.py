@@ -13,6 +13,8 @@ from app.application.usecases.process_incoming_message import ProcessIncomingMes
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.application.usecases.analyze_message_intent import AnalyzeMessageIntentUseCase
 from app.application.usecases.generate_intelligent_response import GenerateIntelligentResponseUseCase
+from app.application.usecases.privacy_flow_use_case import PrivacyFlowUseCase
+from app.application.usecases.tool_activation_use_case import ToolActivationUseCase
 from memory.lead_memory import MemoryManager
 
 logger = logging.getLogger(__name__)
@@ -35,11 +37,13 @@ intent_analyzer = None
 course_query_use_case = None
 intelligent_response_use_case = None
 process_message_use_case = None
+privacy_flow_use_case = None
+tool_activation_use_case = None
 
 @app.on_event("startup")
 async def startup_event():
     """Evento de startup para inicializar todas las dependencias."""
-    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case
+    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case, privacy_flow_use_case, tool_activation_use_case
     
     debug_print("🚀 INICIANDO SISTEMA BOT BRENDA...", "startup", "webhook.py")
     
@@ -53,6 +57,11 @@ async def startup_event():
     memory_manager = MemoryManager(memory_dir="memorias")
     memory_use_case = ManageUserMemoryUseCase(memory_manager)
     debug_print("✅ Sistema de memoria inicializado correctamente", "startup", "webhook.py")
+
+    # Inicializar flujo de privacidad
+    debug_print("🔐 Inicializando flujo de privacidad...", "startup", "webhook.py")
+    privacy_flow_use_case = PrivacyFlowUseCase(memory_use_case, twilio_client)
+    debug_print("✅ Flujo de privacidad inicializado correctamente", "startup", "webhook.py")
 
     # Inicializar sistema con OpenAI (sin PostgreSQL por ahora)
     try:
@@ -72,14 +81,19 @@ async def startup_event():
         # Crear generador de respuestas inteligentes (sin sistema de cursos)
         debug_print("🧩 Creando generador de respuestas inteligentes...", "startup", "webhook.py")
         intelligent_response_use_case = GenerateIntelligentResponseUseCase(
-            intent_analyzer, twilio_client, course_query_use_case
+            intent_analyzer, twilio_client, openai_client, course_query_use_case
         )
         debug_print("✅ Generador de respuestas inteligentes creado", "startup", "webhook.py")
+        
+        # Inicializar sistema de herramientas de conversión
+        debug_print("🛠️ Inicializando sistema de herramientas de conversión...", "startup", "webhook.py")
+        tool_activation_use_case = ToolActivationUseCase()
+        debug_print("✅ Sistema de herramientas inicializado correctamente", "startup", "webhook.py")
         
         # Crear caso de uso de procesamiento con capacidades inteligentes
         debug_print("⚙️ Creando procesador de mensajes principal...", "startup", "webhook.py")
         process_message_use_case = ProcessIncomingMessageUseCase(
-            twilio_client, memory_use_case, intelligent_response_use_case
+            twilio_client, memory_use_case, intelligent_response_use_case, privacy_flow_use_case, tool_activation_use_case
         )
         debug_print("✅ Procesador de mensajes principal creado", "startup", "webhook.py")
         
@@ -90,7 +104,9 @@ async def startup_event():
         debug_print("🔄 Iniciando modo FALLBACK (sin OpenAI)...", "startup", "webhook.py")
         
         # Crear caso de uso de procesamiento básico sin IA
-        process_message_use_case = ProcessIncomingMessageUseCase(twilio_client, memory_use_case)
+        process_message_use_case = ProcessIncomingMessageUseCase(
+            twilio_client, memory_use_case, None, privacy_flow_use_case, None
+        )
         
         debug_print("⚠️ SISTEMA FALLBACK: Sin OpenAI ni BD de cursos inicializado correctamente", "startup", "webhook.py")
     
