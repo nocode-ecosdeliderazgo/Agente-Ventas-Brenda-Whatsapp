@@ -14,11 +14,7 @@ logger = logging.getLogger(__name__)
 
 def debug_print(message: str, function_name: str = "", file_name: str = "twilio_client.py"):
     """Print de debug visual para consola"""
-    print(f"\n{'='*80}")
-    print(f"📱 DEBUG [{file_name}::{function_name}]")
-    print(f"{'='*80}")
-    print(f"📋 {message}")
-    print(f"{'='*80}\n")
+    print(f"📱 [{file_name}::{function_name}] {message}")
 
 
 class TwilioWhatsAppClient:

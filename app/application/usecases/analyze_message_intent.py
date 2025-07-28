@@ -13,11 +13,7 @@ logger = logging.getLogger(__name__)
 
 def debug_print(message: str, function_name: str = "", file_name: str = "analyze_message_intent.py"):
     """Print de debug visual para consola"""
-    print(f"\n{'='*80}")
-    print(f"🧠 DEBUG [{file_name}::{function_name}]")
-    print(f"{'='*80}")
-    print(f"📋 {message}")
-    print(f"{'='*80}\n")
+    print(f"🧠 [{file_name}::{function_name}] {message}")
 
 
 class AnalyzeMessageIntentUseCase:
@@ -75,7 +71,8 @@ class AnalyzeMessageIntentUseCase:
             # 2. Preparar contexto de mensajes recientes
             debug_print("📋 Preparando contexto de mensajes recientes...", "execute", "analyze_message_intent.py")
             recent_messages = self._get_recent_messages_context(user_memory)
-            debug_print(f"✅ Contexto preparado - {len(recent_messages)} mensajes recientes", "execute", "analyze_message_intent.py")
+            message_count = len(recent_messages) if recent_messages else 0
+            debug_print(f"✅ Contexto preparado - {message_count} mensajes recientes", "execute", "analyze_message_intent.py")
             
             # 3. Analizar intención y extraer información usando OpenAI
             debug_print("🤖 ENVIANDO MENSAJE A OPENAI para análisis...", "execute", "analyze_message_intent.py")

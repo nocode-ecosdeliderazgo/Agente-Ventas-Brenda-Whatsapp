@@ -4,6 +4,10 @@ venv_new/
 venv/
 venv_new/
 venv_new/
+memorias/
+*.json
+venv_linux/
+.claude/
 __pycache__/
 *.py[cod]
 *.pyo

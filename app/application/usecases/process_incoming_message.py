@@ -48,7 +48,7 @@ class ProcessIncomingMessageUseCase:
             incoming_message = IncomingMessage.from_twilio_webhook(webhook_data)
             
             # Extraer user_id del número de teléfono (sin el prefijo whatsapp:)
-            user_id = incoming_message.from_phone.replace("+", "")
+            user_id = incoming_message.from_number.replace("+", "")
             
             logger.info(
                 f"📨 Mensaje recibido de {incoming_message.from_number} (user_id: {user_id}): "
