@@ -74,7 +74,7 @@ The complete Telegram implementation is preserved in `legacy/` folder:
 - **Configuration** (`app/config.py`) - Pydantic-based settings with all API credentials
 - **Twilio Client** (`app/infrastructure/twilio/client.py`) - WhatsApp message sending/receiving
 - **OpenAI Client** (`app/infrastructure/openai/client.py`) - GPT-4o-mini for intent analysis and responses
-- **Database System** (`app/infrastructure/database/`) - PostgreSQL integration with async client
+- **Database System** (`app/infrastructure/database/`) - Supabase PostgreSQL integration with async client
 - **Course Repository** (`app/infrastructure/database/repositories/course_repository.py`) - Course data queries
 - **Enhanced Memory System** (`app/application/usecases/manage_user_memory.py`) - Flow state management with privacy workflow support
 - **Lead Memory** (`memory/lead_memory.py`) - Enhanced with privacy flow fields and helper methods
@@ -133,8 +133,8 @@ python -c "from app.config import settings; print('✅ Config loaded:', settings
 # Test OpenAI integration
 python -c "from app.infrastructure.openai.client import OpenAIClient; print('✅ OpenAI client ready')"
 
-# Test database connection (optional)
-python -c "from app.infrastructure.database.client import database_client; print('✅ Database client ready')"
+# Test Supabase database connection
+python test_supabase_connection.py
 
 # Test complete intelligent system
 python test_intelligent_system.py
@@ -188,7 +188,7 @@ The system now features **specialized prompts and templates** designed specifica
 - **Enhanced Memory System** - Flow state management with privacy workflow support
 - **OpenAI GPT-4o-mini integration** for PyME-focused intent analysis and executive response generation
 - **17-category PyME-specific intent classification** (sector exploration, ROI concerns, technical team objections, etc.)
-- **Course database integration** - PostgreSQL queries with course recommendations (optional)
+- **Course database integration** - Supabase PostgreSQL queries with course recommendations (optional)
 - **Contextual responses** - Enhanced with course information based on user intent
 - **Privacy-first webhook system** - Processes privacy before any other interactions
 - **Layered fallback system** - Works with/without database, with/without OpenAI
@@ -213,7 +213,7 @@ The system now features **specialized prompts and templates** designed specifica
 - **Tool registry system** - Framework for the 35+ conversion tools from legacy system
 - **Event coordination system** - For automated tool triggers and follow-ups
 - **Template engine enhancement** - For dynamic tool-generated content
-- **Complete PostgreSQL migration** - Move all memory from JSON to database
+- **Complete Supabase migration** - Move all memory from JSON to database
 - **Advanced analytics** - Privacy consent rates, conversation flow analysis
 
 ### 📁 LEGACY REFERENCE - Telegram System
@@ -241,8 +241,10 @@ TWILIO_PHONE_NUMBER=your_whatsapp_number
 # OpenAI Intelligence
 OPENAI_API_KEY=your_openai_key
 
-# PostgreSQL Database (Optional - system works without it)
-DATABASE_URL=postgresql://user:password@localhost:5432/database_name
+# Supabase Database (Optional - system works without it)
+DATABASE_URL=postgresql://postgres.your_ref:your_password@aws-0-us-east-2.pooler.supabase.com:6543/postgres
+SUPABASE_URL=https://your_ref.supabase.co
+SUPABASE_KEY=your_supabase_anon_key
 
 # Application Settings
 APP_ENVIRONMENT=development
@@ -256,6 +258,74 @@ WEBHOOK_VERIFY_SIGNATURE=true
 - **Parameterized database queries** - Protection against SQL injection
 - **Input validation** - Pydantic models validate all data
 - **Error boundary isolation** - Failures don't crash the system
+
+## Supabase Integration
+
+The system now includes full Supabase PostgreSQL integration for scalable database operations:
+
+### Supabase Configuration
+
+#### **Environment Variables**
+```env
+# Supabase Database Connection
+DATABASE_URL=postgresql://postgres.your_ref:your_password@aws-0-us-east-2.pooler.supabase.com:6543/postgres
+SUPABASE_URL=https://your_ref.supabase.co  
+SUPABASE_KEY=your_supabase_anon_key
+```
+
+#### **Database Client** (`app/infrastructure/database/client.py`)
+- **Async Connection Pool** - Optimized for high-performance concurrent operations
+- **Health Check System** - Real-time database connectivity monitoring
+- **Transaction Support** - ACID compliance for complex operations
+- **Error Handling** - Robust fallback and retry mechanisms
+- **Query Logging** - Detailed debugging and performance monitoring
+
+### Supabase Testing
+
+#### **Comprehensive Test Suite** (`test_supabase_connection.py`)
+The system includes a complete test suite for Supabase functionality:
+
+1. **Basic Connection Test** - Verifies database connectivity
+2. **Health Check Test** - Monitors database status
+3. **Query Execution Test** - PostgreSQL version, current time, database info
+4. **Supabase Features Test** - Extensions (uuid-ossp, pgcrypto, etc.), timezone config
+5. **Course System Test** - Verifies course and user memory tables
+6. **Connection Pooling Test** - Tests concurrent connections and performance
+
+#### **Running Supabase Tests**
+```bash
+# Complete Supabase functionality test
+python test_supabase_connection.py
+
+# Expected output:
+# ✅ ÉXITO: Conexión establecida con Supabase
+# ✅ ÉXITO: Health check OK  
+# ✅ Versión de PostgreSQL: PostgreSQL 15.x...
+# ✅ Encontradas X tablas de usuario
+# 🎉 ¡TODAS LAS PRUEBAS PASARON! Supabase está funcionando correctamente.
+```
+
+### Database Architecture
+
+#### **Tables and Schema**
+- **`courses`** - Course catalog with pricing and descriptions
+- **`user_memory`** - User conversation state and preferences (future implementation)
+- **Extensions** - uuid-ossp, pgcrypto for advanced functionality
+- **Indexing** - Optimized queries for conversation flows
+
+#### **Migration Strategy**
+- **Phase 1** ✅ - Database client and testing infrastructure
+- **Phase 2** 🔄 - User memory migration from JSON to Supabase
+- **Phase 3** 🔄 - Course data integration and management
+- **Phase 4** 🔄 - Analytics and conversation flow tracking
+
+### Performance Features
+
+- **Connection Pooling** - 1-10 concurrent connections with automatic scaling
+- **Query Optimization** - JIT disabled for simple queries, optimal performance
+- **Async Operations** - Non-blocking database operations
+- **Transaction Management** - Atomic operations for data consistency
+- **Error Recovery** - Graceful degradation when database unavailable
 
 ## Privacy Flow Architecture
 
@@ -478,7 +548,7 @@ response = WhatsAppBusinessTemplates.business_price_objection_response(
 The `legacy/` folder contains the complete, functional Telegram implementation with:
 - 35+ working conversion tools
 - Advanced AI conversation system
-- Full PostgreSQL integration  
+- Full Supabase PostgreSQL integration  
 - Memory and lead scoring systems
 
 Refer to `legacy/CLAUDE.md` for the complete Telegram implementation details. Use this as reference when adapting features for WhatsApp.
@@ -502,13 +572,13 @@ The WhatsApp bot now has a complete intelligent conversation system ready for pr
 12. **Production-ready architecture** - Clean Architecture with comprehensive error handling
 13. **🆕 Role-based personalization** - Responses adapted to user's professional role
 
-### 🔄 READY FOR NEXT PHASE - Tool Integration
-The foundation is solid and ready for migrating the 35+ conversion tools from the legacy system. Before starting tool migration, consider implementing:
+### 🔄 READY FOR NEXT PHASE - Tool Integration with Supabase
+The foundation is solid with Supabase integration and ready for migrating the 35+ conversion tools from the legacy system. Before starting tool migration, consider implementing:
 
-1. **Conversation state management** - For multi-step tool flows
-2. **Tool registry framework** - Centralized tool activation and management
+1. **Conversation state management** - For multi-step tool flows stored in Supabase
+2. **Tool registry framework** - Centralized tool activation and management with database persistence
 3. **Enhanced template system** - For dynamic tool-generated content
-4. **Event coordination system** - For automated tool triggers and follow-ups
+4. **Event coordination system** - For automated tool triggers and follow-ups with database logging
 
 ### 📋 Available Documentation
 
@@ -532,3 +602,4 @@ The foundation is solid and ready for migrating the 35+ conversion tools from th
 - **`test_integration_logic_only.py`** - Privacy flow logic validation (no external dependencies)
 - **`test_integrated_privacy_flow.py`** - Complete privacy flow integration test with webhook simulation
 - **`test_course_integration.py`** - Database integration test with course queries
+- **`test_supabase_connection.py`** - Comprehensive Supabase connection and functionality test
