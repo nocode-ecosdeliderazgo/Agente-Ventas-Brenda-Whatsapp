@@ -259,6 +259,121 @@ class CourseRepository:
             logger.error(f"Error obteniendo modalidades: {e}")
             return []
     
+    async def get_session_resources(self, session_id: UUID) -> List[Dict[str, Any]]:
+        """Obtiene recursos multimedia de una sesión."""
+        query = """
+            SELECT id_element, created_at, id_session_fk, id_activity_fk,
+                   item_type, url_test, description_url
+            FROM elements_url
+            WHERE id_session_fk = $1
+            ORDER BY created_at ASC
+        """
+        
+        try:
+            records = await self.db.execute_query(query, session_id)
+            if records:
+                return [dict(record) for record in records]
+            return []
+        except Exception as e:
+            logger.error(f"Error obteniendo recursos de la sesión {session_id}: {e}")
+            return []
+    
+    async def get_activity_resources(self, activity_id: UUID) -> List[Dict[str, Any]]:
+        """Obtiene recursos multimedia de una actividad específica."""
+        query = """
+            SELECT id_element, created_at, id_session_fk, id_activity_fk,
+                   item_type, url_test, description_url
+            FROM elements_url
+            WHERE id_activity_fk = $1
+            ORDER BY created_at ASC
+        """
+        
+        try:
+            records = await self.db.execute_query(query, activity_id)
+            if records:
+                return [dict(record) for record in records]
+            return []
+        except Exception as e:
+            logger.error(f"Error obteniendo recursos de la actividad {activity_id}: {e}")
+            return []
+    
+    async def get_course_detailed_content(self, course_id: UUID) -> Dict[str, Any]:
+        """
+        Obtiene contenido detallado completo de un curso para uso en prompts.
+        Incluye curso, sesiones, actividades, bonos y recursos.
+        """
+        try:
+            # Obtener curso base
+            course = await self.get_course_by_id(course_id)
+            if not course:
+                return {}
+            
+            # Obtener sesiones
+            sessions = await self.get_course_sessions(course_id)
+            
+            # Obtener bonos
+            bonds = await self.get_course_bonds(course_id)
+            
+            # Para cada sesión, obtener actividades y recursos
+            detailed_sessions = []
+            for session in sessions:
+                activities = await self.get_session_activities(session.id_session)
+                resources = await self.get_session_resources(session.id_session)
+                
+                # Para cada actividad, obtener sus recursos
+                detailed_activities = []
+                for activity in activities:
+                    activity_resources = await self.get_activity_resources(activity.id_activity)
+                    detailed_activities.append({
+                        "activity": activity.__dict__,
+                        "resources": activity_resources
+                    })
+                
+                detailed_sessions.append({
+                    "session": session.__dict__,
+                    "activities": detailed_activities,
+                    "resources": resources
+                })
+            
+            return {
+                "course": course.__dict__,
+                "sessions": detailed_sessions,
+                "bonds": [bond.__dict__ for bond in bonds],
+                "total_sessions": len(sessions),
+                "total_bonds": len(bonds),
+                "course_structure": self._build_course_structure_text(detailed_sessions, bonds)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo contenido detallado del curso {course_id}: {e}")
+            return {}
+    
+    def _build_course_structure_text(self, detailed_sessions: List[Dict], bonds: List[Dict]) -> str:
+        """Construye texto estructurado del curso para usar en prompts."""
+        structure = []
+        
+        for i, session_data in enumerate(detailed_sessions, 1):
+            session = session_data["session"]
+            activities = session_data["activities"]
+            
+            structure.append(f"""
+**Sesión {session.get('session_index', i)}: {session.get('title', 'Sin título')}** ({session.get('duration_minutes', 0)} min)
+Objetivo: {session.get('objective', 'No especificado')}
+Actividades:""")
+            
+            for j, activity_data in enumerate(activities, 1):
+                activity = activity_data["activity"]
+                activity_type = "📝" if activity.get('item_type') == 'actividad' else "📚"
+                structure.append(f"  {activity_type} {activity.get('title_item', 'Sin título')}")
+        
+        # Agregar bonos
+        if bonds:
+            structure.append("\n**🎁 BONOS INCLUIDOS:**")
+            for i, bond in enumerate(bonds, 1):
+                structure.append(f"{i}. {bond.get('content', 'Bono disponible')}")
+        
+        return "\n".join(structure)
+    
     async def get_course_statistics(self) -> Dict[str, Any]:
         """Obtiene estadísticas generales de cursos."""
         query = """

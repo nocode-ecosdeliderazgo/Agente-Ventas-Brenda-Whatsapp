@@ -8,7 +8,7 @@ Estado: ✅ Adaptado desde sistema Telegram funcional
 Fecha: Julio 2025
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Union
 from datetime import datetime
 
 # ============================================================================
@@ -57,6 +57,31 @@ REGLAS DE ORO CRÍTICAS:
 6. ⚠️ NUNCA menciones módulos, fechas, precios o características sin confirmar en BD
 7. ⚠️ Si una consulta a BD falla o no devuelve datos, NO improvises
 8. ⚠️ Cuando hables del curso, siempre basa tu respuesta en course_info obtenido de BD
+
+INFORMACIÓN DISPONIBLE EN BASE DE DATOS:
+- ai_courses: Información básica del curso (nombre, precio, duración, nivel, modalidad)
+- ai_course_session: Sesiones detalladas con objetivos y duración específica
+- ai_tema_activity: Actividades específicas por sesión (subtemas y ejercicios prácticos)
+- bond: Bonos incluidos con descripción detallada
+- elements_url: Recursos multimedia (videos, documentos, plantillas)
+
+BONOS REALES DISPONIBLES PARA ACTIVACIÓN INTELIGENTE:
+1. **Workbook interactivo en Coda.io** - Plantillas y actividades colaborativas preconfiguradas
+2. **Acceso 100% online a grabaciones** - 4 masterclasses de 3h cada una, disponibles hasta cierre
+3. **Soporte en Telegram** - Agente de Aprende y Aplica IA para dudas y casos reales
+4. **Comunidad privada vitalicia** - Intercambio de experiencias con otros profesionales
+5. **Bolsa de empleo especializada** - Oportunidades exclusivas para expertos en IA
+6. **Biblioteca de prompts avanzada** - Más de 100 ejemplos comentados para casos empresariales
+7. **Insignia digital LinkedIn** - Certificación "Experto en IA para Profesionales"
+8. **Descuento exclusivo 10%** - En packs de integración ChatGPT y Gemini
+9. **Sesiones Q&A trimestrales** - En vivo con Ernesto Hernández, tendencias y dudas
+10. **Suscripción anual "AI Trends"** - Análisis de mercado, casos de éxito y herramientas
+
+RECURSOS MULTIMEDIA REALES POR SESIÓN:
+- Sesión 1: Grabación + Plantilla Coda.io para prácticas
+- Sesión 2: Grabación + Guía construcción agente GPT/Gemini  
+- Sesión 3: Grabación + Ejercicios modelo IMPULSO para PyMEs
+- Sesión 4: Grabación + Plantilla plan IA y métricas de impacto
 
 🎯 ESTRATEGIA DE CONVERSACIÓN ORIENTADA A PYMES:
 Tu enfoque será consultivo-empresarial, identificando rápidamente dolor específico del líder PyME y conectándolo con beneficios cuantificables del curso.
@@ -113,7 +138,7 @@ CATEGORÍAS DE RESPUESTA ADAPTADAS A BUYER PERSONAS:
 # 2. ANÁLISIS DE INTENCIÓN PARA WHATSAPP
 # ============================================================================
 
-def get_intent_analysis_prompt(user_message: str, user_memory, recent_messages: list = None) -> str:
+def get_intent_analysis_prompt(user_message: str, user_memory, recent_messages: Union[list, None] = None) -> str:
     """
     Genera el prompt para análisis de intención específico para líderes PyME en WhatsApp.
     
@@ -351,7 +376,7 @@ Esto me ayudará a mostrarte exactamente cómo otros líderes en tu situación h
 Te los envío ahora mismo. Después de revisarlos, ¿te interesaría una mini-auditoría gratuita de tus procesos para identificar qué podrías automatizar primero?"""
 
     @staticmethod
-    def business_price_objection_response(course_price: float = None, role: str = "", sector: str = "") -> str:
+    def business_price_objection_response(course_price: Union[float, None] = None, role: str = "", sector: str = "") -> str:
         """Respuesta a objeciones de precio para líderes PyME."""
         price_text = f"${course_price} USD" if course_price else "nuestra inversión"
         
@@ -482,7 +507,10 @@ def get_response_generation_prompt(
     user_message: str,
     user_memory,
     intent_analysis: Dict[str, Any],
-    context_info: str = ""
+    context_info: str = "",
+    course_detailed_info: Union[Dict[str, Any], None] = None,
+    contextual_bonuses: Union[List[Dict[str, Any]], None] = None,
+    bonus_activation_info: Union[Dict[str, Any], None] = None
 ) -> str:
     """
     Genera prompt para crear respuesta inteligente orientada a líderes PyME.
@@ -492,6 +520,9 @@ def get_response_generation_prompt(
         user_memory: Memoria empresarial del usuario
         intent_analysis: Resultado del análisis de intención empresarial
         context_info: Información adicional de contexto
+        course_detailed_info: Información detallada del curso desde BD (opcional)
+        contextual_bonuses: Lista de bonos contextuales para activar (opcional)
+        bonus_activation_info: Información sobre cuándo/cómo activar bonos (opcional)
         
     Returns:
         Prompt completo para generar respuesta empresarial
@@ -515,6 +546,76 @@ PERFIL EMPRESARIAL DEL USUARIO:
 - Automatización identificada: {user_memory.automation_needs if hasattr(user_memory, 'automation_needs') else 'Por identificar'}
 """
     
+    # Agregar información detallada del curso si está disponible
+    course_context = ""
+    if course_detailed_info:
+        course_data = course_detailed_info.get('course', {})
+        sessions_data = course_detailed_info.get('sessions', [])
+        bonds_data = course_detailed_info.get('bonds', [])
+        course_structure = course_detailed_info.get('course_structure', '')
+        
+        course_context = f"""
+INFORMACIÓN DETALLADA DEL CURSO (CONFIRMADA DE BASE DE DATOS):
+**Curso:** {course_data.get('name', 'No disponible')}
+**Precio:** ${course_data.get('price', 'No disponible')} {course_data.get('currency', 'USD')}
+**Duración:** {course_data.get('session_count', 0)} sesiones ({course_data.get('total_duration_min', 0)} minutos totales = {round(course_data.get('total_duration_min', 0)/60, 1)} horas)
+**Nivel:** {course_data.get('level', 'No especificado')}
+**Modalidad:** {course_data.get('modality', 'No especificado')}
+**Estado:** {course_data.get('status', 'No especificado')}
+**ROI Descrito:** {course_data.get('roi', 'Optimización de procesos con IA')}
+
+**ESTRUCTURA COMPLETA DEL CURSO:**
+{course_structure}
+
+**TOTAL DE BONOS:** {len(bonds_data)} bonos incluidos
+**TOTAL DE SESIONES:** {len(sessions_data)} sesiones estructuradas
+
+⚠️ OBLIGATORIO: Usa SOLO esta información verificada de BD. NO agregues datos adicionales."""
+    
+    # Agregar información de bonos contextuales si está disponible
+    bonus_context = ""
+    if contextual_bonuses and bonus_activation_info:
+        should_activate = bonus_activation_info.get('should_activate_bonuses', False)
+        conversation_context = bonus_activation_info.get('conversation_context', 'general')
+        urgency_level = bonus_activation_info.get('urgency_level', 'medium')
+        
+        if should_activate:
+            bonus_context = f"""
+SISTEMA DE BONOS CONTEXTUALES ACTIVADO:
+**Contexto detectado:** {conversation_context}
+**Nivel de urgencia:** {urgency_level}
+**Bonos priorizados para este usuario:**
+
+"""
+            for i, bonus in enumerate(contextual_bonuses[:4], 1):
+                content = bonus.get('content', 'Bono disponible')
+                priority_reason = bonus.get('priority_reason', '')
+                sales_angle = bonus.get('sales_angle', '')
+                
+                bonus_context += f"""
+**Bono {i}: {content}**
+- Razón de prioridad: {priority_reason}
+- Ángulo de ventas: {sales_angle}
+"""
+            
+            bonus_context += f"""
+**INSTRUCCIONES PARA USO DE BONOS:**
+1. 🎯 ACTIVA bonos estratégicamente según el contexto de conversación
+2. 💡 CONECTA cada bono con el dolor específico del usuario
+3. 🚀 USA los ángulos de ventas proporcionados para personalizar
+4. 📊 ENFATIZA el valor económico: "Más de $2,000 en bonos incluidos GRATIS"
+5. ⚡ Si es objeción de precio/valor, DESTACA los bonos como justificación
+6. 🎁 PRESENTA máximo 4 bonos para no saturar (ya priorizados)
+7. 💼 ADAPTA el lenguaje al nivel ejecutivo del buyer persona
+
+**CONTEXTOS DE ACTIVACIÓN PRIORITARIA:**
+- Objeción de precio → Bonos 8, 2, 4 (Descuentos, Grabaciones, Comunidad)
+- Objeción de valor → Bonos 1, 6, 5 (Workbook, Biblioteca, Bolsa empleo)
+- Señales de compra → Bonos 8, 2, 4, 1 (Descuentos, Grabaciones, Comunidad, Workbook)
+- Miedo técnico → Bonos 3, 1, 6 (Soporte, Workbook, Biblioteca)
+- Crecimiento profesional → Bonos 5, 7, 4 (Bolsa empleo, LinkedIn, Comunidad)
+"""
+    
     return f"""
 {SYSTEM_PROMPT}
 
@@ -535,6 +636,10 @@ ANÁLISIS DE INTENCIÓN EMPRESARIAL:
 
 {context_info}
 
+{course_context}
+
+{bonus_context}
+
 INSTRUCCIONES ESPECÍFICAS PARA LÍDERES PYME:
 1. Responde como consultora empresarial especializada en IA para PyMEs
 2. Usa lenguaje ejecutivo: enfócate en ROI, eficiencia, competitividad
@@ -543,7 +648,9 @@ INSTRUCCIONES ESPECÍFICAS PARA LÍDERES PYME:
 5. Incluye ejemplos de casos de éxito similares a su situación
 6. Mantén el mensaje entre 150-250 palabras (ejecutivos necesitan más contexto)
 7. Incluye call-to-action empresarial claro (demo, auditoría, consulta)
-8. NO inventes datos técnicos - usa solo información confirmada de BD
+8. ⚠️ CRÍTICO: USA SOLO información del curso confirmada de BD arriba
+9. Si mencionas sesiones, actividades o bonos, usa EXACTAMENTE los datos de BD
+10. Si no tienes información específica en BD, di "déjame consultar esa información"
 
 RESPONDE COMO BRENDA - CONSULTORA IA PARA PYMES:
 """
@@ -575,7 +682,7 @@ if __name__ == "__main__":
 # 7. VALIDADOR ANTI-ALUCINACIÓN
 # ============================================================================
 
-def get_validation_prompt(response: str, course_data: dict, bonuses_data: list = None, all_courses_data: list = None):
+def get_validation_prompt(response: str, course_data: dict, bonuses_data: Union[list, None] = None, all_courses_data: Union[list, None] = None):
     """
     Genera prompt para validador permisivo anti-alucinación.
     
@@ -721,7 +828,7 @@ Responde SOLO con JSON:
 # 9. CONSTRUCCIÓN DE CONTEXTO DEL AGENTE (DEL LEGACY)
 # ============================================================================
 
-def build_agent_context(user_memory, intent_analysis: dict, course_info: dict = None, automation_info: str = ""):
+def build_agent_context(user_memory, intent_analysis: dict, course_info: Union[dict, None] = None, automation_info: str = ""):
     """
     Construye el contexto completo para el agente principal.
     

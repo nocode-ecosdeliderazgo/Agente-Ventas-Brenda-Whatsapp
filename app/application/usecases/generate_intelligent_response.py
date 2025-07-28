@@ -7,10 +7,11 @@ from typing import Dict, Any, Optional
 
 from app.application.usecases.analyze_message_intent import AnalyzeMessageIntentUseCase
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
+# from app.application.usecases.bonus_activation_use_case import BonusActivationUseCase  # Comentado temporalmente
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.infrastructure.openai.client import OpenAIClient
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
-from prompts.agent_prompts import WhatsAppMessageTemplates
+from prompts.agent_prompts import WhatsAppMessageTemplates, get_response_generation_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class GenerateIntelligentResponseUseCase:
             
             if not analysis_result['success']:
                 debug_print(f"❌ FALLO ANÁLISIS DE INTENCIÓN: {analysis_result.get('error')}", "execute", "generate_intelligent_response.py")
-                response_text = WhatsAppMessageTemplates.error_fallback()
+                response_text = WhatsAppMessageTemplates.business_error_fallback()
                 debug_print(f"🔄 Usando respuesta de FALLBACK: {response_text}", "execute", "generate_intelligent_response.py")
             else:
                 debug_print(f"✅ Análisis completado - Intención: {analysis_result.get('intent_analysis', {}).get('category', 'N/A')}", "execute", "generate_intelligent_response.py")
@@ -136,7 +137,7 @@ class GenerateIntelligentResponseUseCase:
             self.logger.error(f"💥 Error generando respuesta inteligente: {e}")
             
             # Enviar respuesta de fallback
-            fallback_response = WhatsAppMessageTemplates.error_fallback()
+            fallback_response = WhatsAppMessageTemplates.business_error_fallback()
             fallback_result = await self._send_response(
                 incoming_message.from_number, fallback_response
             )
@@ -159,72 +160,178 @@ class GenerateIntelligentResponseUseCase:
         user_id: str
     ) -> str:
         """
-        Genera respuesta contextual basada en análisis de intención.
-        
-        Args:
-            analysis_result: Resultado del análisis de intención
-            incoming_message: Mensaje entrante original
-            user_id: ID del usuario
-            
-        Returns:
-            Texto de respuesta generado
+        Genera respuesta contextual con activación inteligente de bonos.
         """
-        intent_analysis = analysis_result.get('intent_analysis', {})
-        user_memory = analysis_result.get('updated_memory')
-        category = intent_analysis.get('category', 'GENERAL_QUESTION')
-        
-        # Si se debe usar respuesta de IA y está disponible
-        if (analysis_result.get('should_use_ai_response', False) and 
-            analysis_result.get('generated_response')):
-            # Validar respuesta de IA antes de enviarla
-            ai_response = analysis_result['generated_response']
-            debug_print(f"🛡️ Validando respuesta de IA...", "_generate_contextual_response", "generate_intelligent_response.py")
+        try:
+            intent_analysis = analysis_result.get('intent_analysis', {})
+            category = intent_analysis.get('category', 'general')
+            user_memory = analysis_result.get('user_memory')
             
-            # Obtener datos de curso para validación si es relevante para cursos
-            course_data = {}
-            if category in ['EXPLORATION', 'BUYING_SIGNALS'] and self.course_system_available:
-                try:
-                    # Buscar curso recomendado para validación
-                    recommended_courses = await self.course_query_use_case.get_recommended_courses(
-                        user_interests=user_memory.interests if user_memory and user_memory.interests else [],
-                        limit=1
-                    )
-                    if recommended_courses:
-                        course_data = recommended_courses[0]
-                except Exception as e:
-                    debug_print(f"⚠️ Error obteniendo datos de curso para validación: {e}", "_generate_contextual_response", "generate_intelligent_response.py")
+            debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
             
-            # Validar respuesta
-            validation_result = await self.openai_client.validate_response(
-                response=ai_response,
-                course_data=course_data
+            # 1. Activar sistema de bonos inteligente
+            bonus_activation_result = await self._activate_intelligent_bonuses(
+                category, user_memory, incoming_message, user_id
             )
             
-            debug_print(f"🔍 Validación completada - Es válida: {validation_result.get('is_valid', True)}", "_generate_contextual_response", "generate_intelligent_response.py")
+            # 2. Generar respuesta con bonos contextuales
+            response_text = await self._generate_response_with_bonuses(
+                category, user_memory, incoming_message, user_id, bonus_activation_result
+            )
             
-            if validation_result.get('is_valid', True):
-                # Si hay respuesta corregida, usar esa
-                if validation_result.get('corrected_response'):
-                    debug_print("✏️ Usando respuesta corregida por validador", "_generate_contextual_response", "generate_intelligent_response.py")
-                    return validation_result['corrected_response']
-                else:
-                    debug_print("✅ Respuesta de IA aprobada sin cambios", "_generate_contextual_response", "generate_intelligent_response.py")
-                    return ai_response
-            else:
-                debug_print(f"❌ Respuesta de IA rechazada: {validation_result.get('explanation', 'Sin explicación')}", "_generate_contextual_response", "generate_intelligent_response.py")
-                debug_print("🔄 Cayendo a templates como fallback", "_generate_contextual_response", "generate_intelligent_response.py")
-                # Caer a templates si la validación falla
-        
-        # Agregar información de cursos si es relevante
-        enhanced_response = await self._enhance_response_with_course_info(
-            category, user_memory, incoming_message, user_id
-        )
-        
-        if enhanced_response:
-            return enhanced_response
-        
-        # Usar templates específicos por categoría
-        return self._get_template_response(category, user_memory, incoming_message)
+            return response_text
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error en generación contextual: {e}")
+            return WhatsAppMessageTemplates.business_error_fallback()
+
+    async def _activate_intelligent_bonuses(
+        self,
+        category: str,
+        user_memory,
+        incoming_message: IncomingMessage,
+        user_id: str
+    ) -> Dict[str, Any]:
+        """
+        Activa sistema de bonos inteligente basado en contexto del usuario.
+        """
+        try:
+            # Inicializar caso de uso de bonos si no existe
+            # if not hasattr(self, 'bonus_activation_use_case'):
+            #     self.bonus_activation_use_case = BonusActivationUseCase()
+            
+            debug_print(f"🎁 Activando bonos para categoría: {category}", "_activate_intelligent_bonuses")
+            
+            # Obtener información del usuario
+            user_name = user_memory.name if user_memory else "Usuario"
+            user_role = user_memory.role if user_memory else "Profesional"
+            message_text = incoming_message.body.lower()
+            
+            # Determinar contexto de conversación
+            conversation_context = self._determine_conversation_context(category, message_text)
+            urgency_level = self._determine_urgency_level(category, user_memory)
+            
+            # Activar bonos contextuales (simulado sin base de datos)
+            # Por ahora, simular bonos contextuales sin depender de la BD
+            contextual_bonuses = [
+                {
+                    "name": "Workbook Interactivo Coda.io",
+                    "description": "Plantillas y actividades colaborativas preconfiguradas",
+                    "priority_reason": "Ideal para tu rol",
+                    "sales_angle": "Acelera la implementación"
+                },
+                {
+                    "name": "Biblioteca de Prompts Avanzada", 
+                    "description": "Más de 100 ejemplos comentados para casos empresariales",
+                    "priority_reason": "Perfecto para crear contenido",
+                    "sales_angle": "Ahorra horas de trabajo semanal"
+                }
+            ]
+            
+            bonus_result = {
+                'should_activate': True,
+                'contextual_bonuses': contextual_bonuses
+            }
+            
+            debug_print(f"✅ Bonos activados: {len(bonus_result.get('contextual_bonuses', []))} bonos priorizados", "_activate_intelligent_bonuses")
+            
+            return {
+                'should_activate_bonuses': bonus_result.get('should_activate', False),
+                'conversation_context': conversation_context,
+                'urgency_level': urgency_level,
+                'contextual_bonuses': bonus_result.get('contextual_bonuses', []),
+                'bonus_activation_info': bonus_result
+            }
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error activando bonos: {e}")
+            return {
+                'should_activate_bonuses': False,
+                'conversation_context': 'general',
+                'urgency_level': 'low',
+                'contextual_bonuses': [],
+                'bonus_activation_info': {}
+            }
+
+    def _determine_conversation_context(self, category: str, message_text: str) -> str:
+        """
+        Determina el contexto de conversación para activación de bonos.
+        """
+        if any(word in message_text for word in ['precio', 'costo', 'caro', 'inversión']):
+            return 'price_objection'
+        elif any(word in message_text for word in ['valor', 'beneficio', 'roi', 'resultado']):
+            return 'value_objection'
+        elif any(word in message_text for word in ['comprar', 'adquirir', 'inscribir', 'empezar']):
+            return 'buying_signals'
+        elif any(word in message_text for word in ['difícil', 'complejo', 'técnico', 'miedo']):
+            return 'technical_fear'
+        elif any(word in message_text for word in ['crecer', 'desarrollar', 'progresar', 'carrera']):
+            return 'career_growth'
+        else:
+            return 'general'
+
+    def _determine_urgency_level(self, category: str, user_memory) -> str:
+        """
+        Determina el nivel de urgencia para activación de bonos.
+        """
+        if category in ['buying_signals', 'price_objection', 'value_objection']:
+            return 'high'
+        elif category in ['automation_needs', 'career_growth']:
+            return 'medium'
+        else:
+            return 'low'
+
+    async def _generate_response_with_bonuses(
+        self,
+        category: str,
+        user_memory,
+        incoming_message: IncomingMessage,
+        user_id: str,
+        bonus_activation_result: Dict[str, Any]
+    ) -> str:
+        """
+        Genera respuesta integrando bonos contextuales.
+        """
+        try:
+            # Por ahora, usar template básico con información de bonos
+            user_name = user_memory.name if user_memory else "Usuario"
+            user_role = user_memory.role if user_memory else "Profesional"
+            
+            # Generar respuesta básica con información de bonos
+            base_response = self._get_template_response(category, user_memory, incoming_message)
+            
+            # Agregar información de bonos si está disponible
+            if bonus_activation_result.get('should_activate_bonuses', False):
+                bonus_info = self._format_bonus_information(bonus_activation_result)
+                if bonus_info:
+                    base_response += f"\n\n{bonus_info}"
+            
+            return base_response
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error generando respuesta con bonos: {e}")
+            return self._get_template_response(category, user_memory, incoming_message)
+
+    def _format_bonus_information(self, bonus_activation_result: Dict[str, Any]) -> str:
+        """
+        Formatea información de bonos para incluir en la respuesta.
+        """
+        try:
+            contextual_bonuses = bonus_activation_result.get('contextual_bonuses', [])
+            if not contextual_bonuses:
+                return ""
+            
+            bonus_text = "\n🎁 **BONOS INCLUIDOS:**\n"
+            for i, bonus in enumerate(contextual_bonuses[:3], 1):
+                content = bonus.get('content', 'Bono disponible')
+                bonus_text += f"• {content}\n"
+            
+            bonus_text += "\n💡 **Valor total:** Más de $2,000 USD en bonos adicionales incluidos GRATIS."
+            return bonus_text
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error formateando información de bonos: {e}")
+            return ""
     
     def _get_template_response(
         self,
@@ -248,9 +355,9 @@ class GenerateIntelligentResponseUseCase:
         
         # Mapeo de categorías a templates
         template_map = {
-            'FREE_RESOURCES': lambda: WhatsAppMessageTemplates.free_resources_offer(user_name, user_role),
-            'CONTACT_REQUEST': lambda: WhatsAppMessageTemplates.contact_advisor_transition(),
-            'OBJECTION_PRICE': lambda: WhatsAppMessageTemplates.price_objection_response(role=user_role),
+            'FREE_RESOURCES': lambda: WhatsAppMessageTemplates.business_resources_offer(user_name, user_role),
+            'CONTACT_REQUEST': lambda: WhatsAppMessageTemplates.executive_advisor_transition(user_name, user_role),
+            'OBJECTION_PRICE': lambda: WhatsAppMessageTemplates.business_price_objection_response(role=user_role),
             'EXPLORATION': lambda: self._get_exploration_response(user_name, user_role),
             'AUTOMATION_NEED': lambda: self._get_automation_response(user_name, user_role),
             'BUYING_SIGNALS': lambda: self._get_buying_signals_response(user_name),
@@ -265,13 +372,13 @@ class GenerateIntelligentResponseUseCase:
         if not user_name and category != 'CONTACT_REQUEST':
             # Si no tenemos nombre, pedirlo primero
             if user_memory and user_memory.interaction_count == 1:
-                return WhatsAppMessageTemplates.welcome_new_user()
+                return WhatsAppMessageTemplates.welcome_new_business_user()
             else:
-                return WhatsAppMessageTemplates.name_request()
+                return WhatsAppMessageTemplates.executive_name_request()
         
         if user_name and not user_role and category not in ['CONTACT_REQUEST', 'FREE_RESOURCES']:
             # Si tenemos nombre pero no profesión
-            return WhatsAppMessageTemplates.profession_inquiry(user_name)
+            return WhatsAppMessageTemplates.business_role_inquiry(user_name)
         
         # Usar template correspondiente o respuesta general
         template_func = template_map.get(category, template_map['GENERAL_QUESTION'])
@@ -561,58 +668,73 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
         name_part = f"{user_name}, " if user_name else ""
         
         try:
-            # Buscar cursos recomendados
-            recommended_courses = await self.course_query_use_case.get_recommended_courses(
-                user_interests=user_interests,
-                limit=2
-            )
+            # Por ahora, usar respuesta estándar sin base de datos
+            return self._get_standard_course_response(category, user_name)
             
-            if not recommended_courses:
-                # Si no hay cursos en BD, usar respuesta estándar
-                return self._get_standard_course_response(category, user_name)
+            # # Buscar cursos recomendados (comentado temporalmente)
+            # recommended_courses = await self.course_query_use_case.get_recommended_courses(
+            #     user_interests=user_interests,
+            #     limit=1  # Solo 1 curso para evitar respuestas muy largas
+            # )
             
-            # Formatear cursos para chat
-            courses_text = ""
-            for i, course in enumerate(recommended_courses, 1):
-                course_formatted = await self.course_query_use_case.format_course_for_chat(course)
-                courses_text += f"\n\n**{i}. {course_formatted}**"
+            # if not recommended_courses:
+            #     # Si no hay cursos en BD, usar respuesta estándar
+            #     return self._get_standard_course_response(category, user_name)
             
-            # Respuesta según categoría
+            # # Obtener información detallada del curso principal
+            # main_course = recommended_courses[0]
+            # detailed_content = await self.course_query_use_case.get_course_detailed_content(
+            #     main_course.id_course
+            # )
+            
+            # # Si tenemos información detallada, usar formateo especializado
+            # if detailed_content:
+            #     course_formatted = await self.course_query_use_case.format_detailed_course_for_chat(
+            #         detailed_content
+            #     )
+            # else:
+            #     # Fallback al formato básico
+            #     course_formatted = await self.course_query_use_case.format_course_for_chat(main_course)
+            
+            # Respuesta según categoría con información detallada
             if category == 'EXPLORATION':
                 return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
 
-Te muestro nuestros cursos más populares:{courses_text}
+**📚 CURSO RECOMENDADO PARA TI:**
+{course_formatted}
 
-**📚 También puedo ofrecerte:**
+**💡 También puedo ofrecerte:**
 • Recursos gratuitos para empezar hoy
-• Consultoría personalizada
-• Conexión con graduados exitosos
+• Consultoría personalizada  
+• Casos de éxito similares a tu perfil
 
-¿Alguno de estos cursos te llama la atención?"""
+¿Te gustaría conocer más detalles de alguna sesión específica?"""
             
             elif category == 'BUYING_SIGNALS':
                 return f"""Me da mucho gusto tu interés{', ' + name_part if name_part else ''}! 🚀
 
-**🎯 Cursos perfectos para ti:**{courses_text}
+**🎯 CURSO PERFECTO PARA TU PERFIL:**
+{course_formatted}
 
-**💡 Para facilitar tu decisión:**
+**📞 Para facilitar tu decisión:**
 • Puedo conectarte con un asesor especializado
-• Mostrarte testimonios de graduados
+• Mostrarte la plataforma en acción
 • Explicarte nuestras opciones de pago
 
-¿Te gustaría hablar con un asesor sobre alguno de estos cursos?"""
+¿Te gustaría agendar una demo personalizada?"""
             
             else:  # GENERAL_QUESTION, AUTOMATION_NEED, PROFESSION_CHANGE
                 return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
 
-**📚 Cursos recomendados para ti:**{courses_text}
+**📚 CURSO IDEAL PARA TU ÁREA:**
+{course_formatted}
 
-**🎯 Estos cursos te ayudarán a:**
-• Dominar IA aplicada a tu área
-• Automatizar procesos repetitivos
-• Diferenciarte en el mercado laboral
+**🎯 Con este curso lograrás:**
+• Dominar IA aplicada específicamente a tu sector
+• Automatizar los procesos que más tiempo te consumen
+• Diferenciarte con tecnología de vanguardia
 
-¿Te gustaría más información sobre alguno de estos cursos?"""
+¿Qué aspecto del curso te gustaría profundizar?"""
         
         except Exception as e:
             self.logger.error(f"Error generando respuesta con cursos: {e}")

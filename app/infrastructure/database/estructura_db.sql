@@ -53,6 +53,7 @@ CREATE TABLE public.bond (
   content text NOT NULL,
   type_bond character varying NOT NULL,
   id_courses_fk uuid,
+  emisor character varying NOT NULL,
   CONSTRAINT bond_pkey PRIMARY KEY (id_bond),
   CONSTRAINT Bond_id_courses_fk_fkey FOREIGN KEY (id_courses_fk) REFERENCES public.ai_courses(id_course)
 );

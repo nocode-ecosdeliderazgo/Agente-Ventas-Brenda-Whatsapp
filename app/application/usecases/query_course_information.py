@@ -83,6 +83,30 @@ class QueryCourseInformationUseCase:
             logger.error(f"Error obteniendo detalles del curso {course_id}: {e}")
             return None
     
+    async def get_course_detailed_content(self, course_id: UUID) -> Dict[str, Any]:
+        """
+        Obtiene contenido detallado completo de un curso para usar en prompts.
+        Incluye toda la información estructural: sesiones, actividades, bonos, recursos.
+        
+        Args:
+            course_id: ID del curso
+        
+        Returns:
+            Diccionario con información detallada para prompts o {} si no existe
+        """
+        try:
+            detailed_content = await self.course_repo.get_course_detailed_content(course_id)
+            if detailed_content:
+                logger.info(f"📚 Contenido detallado obtenido para curso {course_id}")
+                logger.info(f"   - {detailed_content.get('total_sessions', 0)} sesiones")
+                logger.info(f"   - {detailed_content.get('total_bonds', 0)} bonos")
+            else:
+                logger.warning(f"❌ Contenido detallado del curso {course_id} no encontrado")
+            return detailed_content
+        except Exception as e:
+            logger.error(f"Error obteniendo contenido detallado del curso {course_id}: {e}")
+            return {}
+    
     async def get_courses_by_level(self, level: str, limit: int = 5) -> List[Course]:
         """
         Obtiene cursos filtrados por nivel.
@@ -289,3 +313,80 @@ class QueryCourseInformationUseCase:
             formatted_courses.append(f"{i}. {course_text}")
         
         return "\n\n".join(formatted_courses)
+    
+    async def format_detailed_course_for_chat(self, detailed_content: Dict[str, Any]) -> str:
+        """
+        Formatea información detallada de un curso para mostrar en el chat.
+        
+        Args:
+            detailed_content: Diccionario con información detallada del curso
+        
+        Returns:
+            Texto formateado para WhatsApp con información completa
+        """
+        if not detailed_content:
+            return "No se pudo obtener información detallada del curso."
+        
+        try:
+            course_data = detailed_content.get('course', {})
+            sessions_data = detailed_content.get('sessions', [])
+            bonds_data = detailed_content.get('bonds', [])
+            
+            parts = []
+            
+            # Información básica del curso
+            if course_data.get('name'):
+                parts.append(f"📚 **{course_data['name']}**")
+            
+            if course_data.get('short_description'):
+                parts.append(f"📝 {course_data['short_description']}")
+            
+            # Detalles del curso
+            details = []
+            if course_data.get('price') and course_data.get('currency'):
+                details.append(f"💰 {course_data['price']} {course_data['currency']}")
+            if course_data.get('session_count'):
+                duration_hours = round(course_data.get('total_duration_min', 0) / 60, 1)
+                details.append(f"🗓️ {course_data['session_count']} sesiones ({duration_hours}h)")
+            if course_data.get('level'):
+                details.append(f"📊 {course_data['level']}")
+            if course_data.get('modality'):
+                details.append(f"💻 {course_data['modality']}")
+            
+            if details:
+                parts.append(" | ".join(details))
+            
+            # Estructura del curso (primeras 3 sesiones para no saturar)
+            if sessions_data:
+                parts.append("\n**📋 ESTRUCTURA DEL CURSO:**")
+                for i, session_data in enumerate(sessions_data[:3], 1):
+                    session = session_data.get('session', {})
+                    session_title = session.get('title', f'Sesión {i}')
+                    session_duration = session.get('duration_minutes', 0)
+                    activities_count = len(session_data.get('activities', []))
+                    
+                    parts.append(f"**Sesión {i}: {session_title}** ({session_duration} min)")
+                    if activities_count > 0:
+                        parts.append(f"   • {activities_count} actividades prácticas")
+                
+                if len(sessions_data) > 3:
+                    parts.append(f"   ... y {len(sessions_data) - 3} sesiones más")
+            
+            # Bonos (primeros 5 para no saturar)
+            if bonds_data:
+                parts.append(f"\n**🎁 BONOS INCLUIDOS ({len(bonds_data)} total):**")
+                for i, bond in enumerate(bonds_data[:5], 1):
+                    bond_content = bond.get('content', 'Bono disponible')
+                    # Truncar si es muy largo
+                    if len(bond_content) > 60:
+                        bond_content = bond_content[:60] + "..."
+                    parts.append(f"{i}. {bond_content}")
+                
+                if len(bonds_data) > 5:
+                    parts.append(f"   ... y {len(bonds_data) - 5} bonos más")
+            
+            return "\n".join(parts)
+            
+        except Exception as e:
+            logger.error(f"Error formateando curso detallado para chat: {e}")
+            return "Error al formatear la información del curso."
