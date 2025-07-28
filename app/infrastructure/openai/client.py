@@ -82,7 +82,11 @@ class OpenAIClient:
                 ]
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            if content:
+                content = content.strip()
+            else:
+                content = ""
             debug_print(f"📥 RESPUESTA CRUDA DE OPENAI:\n{content}", "analyze_intent", "openai_client.py")
             
             # Intentar parsear JSON
@@ -154,7 +158,16 @@ class OpenAIClient:
                 ]
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            if content:
+                content = content.strip()
+            else:
+                content = ""
+            
+            # Verificar si la respuesta está vacía
+            if not content:
+                self.logger.warning("⚠️ Respuesta vacía de OpenAI para extracción de información")
+                return {}
             
             try:
                 extracted_data = json.loads(content)
@@ -162,6 +175,7 @@ class OpenAIClient:
                 return extracted_data
             except json.JSONDecodeError as e:
                 self.logger.error(f"❌ Error parseando JSON de extracción: {e}")
+                self.logger.error(f"📄 Contenido recibido: '{content}'")
                 return {}
                 
         except Exception as e:
@@ -204,7 +218,11 @@ class OpenAIClient:
                 ]
             )
             
-            generated_response = response.choices[0].message.content.strip()
+            generated_response = response.choices[0].message.content
+            if generated_response:
+                generated_response = generated_response.strip()
+            else:
+                generated_response = ""
             
             # Validar que la respuesta no esté vacía
             if not generated_response:
@@ -292,10 +310,14 @@ Gracias por escribir. Estoy aquí para ayudarte con todo lo relacionado a nuestr
                 user_message, user_memory, recent_messages
             )
             
-            # 2. Extraer información (en paralelo)
-            extracted_info = await self.extract_information(
-                user_message, user_memory
-            )
+            # 2. Extraer información (con manejo de errores mejorado)
+            try:
+                extracted_info = await self.extract_information(
+                    user_message, user_memory
+                )
+            except Exception as extraction_error:
+                self.logger.warning(f"⚠️ Error en extracción de información: {extraction_error}")
+                extracted_info = {}
             
             # 3. Generar respuesta basada en intención
             response = await self.generate_response(

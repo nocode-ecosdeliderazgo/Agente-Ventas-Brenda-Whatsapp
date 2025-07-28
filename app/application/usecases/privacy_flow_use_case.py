@@ -83,6 +83,10 @@ class PrivacyFlowUseCase:
                 debug_print("⏳ Esperando nombre personalizado del usuario", "handle_privacy_flow")
                 return await self._handle_name_response(user_id, incoming_message, user_memory)
             
+            elif user_memory.waiting_for_response == "user_role":
+                debug_print("⏳ Esperando rol/cargo del usuario", "handle_privacy_flow")
+                return await self._handle_role_response(user_id, incoming_message, user_memory)
+            
             else:
                 debug_print("❌ Usuario no está en flujo de privacidad", "handle_privacy_flow")
                 return {
@@ -380,6 +384,44 @@ class PrivacyFlowUseCase:
             debug_print(f"💥 ERROR PROCESANDO NOMBRE: {e}", "_handle_name_response")
             raise
     
+    async def _handle_role_response(
+        self,
+        user_id: str,
+        incoming_message: IncomingMessage,
+        user_memory: LeadMemory
+    ) -> Dict[str, Any]:
+        """
+        Maneja la respuesta del usuario con su rol/cargo.
+        
+        Args:
+            user_id: ID del usuario
+            incoming_message: Mensaje con el rol
+            user_memory: Memoria actual del usuario
+            
+        Returns:
+            Resultado del procesamiento
+        """
+        try:
+            debug_print(f"👔 Procesando rol del usuario: '{incoming_message.body}'", "_handle_role_response")
+            
+            # Actualizar memoria con el mensaje
+            self.memory_use_case.update_user_memory(user_id, incoming_message)
+            
+            # Extraer y validar el rol
+            user_role = self._extract_user_role(incoming_message.body)
+            debug_print(f"🔍 Rol extraído: {user_role or 'No válido'}", "_handle_role_response")
+            
+            if user_role:
+                debug_print(f"✅ Rol válido recibido: {user_role}", "_handle_role_response")
+                return await self._complete_role_collection(user_id, incoming_message.from_number, user_role)
+            else:
+                debug_print("❌ Rol no válido - pidiendo rol nuevamente", "_handle_role_response")
+                return await self._request_role_again(user_id, incoming_message.from_number)
+        
+        except Exception as e:
+            debug_print(f"💥 ERROR PROCESANDO ROL: {e}", "_handle_role_response")
+            raise
+    
     async def _complete_privacy_flow(
         self,
         user_id: str,
@@ -387,7 +429,7 @@ class PrivacyFlowUseCase:
         user_name: str
     ) -> Dict[str, Any]:
         """
-        Completa el flujo de privacidad con el nombre del usuario.
+        Completa el flujo de privacidad con el nombre del usuario y solicita el rol.
         
         Args:
             user_id: ID del usuario
@@ -402,25 +444,24 @@ class PrivacyFlowUseCase:
         # Actualizar nombre en memoria
         updated_memory = self.memory_use_case.update_user_name(user_id, user_name)
         
-        # Iniciar flujo del agente de ventas
-        self.memory_use_case.start_sales_agent_flow(user_id)
-        debug_print("🤖 Flujo de agente de ventas iniciado", "_complete_privacy_flow")
+        # Configurar para esperar respuesta del rol
+        self.memory_use_case.set_waiting_for_response(user_id, "user_role")
+        debug_print("⏳ Configurado para esperar rol del usuario", "_complete_privacy_flow")
         
-        # Enviar mensaje de confirmación y bienvenida
+        # Enviar mensaje de confirmación y solicitud de rol
         confirmation_message = self.templates.name_confirmed(user_name)
         send_result = await self._send_message(user_number, confirmation_message)
         
         if send_result:
-            debug_print("✅ Flujo de privacidad completado exitosamente", "_complete_privacy_flow")
+            debug_print("✅ Mensaje de confirmación enviado, esperando rol", "_complete_privacy_flow")
             return {
                 'success': True,
-                'in_privacy_flow': False,  # Flujo completado
-                'stage': 'privacy_flow_completed',
+                'in_privacy_flow': True,  # Aún en flujo esperando rol
+                'stage': 'waiting_for_role',
                 'user_name': user_name,
                 'privacy_accepted': True,
-                'ready_for_sales_agent': True,
-                'message_sent': True,
-                'flow_completed': True
+                'waiting_for_response': 'user_role',
+                'message_sent': True
             }
         else:
             debug_print("❌ Error enviando confirmación", "_complete_privacy_flow")
@@ -467,6 +508,167 @@ class PrivacyFlowUseCase:
                 'in_privacy_flow': True,
                 'error': 'Failed to send name reminder'
             }
+    
+    def _extract_user_role(self, message_text: str) -> Optional[str]:
+        """
+        Extrae el rol/cargo del usuario del mensaje.
+        
+        Args:
+            message_text: Texto del mensaje del usuario
+            
+        Returns:
+            Rol extraído o None si no es válido
+        """
+        try:
+            # Limpiar y normalizar el texto
+            text = message_text.strip().lower()
+            
+            # Mapeo de roles comunes
+            role_mapping = {
+                'marketing': 'Marketing Digital',
+                'marketing digital': 'Marketing Digital',
+                'operaciones': 'Operaciones',
+                'ventas': 'Ventas',
+                'recursos humanos': 'Recursos Humanos',
+                'rh': 'Recursos Humanos',
+                'ceo': 'CEO/Founder',
+                'founder': 'CEO/Founder',
+                'fundador': 'CEO/Founder',
+                'innovación': 'Innovación/Transformación Digital',
+                'transformación digital': 'Innovación/Transformación Digital',
+                'análisis de datos': 'Análisis de Datos',
+                'bi': 'Análisis de Datos',
+                'analytics': 'Análisis de Datos'
+            }
+            
+            # Buscar coincidencias
+            for key, role in role_mapping.items():
+                if key in text:
+                    return role
+            
+            # Si no hay coincidencia exacta, devolver el texto original capitalizado
+            if len(text) > 2:  # Al menos 3 caracteres
+                return message_text.strip().title()
+            
+            return None
+            
+        except Exception as e:
+            debug_print(f"💥 ERROR EXTRAYENDO ROL: {e}", "_extract_user_role")
+            return None
+    
+    async def _complete_role_collection(
+        self,
+        user_id: str,
+        user_number: str,
+        user_role: str
+    ) -> Dict[str, Any]:
+        """
+        Completa la recolección del rol y inicia el flujo de ventas.
+        
+        Args:
+            user_id: ID del usuario
+            user_number: Número de WhatsApp del usuario
+            user_role: Rol validado del usuario
+            
+        Returns:
+            Resultado del procesamiento
+        """
+        debug_print(f"🎉 Completando recolección de rol: {user_role}", "_complete_role_collection")
+        
+        # Actualizar rol en memoria
+        updated_memory = self.memory_use_case.update_user_role(user_id, user_role)
+        
+        # Iniciar flujo del agente de ventas
+        self.memory_use_case.start_sales_agent_flow(user_id)
+        debug_print("🤖 Flujo de agente de ventas iniciado", "_complete_role_collection")
+        
+        # Enviar mensaje de bienvenida personalizado
+        welcome_message = f"""¡Perfecto! 🎯
+
+Ahora que sé que te desempeñas en **{user_role}**, puedo ofrecerte una asesoría mucho más específica.
+
+**¿En qué puedo ayudarte hoy?**
+
+Te puedo ayudar con:
+🤖 **Información sobre nuestros cursos de IA**
+📚 **Recursos gratuitos para empezar**
+🎯 **Consultas sobre automatización y IA aplicada**
+👥 **Conectarte con nuestro equipo de asesores**
+
+¡Solo escríbeme lo que te interesa! 😊"""
+        
+        send_result = await self._send_message(user_number, welcome_message)
+        
+        if send_result:
+            debug_print("✅ Flujo completado exitosamente", "_complete_role_collection")
+            return {
+                'success': True,
+                'in_privacy_flow': False,  # Flujo completado
+                'stage': 'privacy_flow_completed',
+                'user_role': user_role,
+                'privacy_accepted': True,
+                'ready_for_sales_agent': True,
+                'message_sent': True,
+                'flow_completed': True
+            }
+        else:
+            debug_print("❌ Error enviando bienvenida", "_complete_role_collection")
+            return {
+                'success': True,
+                'in_privacy_flow': True,
+                'error': 'Failed to send welcome message'
+            }
+    
+    async def _request_role_again(
+        self,
+        user_id: str,
+        user_number: str
+    ) -> Dict[str, Any]:
+        """
+        Solicita el rol nuevamente cuando no es válido.
+        
+        Args:
+            user_id: ID del usuario
+            user_number: Número de WhatsApp del usuario
+            
+        Returns:
+            Resultado del procesamiento
+        """
+        try:
+            debug_print("🔄 Solicitando rol nuevamente", "_request_role_again")
+            
+            # Enviar mensaje de recordatorio
+            reminder_message = """Por favor, ¿podrías decirme en qué área de tu empresa te desempeñas?
+
+Por ejemplo:
+• **Marketing Digital** (agencias, e-commerce)
+• **Operaciones** (manufactura, logística)
+• **Ventas** (B2B, consultoría)
+• **Recursos Humanos** (reclutamiento, capacitación)
+• **Innovación/Transformación Digital** (CEO, fundadores)
+• **Análisis de Datos** (BI, analytics)
+
+Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector específico. 😊"""
+            
+            send_result = await self._send_message(user_number, reminder_message)
+            
+            if send_result:
+                return {
+                    'success': True,
+                    'in_privacy_flow': True,
+                    'waiting_for_response': 'user_role',
+                    'message_sent': True
+                }
+            else:
+                return {
+                    'success': False,
+                    'in_privacy_flow': True,
+                    'error': 'Failed to send role reminder'
+                }
+        
+        except Exception as e:
+            debug_print(f"💥 ERROR SOLICITANDO ROL: {e}", "_request_role_again")
+            raise
     
     async def _send_message(self, to_number: str, message_text: str) -> bool:
         """
