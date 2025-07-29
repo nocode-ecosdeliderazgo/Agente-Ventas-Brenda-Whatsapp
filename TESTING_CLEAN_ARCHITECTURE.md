@@ -77,7 +77,7 @@ Una vez que esta prueba funcione:
 1. **Webhook Handler** - Recibir mensajes entrantes
 2. **Procesamiento IA** - Integrar OpenAI para respuestas
 3. **Sistema de Memoria** - Contexto de usuarios
-4. **Herramientas de Conversión** - Migrar las 35+ herramientas
+4. **Herramientas de Conversión** - Crear herramientas específicas para WhatsApp bien diseñadas
 5. **Testing Automatizado** - Suite de pruebas completa
 
 ## 🐛 Debugging

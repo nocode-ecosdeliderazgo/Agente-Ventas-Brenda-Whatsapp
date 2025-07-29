@@ -11,7 +11,7 @@
 - [ ] Adaptar handlers para entrada/salida vía Twilio
 
 ## Fase 3: Adaptación de herramientas y flujos
-- [ ] Adaptar 35+ herramientas para WhatsApp (formato mensajes, multimedia)
+- [ ] Crear herramientas específicas para WhatsApp bien diseñadas (formato mensajes, multimedia)
 - [ ] Pruebas de envío de PDFs, imágenes, videos
 - [ ] Validación de respuestas y errores Twilio
 

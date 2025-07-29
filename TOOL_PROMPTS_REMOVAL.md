@@ -52,7 +52,7 @@ CATEGORÍAS DE RESPUESTA:
 - **Estructura base completa** (`app/infrastructure/tools/tool_system.py`)
 - **Sistema de activación** (`app/application/usecases/tool_activation_use_case.py`) 
 - **6 herramientas base implementadas** con funcionalidad completa
-- **Framework para 35+ herramientas** listo para expansión
+- **Framework para herramientas específicas** listo para expansión
 
 ### 🔄 Cambio SOLO en Prompts:
 - **SYSTEM_PROMPT limpio** - sin referencias específicas a herramientas

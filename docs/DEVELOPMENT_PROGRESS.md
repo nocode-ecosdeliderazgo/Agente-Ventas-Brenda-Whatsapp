@@ -126,7 +126,7 @@ python run_webhook_server.py
 ### Objetivos Pendientes:
 - [ ] **Sistema de estados** para flujos multi-paso
 - [ ] **Tool registry framework** para gestión de herramientas
-- [ ] **Migrar las 35+ herramientas** desde `legacy/`
+- [ ] **Crear herramientas específicas para WhatsApp** bien diseñadas
 - [ ] **Sistema de eventos** para coordinación de herramientas
 - [ ] **Template engine avanzado** para contenido dinámico
 
@@ -222,7 +222,7 @@ python run_webhook_server_debug.py
 ## 🚀 Próximas Fases
 
 ### 🔄 **FASE 6: MIGRACIÓN DE HERRAMIENTAS (PLANEADA)**
-**Objetivo**: Migrar 35+ herramientas del sistema legacy
+**Objetivo**: Crear herramientas específicas para WhatsApp bien diseñadas
 
 #### Herramientas a Migrar:
 - [ ] **Lead generation tools** (15 herramientas)

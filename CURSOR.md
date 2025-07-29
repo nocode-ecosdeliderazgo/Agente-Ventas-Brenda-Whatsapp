@@ -236,15 +236,16 @@ pip install -r requirements-clean.txt
 ### 🔄 PRÓXIMA FASE RECOMENDADA
 
 #### **FASE 3: Sistema de Herramientas** (Prioridad: ALTA)
-- **IMPORTANTE**: No migrar herramientas de Telegram (no funcionan bien)
-- **ENFOQUE**: Crear herramientas específicas para WhatsApp bien diseñadas
+- **⚠️ IMPORTANTE**: NO migrar herramientas de Telegram (funcionan de forma frágil)
+- **ENFOQUE**: Crear herramientas específicas para WhatsApp bien diseñadas desde cero
 - **BASE SÓLIDA**: Personalización + anti-inventos como foundation
+- **CANTIDAD**: Pocas herramientas bien hechas, no 35 herramientas problemáticas
 
 #### Pasos Sugeridos ANTES de FASE 3:
 1. **CRÍTICO**: Usuario debe probar FASE 1 y FASE 2 funcionando
 2. **Validar** que personalización funciona en conversaciones reales
 3. **Confirmar** que anti-inventos previene respuestas inventadas
-4. **Decidir** qué herramientas específicas crear para WhatsApp
+4. **Decidir** qué herramientas específicas crear para WhatsApp (pocas pero bien hechas)
 
 ### 🎯 Prioridad Media
 1. **Añadir más bonos** al sistema

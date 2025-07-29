@@ -26,7 +26,7 @@ Bot de ventas especializado en **líderes de PyMEs** (empresas 20-200 empleados)
 - **Privacy Flow GDPR** - flujo de privacidad obligatorio
 
 ### 🔄 PRÓXIMO - Componentes Legacy (Referencia)
-- 35+ herramientas de conversión (recursos, demos, bonos, cierre, etc.)
+- Herramientas de conversión específicas para WhatsApp (recursos, demos, bonos, cierre, etc.)
 - Activación inteligente de herramientas según intención
 - Base de datos PostgreSQL (async)
 - Flujos de conversación: Ads, cursos, contacto, FAQ
@@ -173,7 +173,7 @@ python test_memory_system.py
 8. **Fallback en capas** - Funciona sin PostgreSQL y/o sin OpenAI
 
 ### Próximos Pasos (🔄)
-1. **Herramientas de conversión** - Migrar 35+ herramientas desde sistema legacy
+1. **Herramientas de conversión** - Crear herramientas específicas para WhatsApp bien diseñadas
 2. **Memoria PostgreSQL** - Migrar completamente desde JSON a PostgreSQL para escalabilidad
 3. **Flujos avanzados** - Implementar flujos de ads, cursos, contacto y FAQ
 4. **Lead scoring avanzado** - Sistema de puntuación y seguimiento automático en BD
