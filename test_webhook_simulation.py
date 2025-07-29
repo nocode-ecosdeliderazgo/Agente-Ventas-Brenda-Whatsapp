@@ -17,6 +17,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from app.config import settings
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.infrastructure.openai.client import OpenAIClient
+from app.infrastructure.database.client import DatabaseClient
+from app.infrastructure.database.repositories.course_repository import CourseRepository
 from app.application.usecases.process_incoming_message import ProcessIncomingMessageUseCase
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.application.usecases.analyze_message_intent import AnalyzeMessageIntentUseCase
@@ -44,6 +46,8 @@ class WebhookSimulation:
         self.privacy_flow_use_case = None
         self.tool_activation_use_case = None
         self.openai_client = None
+        self.db_client = None
+        self.course_repository = None
         
     async def initialize_system(self):
         """Inicializa el sistema exactamente como en webhook.py"""
@@ -71,6 +75,12 @@ class WebhookSimulation:
             self.openai_client = OpenAIClient()
             debug_print("✅ Cliente OpenAI inicializado correctamente", "initialize_system", "webhook_simulation.py")
             
+            # Inicializar base de datos y repositorio de cursos
+            debug_print("🗄️ Inicializando cliente de base de datos...", "initialize_system", "webhook_simulation.py")
+            self.db_client = DatabaseClient()
+            self.course_repository = CourseRepository()
+            debug_print("✅ Cliente de base de datos inicializado correctamente", "initialize_system", "webhook_simulation.py")
+            
             debug_print("🧠 Inicializando analizador de intención...", "initialize_system", "webhook_simulation.py")
             self.intent_analyzer = AnalyzeMessageIntentUseCase(self.openai_client, self.memory_use_case)
             debug_print("✅ Analizador de intención inicializado correctamente", "initialize_system", "webhook_simulation.py")
@@ -89,7 +99,12 @@ class WebhookSimulation:
             # Crear generador de respuestas inteligentes
             debug_print("🧩 Creando generador de respuestas inteligentes...", "initialize_system", "webhook_simulation.py")
             self.intelligent_response_use_case = GenerateIntelligentResponseUseCase(
-                self.intent_analyzer, self.twilio_client, self.openai_client, self.course_query_use_case
+                self.intent_analyzer, 
+                self.twilio_client, 
+                self.openai_client, 
+                self.db_client,
+                self.course_repository,
+                self.course_query_use_case
             )
             debug_print("✅ Generador de respuestas inteligentes creado", "initialize_system", "webhook_simulation.py")
             
