@@ -10,6 +10,7 @@ from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.application.usecases.generate_intelligent_response import GenerateIntelligentResponseUseCase
 from app.application.usecases.privacy_flow_use_case import PrivacyFlowUseCase
 from app.application.usecases.tool_activation_use_case import ToolActivationUseCase
+from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,8 @@ class ProcessIncomingMessageUseCase:
         memory_use_case: ManageUserMemoryUseCase,
         intelligent_response_use_case: GenerateIntelligentResponseUseCase = None,
         privacy_flow_use_case: PrivacyFlowUseCase = None,
-        tool_activation_use_case: ToolActivationUseCase = None
+        tool_activation_use_case: ToolActivationUseCase = None,
+        course_announcement_use_case: CourseAnnouncementUseCase = None
     ):
         """
         Inicializa el caso de uso.
@@ -34,12 +36,14 @@ class ProcessIncomingMessageUseCase:
             intelligent_response_use_case: Caso de uso para respuestas inteligentes (opcional)
             privacy_flow_use_case: Caso de uso para flujo de privacidad (opcional)
             tool_activation_use_case: Caso de uso para activación de herramientas (opcional)
+            course_announcement_use_case: Caso de uso para anuncios de cursos (opcional)
         """
         self.twilio_client = twilio_client
         self.memory_use_case = memory_use_case
         self.intelligent_response_use_case = intelligent_response_use_case
         self.privacy_flow_use_case = privacy_flow_use_case
         self.tool_activation_use_case = tool_activation_use_case
+        self.course_announcement_use_case = course_announcement_use_case
     
     async def execute(self, webhook_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -112,6 +116,42 @@ class ProcessIncomingMessageUseCase:
                             
                 except Exception as e:
                     logger.error(f"❌ Error procesando flujo de privacidad: {e}")
+                    # Continuar con procesamiento normal como fallback
+            
+            # PRIORIDAD 1.5: Verificar si es un anuncio de curso específico
+            if self.course_announcement_use_case:
+                try:
+                    if self.course_announcement_use_case.should_handle_course_announcement(incoming_message):
+                        logger.info(f"📚 Detectado código de curso en mensaje de {user_id}")
+                        
+                        course_announcement_result = await self.course_announcement_use_case.handle_course_announcement(
+                            user_id, incoming_message
+                        )
+                        
+                        if course_announcement_result['success']:
+                            logger.info(f"✅ Flujo de anuncio de curso procesado para {user_id}")
+                            return {
+                                'success': True,
+                                'processed': True,
+                                'incoming_message': {
+                                    'from': incoming_message.from_number,
+                                    'body': incoming_message.body,
+                                    'message_sid': incoming_message.message_sid
+                                },
+                                'response_sent': course_announcement_result.get('response_sent', False),
+                                'response_sid': course_announcement_result.get('response_sid'),
+                                'response_text': course_announcement_result.get('response_text', ''),
+                                'processing_type': 'course_announcement',
+                                'course_code': course_announcement_result.get('course_code'),
+                                'course_name': course_announcement_result.get('course_name'),
+                                'additional_resources_sent': course_announcement_result.get('additional_resources_sent', {})
+                            }
+                        else:
+                            logger.warning(f"⚠️ Error en flujo de anuncio: {course_announcement_result}")
+                            # Continuar con procesamiento normal si falla el anuncio
+                            
+                except Exception as e:
+                    logger.error(f"❌ Error procesando anuncio de curso: {e}")
                     # Continuar con procesamiento normal como fallback
             
             # PRIORIDAD 2: Usar respuesta inteligente si está disponible

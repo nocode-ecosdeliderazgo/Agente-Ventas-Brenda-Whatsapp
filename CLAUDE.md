@@ -20,9 +20,9 @@ The system is optimized for these **5 priority buyer personas**:
 
 ## Current Architecture Status
 
-### ✅ IMPLEMENTED - Complete Intelligent System with Privacy Flow and Bonus System
+### ✅ IMPLEMENTED - Complete Intelligent System with Privacy Flow, Bonus System and Course Announcements
 
-The project now features a complete intelligent conversation system with Clean Architecture, mandatory privacy consent flow, **intelligent bonus activation system**, and **real database integration**:
+The project now features a complete intelligent conversation system with Clean Architecture, mandatory privacy consent flow, **intelligent bonus activation system**, **course announcement system**, and **real database integration**:
 
 ```
 app/                           # COMPLETE CLEAN ARCHITECTURE WITH PRIVACY FLOW
@@ -50,10 +50,12 @@ app/                           # COMPLETE CLEAN ARCHITECTURE WITH PRIVACY FLOW
 │   ├── analyze_message_intent.py # Intent analysis with 17 PyME-specific categories
 │   ├── generate_intelligent_response.py # Contextual responses for business executives
 │   ├── bonus_activation_use_case.py # 🆕 Intelligent bonus activation system
+│   ├── course_announcement_use_case.py # 🆕 Course announcement system (#CursoIA1, #CursoIA2, etc.)
 │   ├── tool_activation_use_case.py # Business tool activation system
 │   └── query_course_information.py # Course database queries
 ├── templates/                 # Message templates
-│   └── privacy_flow_templates.py # Professional WhatsApp-optimized privacy messages
+│   ├── privacy_flow_templates.py # Professional WhatsApp-optimized privacy messages
+│   └── course_announcement_templates.py # 🆕 Course announcement templates with ROI personalization
 └── presentation/api/          # Presentation layer
     └── webhook.py            # FastAPI webhook with privacy-first processing
 
@@ -79,7 +81,7 @@ The complete Telegram implementation is preserved in `legacy/` folder:
 
 ### Key Working Components
 
-#### Current Intelligent System with Privacy Flow and Bonus System (Fully Functional)
+#### Current Intelligent System with Privacy Flow, Bonus System and Course Announcements (Fully Functional)
 - **Configuration** (`app/config.py`) - Pydantic-based settings with all API credentials
 - **Twilio Client** (`app/infrastructure/twilio/client.py`) - WhatsApp message sending/receiving
 - **OpenAI Client** (`app/infrastructure/openai/client.py`) - GPT-4o-mini for intent analysis and responses
@@ -92,6 +94,8 @@ The complete Telegram implementation is preserved in `legacy/` folder:
 - **Intent Analysis** (`app/application/usecases/analyze_message_intent.py`) - 17-category PyME-specific intent classification
 - **Intelligent Responses** (`app/application/usecases/generate_intelligent_response.py`) - Executive-focused responses with ROI examples
 - **🆕 Bonus Activation System** (`app/application/usecases/bonus_activation_use_case.py`) - Intelligent contextual bonus activation
+- **🆕 Course Announcement System** (`app/application/usecases/course_announcement_use_case.py`) - Automatic course presentation via codes (#CursoIA1, #CursoIA2, etc.)
+- **🆕 Course Announcement Templates** (`app/templates/course_announcement_templates.py`) - WhatsApp-optimized templates with ROI personalization by buyer persona
 - **🆕 Database Schema** (`app/infrastructure/database/estructura_db.sql`) - Complete PostgreSQL schema with courses and bonuses
 - **🆕 Multimedia Resources** (`app/infrastructure/database/elements_url_rows.sql`) - Real video and document URLs per session
 - **🆕 Database Documentation** (`app/infrastructure/database/DATABASE_DOCUMENTATION.md`) - Complete database structure documentation
@@ -160,6 +164,12 @@ python test_integration_logic_only.py
 
 # Test complete privacy flow integration
 python test_integrated_privacy_flow.py
+
+# Test course announcement flow (#CursoIA1, #CursoIA2, etc.)
+python test_course_announcement_flow.py
+
+# Test complete webhook simulation (includes all flows)
+python test_webhook_simulation.py
 
 # Test buyer persona prompt system
 python prompts/agent_prompts.py
@@ -556,6 +566,147 @@ response = WhatsAppBusinessTemplates.business_price_objection_response(
 )
 ```
 
+## Course Announcement System Architecture
+
+The system now implements a comprehensive course announcement system that activates when users send specific course codes:
+
+### Course Announcement Components (`app/application/usecases/course_announcement_use_case.py`)
+
+#### **1. Automatic Code Detection**
+```python
+# Supported course codes
+course_codes = [
+    "#CursoIA1",  # Introducción a IA para PyMEs  
+    "#CursoIA2",  # IA Intermedia para Automatización
+    "#CursoIA3"   # IA Avanzada: Transformación Digital
+]
+
+# Detection in mixed messages
+"Hola, me interesa el #CursoIA1 para mi empresa" → Triggers course announcement
+```
+
+#### **2. Complete Response Flow**
+```python
+# When user sends #CursoIA1, system automatically:
+1. Detects course code in message
+2. Retrieves course information (database or mock data)
+3. Updates user memory with course interest
+4. Sends personalized course summary
+5. Sends PDF resource (simulated)
+6. Sends course image (simulated)
+7. Sends follow-up engagement message
+
+# All messages are personalized by user role and buyer persona
+```
+
+#### **3. ROI Personalization by Role**
+```python
+# Automatic ROI calculation based on user's professional role:
+- Marketing Directors: "$300 ahorro por campaña → ROI 200% primer mes"
+- Operations Managers: "$2,000 ahorro mensual → ROI 400% primer mes"  
+- CEOs/Founders: "$27,600 ahorro anual → ROI 1,380% anual"
+- HR Directors: "$1,500 ahorro mensual → ROI 300% primer trimestre"
+- General PyMEs: "$1,000 ahorro mensual → ROI 250% primeros 3 meses"
+```
+
+#### **4. Message Structure**
+```python
+# Complete course announcement includes:
+1. Personalized greeting with user name
+2. Course title and description  
+3. Key information (price, duration, level, modality)
+4. Detailed course content overview
+5. Included bonuses list
+6. ROI calculation specific to user's role
+7. PDF resource with implementation guides
+8. Course infographic image
+9. Follow-up message with call-to-action
+10. Special promotion offers (optional)
+```
+
+### Course Announcement Templates (`app/templates/course_announcement_templates.py`)
+
+#### **WhatsApp-Optimized Templates:**
+- `course_summary_message()` - Main course presentation
+- `role_specific_roi_message()` - ROI calculation by buyer persona
+- `course_bonuses_section()` - Formatted bonus list
+- `pdf_resource_message()` - PDF presentation message
+- `image_resource_message()` - Image presentation message  
+- `follow_up_engagement_message()` - Conversion-focused follow-up
+- `special_promotion_message()` - Limited time offers
+- `course_not_found_message()` - Error handling for invalid codes
+
+#### **Sector-Specific Benefits:**
+```python
+# Automatic sector detection and benefit personalization:
+- Agencies: Campaign automation, client reporting, creative AI tools
+- Consulting: Scalable analysis, automated proposals, benchmarking
+- Commerce: Demand prediction, pricing optimization, inventory management
+- General PyMEs: Process automation, content generation, data analysis
+```
+
+### Processing Priority Integration
+
+The course announcement system is integrated into the main message processing flow:
+
+```python
+# Message Processing Priority:
+1. PRIVACY FLOW (if user hasn't accepted privacy)
+2. COURSE ANNOUNCEMENTS (if message contains course codes) ← NEW
+3. INTELLIGENT RESPONSES (OpenAI-powered analysis and responses)
+4. BASIC FALLBACK (simple context-aware responses)
+```
+
+### Testing Course Announcements
+
+#### **Comprehensive Test Suite** (`test_course_announcement_flow.py`)
+```bash
+# Run course announcement tests
+python test_course_announcement_flow.py
+
+# Test cases include:
+1. #CursoIA1 with marketing role → Validates marketing-specific ROI
+2. #CursoIA2 with operations role → Validates operations-specific ROI
+3. Invalid course code → Validates error handling
+4. Mixed message with course code → Validates code extraction
+5. User without privacy → Validates privacy flow priority
+```
+
+#### **Manual Testing via Webhook Simulator:**
+```bash
+# Start webhook simulator
+python test_webhook_simulation.py
+
+# Test messages:
+#CursoIA1
+#CursoIA2  
+#CursoIA3
+Hola, me interesa el #CursoIA1
+¿Qué incluye #CursoIA2?
+```
+
+### Course Data Management
+
+#### **Mock Data Structure:**
+```python
+course_info = {
+    'name': "Introducción a la Inteligencia Artificial para PyMEs",
+    'price': 497,
+    'currency': "USD", 
+    'level': "Principiante",
+    'session_count': 8,
+    'duration_hours': 12,
+    'bonuses': [...],
+    'pdf_resource': "guia-ia-pymes-fundamentos.pdf",
+    'image_resource': "curso-ia-pymes-banner.png"
+}
+```
+
+#### **Database Integration Ready:**
+- Compatible with existing `QueryCourseInformationUseCase`
+- Falls back to mock data if database unavailable
+- Automatic course mapping from codes to database IDs
+
 ## Legacy System Reference
 
 The `legacy/` folder contains the complete, functional Telegram implementation with:
@@ -570,7 +721,7 @@ Refer to `legacy/CLAUDE.md` for the complete Telegram implementation details. Us
 
 The WhatsApp bot now has a complete intelligent conversation system ready for production use:
 
-### ✅ FULLY IMPLEMENTED - Intelligent Conversation System with Complete Privacy Flow and Bonus System
+### ✅ FULLY IMPLEMENTED - Intelligent Conversation System with Complete Privacy Flow, Bonus System and Course Announcements
 1. **Privacy-first webhook processing** - Mandatory privacy consent before any other interactions
 2. **GDPR-compliant consent workflow** - Professional privacy acceptance with WhatsApp-optimized messages
 3. **WhatsApp name extraction** - Automatic extraction from ProfileName metadata with personalized fallback
@@ -588,6 +739,10 @@ The WhatsApp bot now has a complete intelligent conversation system ready for pr
 15. **🆕 Real database integration** - Supabase PostgreSQL with course data, bonuses, and multimedia resources
 16. **🆕 SOLUCIÓN DEFINITIVA AL PROBLEMA DE FIRMA INVÁLIDA** - Webhook funcionando perfectamente sin errores de autenticación
 17. **🆕 Sistema de bonos inteligente** - Activación contextual de bonos basada en rol y conversación
+18. **🆕 Sistema de anuncios de cursos** - Detección automática de códigos (#CursoIA1, #CursoIA2, #CursoIA3) con respuesta completa
+19. **🆕 Personalización por buyer persona** - Mensajes de ROI específicos según rol del usuario (marketing, operaciones, CEO, etc.)
+20. **🆕 Recursos multimedia simulados** - PDFs e imágenes enviados automáticamente con información del curso
+21. **🆕 Mensajes de seguimiento** - Engagement automático para impulsar conversión después del anuncio
 
 ### 🔄 READY FOR NEXT PHASE - Tool Integration with Supabase
 The foundation is solid with Supabase integration and ready for migrating the 35+ conversion tools from the legacy system. Before starting tool migration, consider implementing:
@@ -623,3 +778,5 @@ The foundation is solid with Supabase integration and ready for migrating the 35
 - **`test_integrated_privacy_flow.py`** - Complete privacy flow integration test with webhook simulation
 - **`test_course_integration.py`** - Database integration test with course queries
 - **`test_supabase_connection.py`** - Comprehensive Supabase connection and functionality test
+- **`test_course_announcement_flow.py`** - 🆕 Complete course announcement system test (#CursoIA1, #CursoIA2, etc.)
+- **`test_webhook_simulation.py`** - Complete webhook simulation with all flows (privacy, announcements, intelligent responses)

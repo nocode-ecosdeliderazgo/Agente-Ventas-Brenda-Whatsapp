@@ -15,6 +15,8 @@ from app.application.usecases.analyze_message_intent import AnalyzeMessageIntent
 from app.application.usecases.generate_intelligent_response import GenerateIntelligentResponseUseCase
 from app.application.usecases.privacy_flow_use_case import PrivacyFlowUseCase
 from app.application.usecases.tool_activation_use_case import ToolActivationUseCase
+from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
+from app.application.usecases.query_course_information import QueryCourseInformationUseCase
 from memory.lead_memory import MemoryManager
 
 logger = logging.getLogger(__name__)
@@ -39,11 +41,12 @@ intelligent_response_use_case = None
 process_message_use_case = None
 privacy_flow_use_case = None
 tool_activation_use_case = None
+course_announcement_use_case = None
 
 @app.on_event("startup")
 async def startup_event():
     """Evento de startup para inicializar todas las dependencias."""
-    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case, privacy_flow_use_case, tool_activation_use_case
+    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case
     
     debug_print("🚀 INICIANDO SISTEMA BOT BRENDA...", "startup", "webhook.py")
     
@@ -90,10 +93,17 @@ async def startup_event():
         tool_activation_use_case = ToolActivationUseCase()
         debug_print("✅ Sistema de herramientas inicializado correctamente", "startup", "webhook.py")
         
+        # Inicializar sistema de anuncios de cursos
+        debug_print("📚 Inicializando sistema de anuncios de cursos...", "startup", "webhook.py")
+        course_announcement_use_case = CourseAnnouncementUseCase(
+            course_query_use_case, memory_use_case, twilio_client
+        )
+        debug_print("✅ Sistema de anuncios de cursos inicializado correctamente", "startup", "webhook.py")
+        
         # Crear caso de uso de procesamiento con capacidades inteligentes
         debug_print("⚙️ Creando procesador de mensajes principal...", "startup", "webhook.py")
         process_message_use_case = ProcessIncomingMessageUseCase(
-            twilio_client, memory_use_case, intelligent_response_use_case, privacy_flow_use_case, tool_activation_use_case
+            twilio_client, memory_use_case, intelligent_response_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case
         )
         debug_print("✅ Procesador de mensajes principal creado", "startup", "webhook.py")
         
@@ -103,9 +113,14 @@ async def startup_event():
         debug_print(f"❌ ERROR INICIALIZANDO OPENAI: {e}", "startup", "webhook.py")
         debug_print("🔄 Iniciando modo FALLBACK (sin OpenAI)...", "startup", "webhook.py")
         
+        # Crear sistema de anuncios de cursos básico (sin OpenAI)
+        course_announcement_use_case = CourseAnnouncementUseCase(
+            None, memory_use_case, twilio_client  # Sin course_query_use_case
+        )
+        
         # Crear caso de uso de procesamiento básico sin IA
         process_message_use_case = ProcessIncomingMessageUseCase(
-            twilio_client, memory_use_case, None, privacy_flow_use_case, None
+            twilio_client, memory_use_case, None, privacy_flow_use_case, None, course_announcement_use_case
         )
         
         debug_print("⚠️ SISTEMA FALLBACK: Sin OpenAI ni BD de cursos inicializado correctamente", "startup", "webhook.py")
@@ -187,7 +202,7 @@ async def whatsapp_webhook(
             
             # URL FIJA que coincide con la configurada en Twilio Console
             # Debe ser exactamente igual a la URL que pusiste en "When a message comes in"
-            url_for_validation = "https://cute-kind-dog.ngrok-free.app/webhook"
+            url_for_validation = "https://lightly-right-toucan.ngrok-free.app"
             debug_print(f"🌐 URL para validación (FIJA): '{url_for_validation}'", "whatsapp_webhook", "webhook.py")
             debug_print(f"📍 URL local (NO USAR): '{str(request.url)}'", "whatsapp_webhook", "webhook.py")
             
