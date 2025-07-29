@@ -25,7 +25,8 @@ def get_log_files():
     
     log_files = []
     for file in os.listdir(logs_dir):
-        if file.startswith("conversation_log_") and file.endswith(".json"):
+        # Compatible con ambos formatos de log
+        if (file.startswith("conversation_log_") or file.startswith("webhook_simulation_log_")) and file.endswith(".json"):
             log_files.append(os.path.join(logs_dir, file))
     
     return sorted(log_files, reverse=True)
@@ -39,7 +40,7 @@ def display_log_files(log_files):
     print(f"\n📁 Archivos de log encontrados ({len(log_files)}):")
     for i, log_file in enumerate(log_files, 1):
         file_size = os.path.getsize(log_file)
-        file_date = os.path.basename(log_file).replace('conversation_log_', '').replace('.json', '')
+        file_date = os.path.basename(log_file).replace('conversation_log_', '').replace('webhook_simulation_log_', '').replace('.json', '')
         print(f"   {i}. {os.path.basename(log_file)} ({file_size} bytes) - {file_date}")
 
 def delete_log_files(log_files, indices):
@@ -107,7 +108,7 @@ def main():
                 old_files = []
                 
                 for i, log_file in enumerate(log_files, 1):
-                    file_date_str = os.path.basename(log_file).replace('conversation_log_', '').replace('.json', '')
+                    file_date_str = os.path.basename(log_file).replace('conversation_log_', '').replace('webhook_simulation_log_', '').replace('.json', '')
                     try:
                         file_date = datetime.strptime(file_date_str, '%Y%m%d')
                         if file_date < cutoff_date:
