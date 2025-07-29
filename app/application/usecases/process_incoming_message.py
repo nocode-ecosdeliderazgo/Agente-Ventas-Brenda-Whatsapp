@@ -11,6 +11,8 @@ from app.application.usecases.generate_intelligent_response import GenerateIntel
 from app.application.usecases.privacy_flow_use_case import PrivacyFlowUseCase
 from app.application.usecases.tool_activation_use_case import ToolActivationUseCase
 from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
+from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
+from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,9 @@ class ProcessIncomingMessageUseCase:
         intelligent_response_use_case: GenerateIntelligentResponseUseCase = None,
         privacy_flow_use_case: PrivacyFlowUseCase = None,
         tool_activation_use_case: ToolActivationUseCase = None,
-        course_announcement_use_case: CourseAnnouncementUseCase = None
+        course_announcement_use_case: CourseAnnouncementUseCase = None,
+        detect_ad_hashtags_use_case: DetectAdHashtagsUseCase = None,
+        process_ad_flow_use_case: ProcessAdFlowUseCase = None
     ):
         """
         Inicializa el caso de uso.
@@ -44,6 +48,8 @@ class ProcessIncomingMessageUseCase:
         self.privacy_flow_use_case = privacy_flow_use_case
         self.tool_activation_use_case = tool_activation_use_case
         self.course_announcement_use_case = course_announcement_use_case
+        self.detect_ad_hashtags_use_case = detect_ad_hashtags_use_case
+        self.process_ad_flow_use_case = process_ad_flow_use_case
     
     async def execute(self, webhook_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -118,7 +124,49 @@ class ProcessIncomingMessageUseCase:
                     logger.error(f"❌ Error procesando flujo de privacidad: {e}")
                     # Continuar con procesamiento normal como fallback
             
-            # PRIORIDAD 1.5: Verificar si es un anuncio de curso específico
+            # PRIORIDAD 1.5: Verificar si es un anuncio con hashtags específicos
+            if self.detect_ad_hashtags_use_case and self.process_ad_flow_use_case:
+                try:
+                    # Detectar hashtags de anuncios
+                    hashtags_info = await self.detect_ad_hashtags_use_case.execute(incoming_message.body)
+                    
+                    if hashtags_info.get('is_ad'):
+                        logger.info(f"📢 Detectado anuncio con hashtags para {user_id}: {hashtags_info}")
+                        
+                        # Procesar flujo de anuncios
+                        ad_flow_result = await self.process_ad_flow_use_case.execute(
+                            webhook_data, 
+                            {'id': user_id, 'first_name': 'Usuario'}, 
+                            hashtags_info
+                        )
+                        
+                        if ad_flow_result['success'] and ad_flow_result['ad_flow_completed']:
+                            logger.info(f"✅ Flujo de anuncios procesado para {user_id}")
+                            return {
+                                'success': True,
+                                'processed': True,
+                                'incoming_message': {
+                                    'from': incoming_message.from_number,
+                                    'body': incoming_message.body,
+                                    'message_sid': incoming_message.message_sid
+                                },
+                                'response_sent': True,
+                                'response_sid': None,
+                                'response_text': ad_flow_result.get('response_text', ''),
+                                'processing_type': 'ad_flow',
+                                'course_id': ad_flow_result.get('course_id'),
+                                'campaign_name': hashtags_info.get('campaign_name'),
+                                'ad_flow_completed': True
+                            }
+                        else:
+                            logger.warning(f"⚠️ Error en flujo de anuncios: {ad_flow_result}")
+                            # Continuar con procesamiento normal si falla el anuncio
+                            
+                except Exception as e:
+                    logger.error(f"❌ Error procesando flujo de anuncios: {e}")
+                    # Continuar con procesamiento normal como fallback
+            
+            # PRIORIDAD 1.6: Verificar si es un anuncio de curso específico
             if self.course_announcement_use_case:
                 try:
                     if self.course_announcement_use_case.should_handle_course_announcement(incoming_message):
