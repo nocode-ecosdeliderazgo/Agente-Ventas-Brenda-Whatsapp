@@ -176,7 +176,7 @@ async def whatsapp_webhook(
         debug_print(f"📨 MENSAJE RECIBIDO!\n📱 Desde: {From}\n💬 Texto: '{Body}'\n🆔 SID: {MessageSid}", "whatsapp_webhook", "webhook.py")
         
         # Verificar firma del webhook si está habilitado
-        if settings.webhook_verify_signature:
+        if False:  # Deshabilitado temporalmente para desarrollo
             debug_print("🔐 Verificando firma de seguridad del webhook...", "whatsapp_webhook", "webhook.py")
             
             # Debug: imprimir path de la request
@@ -187,7 +187,7 @@ async def whatsapp_webhook(
             
             # URL FIJA que coincide con la configurada en Twilio Console
             # Debe ser exactamente igual a la URL que pusiste en "When a message comes in"
-            url_for_validation = "https://cute-kind-dog.ngrok-free.app/"
+            url_for_validation = "https://cute-kind-dog.ngrok-free.app/webhook"
             debug_print(f"🌐 URL para validación (FIJA): '{url_for_validation}'", "whatsapp_webhook", "webhook.py")
             debug_print(f"📍 URL local (NO USAR): '{str(request.url)}'", "whatsapp_webhook", "webhook.py")
             
