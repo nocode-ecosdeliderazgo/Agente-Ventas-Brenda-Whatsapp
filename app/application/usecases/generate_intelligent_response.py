@@ -353,6 +353,8 @@ class GenerateIntelligentResponseUseCase:
         user_name = user_memory.name if user_memory and user_memory.name else ""
         user_role = user_memory.role if user_memory and user_memory.role else ""
         
+        debug_print(f"🔍 DEBUG TEMPLATE SELECTION - Categoría: {category}, Nombre: '{user_name}', Rol: '{user_role}'", "_get_template_response")
+        
         # Mapeo de categorías a templates
         template_map = {
             'FREE_RESOURCES': lambda: WhatsAppMessageTemplates.business_resources_offer(user_name, user_role),
@@ -370,6 +372,7 @@ class GenerateIntelligentResponseUseCase:
         
         # Manejar casos especiales según estado del usuario
         if not user_name and category != 'CONTACT_REQUEST':
+            debug_print(f"❌ CASO ESPECIAL 1 - Sin nombre detectado", "_get_template_response")
             # Si no tenemos nombre, pedirlo primero
             if user_memory and user_memory.interaction_count == 1:
                 return WhatsAppMessageTemplates.welcome_new_business_user()
@@ -377,6 +380,7 @@ class GenerateIntelligentResponseUseCase:
                 return WhatsAppMessageTemplates.executive_name_request()
         
         if user_name and not user_role and category not in ['CONTACT_REQUEST', 'FREE_RESOURCES']:
+            debug_print(f"❌ CASO ESPECIAL 2 - Tiene nombre '{user_name}' pero no rol '{user_role}', categoría: {category}", "_get_template_response")
             # Si tenemos nombre pero no profesión
             return WhatsAppMessageTemplates.business_role_inquiry(user_name)
         

@@ -708,4 +708,4 @@ Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector esp
         """
         return (
             user_memory.is_first_interaction() and user_memory.needs_privacy_flow()
-        ) or user_memory.waiting_for_response in ["privacy_acceptance", "user_name"]
+        ) or user_memory.waiting_for_response in ["privacy_acceptance", "user_name", "user_role"]

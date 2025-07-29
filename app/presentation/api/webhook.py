@@ -187,7 +187,7 @@ async def whatsapp_webhook(
             
             # URL FIJA que coincide con la configurada en Twilio Console
             # Debe ser exactamente igual a la URL que pusiste en "When a message comes in"
-            url_for_validation = "https://cute-kind-dog.ngrok-free.app/"
+            url_for_validation = "https://lightly-right-toucan.ngrok-free.app/"
             debug_print(f"🌐 URL para validación (FIJA): '{url_for_validation}'", "whatsapp_webhook", "webhook.py")
             debug_print(f"📍 URL local (NO USAR): '{str(request.url)}'", "whatsapp_webhook", "webhook.py")
             
