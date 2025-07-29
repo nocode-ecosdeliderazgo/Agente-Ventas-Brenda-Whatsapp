@@ -37,10 +37,8 @@ class CourseRepository:
         """
         query = """
             SELECT 
-                id_course, Name as name, Short_description as short_description,
-                Long_descrption as long_description, created_at, session_count,
-                total_duration_min, Price as price, Currency as currency,
-                course_url, Purchase_url as purchase_url, level, language,
+                id_course, name, short_description, long_descrption, created_at, session_count,
+                total_duration_min, price, currency, course_url, purchase_url, level, language,
                 audience_category, status, start_date, end_date, roi, modality
             FROM ai_courses
             WHERE 1=1
@@ -77,7 +75,7 @@ class CourseRepository:
             
             if filters.search_text:
                 param_count += 1
-                query += f" AND (Name ILIKE ${param_count} OR Short_description ILIKE ${param_count})"
+                query += f" AND (name ILIKE ${param_count} OR short_description ILIKE ${param_count})"
                 search_pattern = f"%{filters.search_text}%"
                 params.extend([search_pattern, search_pattern])
                 param_count += 1  # Segundo parámetro para la segunda condición
@@ -102,10 +100,8 @@ class CourseRepository:
         """Obtiene un curso por su ID."""
         query = """
             SELECT 
-                id_course, Name as name, Short_description as short_description,
-                Long_descrption as long_description, created_at, session_count,
-                total_duration_min, Price as price, Currency as currency,
-                course_url, Purchase_url as purchase_url, level, language,
+                id_course, name, short_description, long_descrption, created_at, session_count,
+                total_duration_min, price, currency, course_url, purchase_url, level, language,
                 audience_category, status, start_date, end_date, roi, modality
             FROM ai_courses
             WHERE id_course = $1
@@ -220,8 +216,28 @@ class CourseRepository:
         Returns:
             Lista de cursos que coinciden con la búsqueda
         """
-        filters = CourseSearchFilters(search_text=search_text)
-        return await self.get_all_courses(filters, limit)
+        try:
+            # Consulta simple para buscar cursos
+            query = """
+                SELECT 
+                    id_course, name, short_description, long_descrption, created_at, session_count,
+                    total_duration_min, price, currency, course_url, purchase_url, level, language,
+                    audience_category, status, start_date, end_date, roi, modality
+                FROM ai_courses
+                WHERE (name ILIKE $1 OR short_description ILIKE $1)
+                ORDER BY created_at DESC 
+                LIMIT $2
+            """
+            search_pattern = f"%{search_text}%"
+            records = await self.db.execute_query(query, search_pattern, limit)
+            
+            if records:
+                return [Course(**record) for record in records]
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error buscando cursos por texto '{search_text}': {e}")
+            return []
     
     async def get_courses_by_level(self, level: str, limit: int = 5) -> List[Course]:
         """Obtiene cursos filtrados por nivel."""
@@ -230,8 +246,51 @@ class CourseRepository:
     
     async def get_courses_by_modality(self, modality: str, limit: int = 5) -> List[Course]:
         """Obtiene cursos filtrados por modalidad."""
-        filters = CourseSearchFilters(modality=modality)
-        return await self.get_all_courses(filters, limit)
+        try:
+            query = """
+                SELECT 
+                    id_course, Name as name, Short_description as short_description,
+                    Long_descrption as long_description, created_at, session_count,
+                    total_duration_min, Price as price, Currency as currency,
+                    course_url, Purchase_url as purchase_url, level, language,
+                    audience_category, status, start_date, end_date, roi, modality
+                FROM ai_courses
+                WHERE modality = $1
+                ORDER BY created_at DESC 
+                LIMIT $2
+            """
+            records = await self.db.execute_query(query, modality, limit)
+            
+            if records:
+                return [Course(**record) for record in records]
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo cursos por modalidad '{modality}': {e}")
+            return []
+    
+    async def get_active_courses(self, limit: int = 5) -> List[Course]:
+        """Obtiene cursos activos."""
+        try:
+            query = """
+                SELECT 
+                    id_course, name, short_description, long_descrption, created_at, session_count,
+                    total_duration_min, price, currency, course_url, purchase_url, level, language,
+                    audience_category, status, start_date, end_date, roi, modality
+                FROM ai_courses
+                WHERE status = 'active'
+                ORDER BY created_at DESC 
+                LIMIT $1
+            """
+            records = await self.db.execute_query(query, limit)
+            
+            if records:
+                return [Course(**record) for record in records]
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo cursos activos: {e}")
+            return []
     
     async def get_available_levels(self) -> List[str]:
         """Obtiene todos los niveles de curso disponibles."""

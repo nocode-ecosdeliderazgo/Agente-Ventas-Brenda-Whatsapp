@@ -13,7 +13,7 @@ class Course(BaseModel):
     id_course: UUID
     name: Optional[str] = None
     short_description: Optional[str] = None
-    long_description: Optional[str] = None  # Corregido typo del SQL
+    long_descrption: Optional[str] = None
     created_at: datetime
     session_count: Optional[int] = None
     total_duration_min: Optional[int] = None
@@ -137,8 +137,8 @@ class CourseInfo(BaseModel):
         """Retorna información detallada del curso."""
         info = self.get_basic_info()
         
-        if self.course.long_description:
-            info += f"\n\n📖 **Descripción completa:**\n{self.course.long_description}"
+        if self.course.long_descrption:
+            info += f"\n\n📖 **Descripción completa:**\n{self.course.long_descrption}"
         
         if self.course.audience_category:
             info += f"\n\n👥 **Dirigido a:** {self.course.audience_category}"
