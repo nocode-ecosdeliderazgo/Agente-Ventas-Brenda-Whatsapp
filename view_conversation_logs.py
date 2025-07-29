@@ -27,7 +27,8 @@ def get_log_files() -> List[str]:
     
     log_files = []
     for file in os.listdir(logs_dir):
-        if file.startswith("conversation_log_") and file.endswith(".json"):
+        # Compatible con ambos formatos de log
+        if (file.startswith("conversation_log_") or file.startswith("webhook_simulation_log_")) and file.endswith(".json"):
             log_files.append(os.path.join(logs_dir, file))
     
     return sorted(log_files, reverse=True)  # Más recientes primero
@@ -74,7 +75,10 @@ def display_conversation(conversation: Dict[str, Any], index: int):
 def display_log_file(log_file: str):
     """Muestra el contenido de un archivo de log"""
     print(f"\n📁 ARCHIVO: {os.path.basename(log_file)}")
-    print(f"📅 FECHA: {os.path.basename(log_file).replace('conversation_log_', '').replace('.json', '')}")
+    # Compatible con ambos formatos de fecha
+    date_str = os.path.basename(log_file)
+    date_str = date_str.replace('conversation_log_', '').replace('webhook_simulation_log_', '').replace('.json', '')
+    print(f"📅 FECHA: {date_str}")
     
     conversations = load_conversation_log(log_file)
     
@@ -133,8 +137,9 @@ def main():
                 # Mostrar archivo específico
                 print("\n📅 Archivos disponibles:")
                 for i, log_file in enumerate(log_files, 1):
-                    date = os.path.basename(log_file).replace('conversation_log_', '').replace('.json', '')
-                    print(f"   {i}. {date}")
+                    date_str = os.path.basename(log_file)
+                    date_str = date_str.replace('conversation_log_', '').replace('webhook_simulation_log_', '').replace('.json', '')
+                    print(f"   {i}. {date_str}")
                 
                 try:
                     file_choice = int(input("\n🎯 Selecciona número de archivo: "))
