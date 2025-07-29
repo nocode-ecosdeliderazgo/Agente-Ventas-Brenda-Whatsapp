@@ -706,6 +706,10 @@ Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector esp
         Returns:
             True si debe manejar el flujo de privacidad
         """
+        # Si ya completó el flujo de privacidad, no debe manejarlo
+        if user_memory.privacy_accepted and user_memory.name and user_memory.role:
+            return False
+            
         return (
             user_memory.is_first_interaction() and user_memory.needs_privacy_flow()
-        ) or user_memory.waiting_for_response in ["privacy_acceptance", "user_name"]
+        ) or user_memory.waiting_for_response in ["privacy_acceptance", "user_name", "user_role"]

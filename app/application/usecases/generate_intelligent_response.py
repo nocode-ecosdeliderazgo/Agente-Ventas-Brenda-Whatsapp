@@ -165,7 +165,7 @@ class GenerateIntelligentResponseUseCase:
         try:
             intent_analysis = analysis_result.get('intent_analysis', {})
             category = intent_analysis.get('category', 'general')
-            user_memory = analysis_result.get('user_memory')
+            user_memory = analysis_result.get('updated_memory')  # Cambiar de 'user_memory' a 'updated_memory'
             
             debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
             

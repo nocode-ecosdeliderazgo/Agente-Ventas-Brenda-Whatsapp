@@ -339,7 +339,7 @@ Me alegra verte otra vez. ¿Cómo ha ido la implementación de IA en tu empresa?
     @staticmethod
     def executive_name_request() -> str:
         """Solicitud de nombre para líder empresarial."""
-        return """¡Excelente! 👔
+        return """¡Hola! 👋
 
 ¿Cómo prefieres que te llame? Y por favor, compárteme cuál es tu cargo en la empresa para personalizar mejor mis recomendaciones."""
 
