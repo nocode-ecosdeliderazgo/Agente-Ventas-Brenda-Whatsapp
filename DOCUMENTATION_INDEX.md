@@ -58,11 +58,24 @@ app/
 2. **[test_intelligent_system.py](test_intelligent_system.py)** - Complete AI system test
 3. **[test_course_integration.py](test_course_integration.py)** - Database integration test
 
+### 🚀 Development Simulator
+1. **[SIMULADOR_WEBHOOK_DEVELOPMENT.md](SIMULADOR_WEBHOOK_DEVELOPMENT.md)** - Complete guide for webhook simulator development
+2. **[test_webhook_simulation.py](test_webhook_simulation.py)** - Main development simulator (replaces Twilio during development)
+3. **[view_conversation_logs.py](view_conversation_logs.py)** - View conversation logs from simulator
+4. **[clear_conversation_logs.py](clear_conversation_logs.py)** - Clear conversation logs
+
 ### Testing Scenarios
 - **Basic functionality**: Message sending/receiving
 - **Intelligent conversations**: Intent analysis and contextual responses
 - **Database integration**: Course queries and recommendations
 - **Fallback behavior**: System resilience without external dependencies
+
+### 🎯 Development Workflow
+- **Primary Development**: Use `test_webhook_simulation.py` for all development
+- **No Twilio Costs**: Develop without spending Twilio credits
+- **Complete Debug**: See all system internals with debug prints
+- **Memory Persistence**: Test with real user memory and conversation history
+- **Automatic Migration**: When ready, functionality automatically works with Twilio
 
 ## 🗂️ Code Organization
 
@@ -95,6 +108,14 @@ app/
 - **Course database integration** with personalized recommendations
 - **Layered fallback system** ensuring reliability
 - **Production-ready webhook** with security and error handling
+- **Development Simulator** - Complete webhook replica for cost-free development
+
+### 🚀 New Development Workflow
+- **Primary Development Tool**: `test_webhook_simulation.py` - Complete webhook replica
+- **Cost-Free Development**: No Twilio credits needed during development
+- **Complete Debug Visibility**: All system internals visible with debug prints
+- **Real Memory Testing**: Persistent user memory and conversation history
+- **Automatic Twilio Migration**: When simulator works, Twilio works automatically
 
 ### 🔄 Ready for Next Phase
 - **Tool integration framework** - Ready to migrate 35+ tools from legacy

@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     # === APPLICATION SETTINGS ===
     app_environment: str = "development"
     log_level: str = "INFO"
-    webhook_verify_signature: bool = True
+    webhook_verify_signature: bool = False
     
     # === SECURITY ===
     allowed_webhook_ips: str = "*"  # En producción, especificar IPs de Twilio como lista JSON
