@@ -405,6 +405,168 @@ The system includes comprehensive privacy flow testing:
 - **`test_integrated_privacy_flow.py`** - Full integration test with webhook simulation
 - **Edge case handling** - User rejection, unclear responses, invalid names
 
+## Sistema Anti-Inventos (Anti-Hallucination System)
+
+El sistema implementa validación estricta para prevenir alucinaciones de IA y asegurar respuestas basadas en información verificada de la base de datos.
+
+### Componentes del Sistema Anti-Inventos
+
+#### **ValidateResponseUseCase** (`app/application/usecases/validate_response_use_case.py`)
+Sistema de validación que analiza respuestas generadas para detectar:
+- **Patrones de riesgo**: Números específicos no verificados (módulos, horas, precios)
+- **Frases prohibidas**: Indicadores de información inventada
+- **Validación de datos**: Verifica que información mencionada existe en BD
+- **Puntuación de confianza**: Calcula confiabilidad de la respuesta
+
+#### **AntiHallucinationUseCase** (`app/application/usecases/anti_hallucination_use_case.py`) 
+Caso de uso principal que:
+- **Genera respuestas seguras** usando datos verificados de BD
+- **Determina método de generación** (IA vs templates) según disponibilidad de datos
+- **Aplica validación automática** antes de enviar respuestas
+- **Proporciona fallbacks seguros** cuando faltan datos verificados
+
+#### **Anti-Hallucination Prompts** (`prompts/anti_hallucination_prompts.py`)
+Prompts especializados que:
+- **Definen reglas críticas** para evitar invención de información  
+- **Especifican información segura** disponible en BD
+- **Proporcionan ejemplos** de respuestas correctas e incorrectas
+- **Establecen protocolo de seguridad** para validación de respuestas
+
+### Integración con GenerateIntelligentResponseUseCase
+
+El sistema anti-inventos se integra automáticamente:
+
+```python
+# 1. Determina si usar IA con validación o templates seguros
+if self._should_use_ai_generation(category, message_text):
+    # Usa sistema anti-inventos para respuestas IA
+    safe_response = await self.anti_hallucination_use_case.generate_safe_response(
+        message, user_memory, intent_analysis, course_info
+    )
+else:
+    # Usa templates + validación para respuestas específicas
+    response = await self._generate_response_with_bonuses(...)
+    if self._mentions_specific_course_info(response):
+        validation = await self.validate_response_use_case.validate_response(...)
+```
+
+### Casos de Uso del Sistema
+
+1. **Prevención de datos inventados**: Detecta y corrige información específica no verificada
+2. **Validación de templates**: Verifica que templates no mencionen datos incorrectos  
+3. **Respuestas seguras**: Genera alternativas cuando no hay datos suficientes
+4. **Testing automatizado**: Valida respuestas existentes para mejora continua
+
+### Testing del Sistema
+
+**Script de pruebas**: `test_anti_inventos_system.py`
+- Valida detección de respuestas inválidas
+- Verifica aceptación de respuestas válidas  
+- Prueba integridad de datos de cursos
+- Evalúa patrones de riesgo específicos
+
+## Sistema de Personalización Avanzada (Advanced Personalization System) 
+
+El sistema implementa personalización inteligente basada en buyer personas PyME con extracción automática de contexto conversacional para respuestas altamente específicas.
+
+### Componentes del Sistema de Personalización
+
+#### **ExtractUserInfoUseCase** (`app/application/usecases/extract_user_info_use_case.py`)
+Sistema de extracción inteligente que analiza conversaciones para detectar:
+- **Buyer Persona Matching**: Detección automática de 5 buyer personas PyME prioritarias
+- **Professional Context**: Nivel profesional, tamaño de empresa, industria, poder de decisión
+- **Business Intelligence**: Pain points, necesidades de automatización, señales de urgencia
+- **Technical Profiling**: Nivel técnico y preferencias de comunicación
+
+#### **PersonalizeResponseUseCase** (`app/application/usecases/personalize_response_use_case.py`)
+Caso de uso principal que:
+- **Genera respuestas personalizadas** usando contexto específico del buyer persona
+- **Aplica estrategias de comunicación** adaptadas al perfil profesional
+- **Calcula confianza de personalización** basada en información disponible
+- **Integra con sistema anti-inventos** para respuestas seguras y personalizadas
+
+#### **Personalization Prompts** (`prompts/personalization_prompts.py`)
+Prompts especializados que incluyen:
+- **Contexto específico por buyer persona** con roles, responsabilidades y pain points
+- **Ejemplos de ROI cuantificados** adaptados a cada perfil empresarial
+- **Estilos de comunicación** diferenciados por buyer persona
+- **Templates de respuesta** con enfoque y beneficios específicos
+
+#### **Enhanced LeadMemory** (`memory/lead_memory.py`)
+Memoria expandida con:
+- **Campos de personalización**: buyer_persona_match, professional_level, company_size, etc.
+- **Métodos inteligentes**: is_high_value_lead(), get_recommended_approach(), should_use_technical_language()
+- **Scoring avanzado**: get_conversation_priority_score() para priorización inteligente
+- **Contexto completo**: get_personalization_context() para generación de respuestas
+
+### Buyer Personas Implementados
+
+#### **1. Lucía CopyPro (Marketing Digital Manager)**
+- **Perfil**: 28-35 años, agencias/empresas marketing (20-100 empleados)
+- **Pain Points**: Contenido consistente, optimización campañas, generación leads
+- **ROI Examples**: 80% menos tiempo contenido, $300 ahorro por campaña
+- **Approach**: creative_roi_focused con énfasis en métricas de marketing
+
+#### **2. Marcos Multitask (Operations Manager)**  
+- **Perfil**: 32-42 años, manufactura/servicios PyME (50-200 empleados)
+- **Pain Points**: Procesos manuales, eficiencia, control de costos
+- **ROI Examples**: 30% reducción procesos manuales, $2,000 ahorro mensual
+- **Approach**: efficiency_operational con enfoque en optimización
+
+#### **3. Sofía Visionaria (CEO/Founder)**
+- **Perfil**: 35-45 años, servicios profesionales (30-150 empleados)  
+- **Pain Points**: Competencia, escalabilidad, toma decisiones estratégicas
+- **ROI Examples**: 40% más productividad, $27,600 ahorro anual vs analista
+- **Approach**: strategic_executive con perspectiva de crecimiento
+
+#### **4. Ricardo RH Ágil (Head of Talent & Learning)**
+- **Perfil**: 30-40 años, scale-ups (100-300 empleados)
+- **Pain Points**: Capacitación escalable, retención talento, desarrollo skills
+- **ROI Examples**: 70% más eficiencia capacitaciones, $15,000 ahorro anual
+- **Approach**: people_development con enfoque en desarrollo humano
+
+#### **5. Daniel Data Innovador (Senior Innovation/BI Analyst)**
+- **Perfil**: 28-38 años, corporativos tech-forward (200+ empleados)
+- **Pain Points**: Herramientas limitadas, análisis manual, implementación innovación
+- **ROI Examples**: 90% menos tiempo análisis, $45,000 ahorro vs suite BI
+- **Approach**: technical_analytical con terminología especializada
+
+### Integración con Sistema Existente
+
+El sistema se integra automáticamente en `GenerateIntelligentResponseUseCase`:
+
+```python
+# 1. Determinar si usar personalización avanzada
+should_use_personalization = self._should_use_advanced_personalization(
+    category, user_memory, incoming_message.body
+)
+
+if should_use_personalization:
+    # Usar personalización avanzada (FASE 2)
+    personalization_result = await self.personalize_response_use_case.generate_personalized_response(
+        incoming_message.body, user_memory, category
+    )
+    response_text = personalization_result.personalized_response
+elif self._should_use_ai_generation(category, incoming_message.body):
+    # Usar sistema anti-inventos (FASE 1)
+    safe_response_result = await self.anti_hallucination_use_case.generate_safe_response(...)
+```
+
+### Criterios de Activación
+
+La personalización avanzada se activa cuando:
+- **Buyer persona detectado** (buyer_persona_match != 'unknown')
+- **Información suficiente** (nombre + rol + interacciones > 1) Y categoría relevante
+- **Lenguaje personal/empresarial** ("mi empresa", "nuestro negocio", "mi equipo")
+
+### Testing del Sistema
+
+**Script de pruebas**: `test_personalization_system.py`
+- Extracción de información de usuario
+- Detección de buyer personas específicos  
+- Personalización de respuestas por perfil
+- Integración con sistema existente
+
 ## Enhanced Memory System Architecture
 
 The memory system has been enhanced with privacy flow management for robust conversation state tracking:
@@ -588,8 +750,10 @@ The WhatsApp bot now has a complete intelligent conversation system ready for pr
 15. **🆕 Real database integration** - Supabase PostgreSQL with course data, bonuses, and multimedia resources
 16. **🆕 SOLUCIÓN DEFINITIVA AL PROBLEMA DE FIRMA INVÁLIDA** - Webhook funcionando perfectamente sin errores de autenticación
 17. **🆕 Sistema de bonos inteligente** - Activación contextual de bonos basada en rol y conversación
+18. **🆕 SISTEMA ANTI-INVENTOS IMPLEMENTADO** - Validación estricta para prevenir alucinaciones de IA y asegurar respuestas verificadas
+19. **🆕 SISTEMA DE PERSONALIZACIÓN AVANZADA** - Personalización inteligente basada en buyer personas con extracción automática de contexto
 
-### 🔄 READY FOR NEXT PHASE - Tool Integration with Supabase
+### 🔄 READY FOR NEXT PHASE - Tool Integration with Advanced Personalization
 The foundation is solid with Supabase integration and ready for migrating the 35+ conversion tools from the legacy system. Before starting tool migration, consider implementing:
 
 1. **Conversation state management** - For multi-step tool flows stored in Supabase
@@ -623,3 +787,5 @@ The foundation is solid with Supabase integration and ready for migrating the 35
 - **`test_integrated_privacy_flow.py`** - Complete privacy flow integration test with webhook simulation
 - **`test_course_integration.py`** - Database integration test with course queries
 - **`test_supabase_connection.py`** - Comprehensive Supabase connection and functionality test
+- **`test_anti_inventos_system.py`** - 🆕 Anti-hallucination system validation and response testing
+- **`test_personalization_system.py`** - 🆕 Advanced personalization system testing with buyer persona validation
