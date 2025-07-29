@@ -33,6 +33,27 @@ class LeadMemory:
     flow_step: int = 0  # paso actual dentro del flujo
     waiting_for_response: str = ""  # qué tipo de respuesta espera (name, privacy_acceptance, course_choice, etc.)
     
+    # 🆕 CAMPOS DE PERSONALIZACIÓN AVANZADA (FASE 2)
+    # Buyer persona information
+    buyer_persona_match: str = "unknown"  # lucia_copypro, marcos_multitask, sofia_visionaria, ricardo_rh_agil, daniel_data_innovador
+    professional_level: str = "unknown"  # junior, mid-level, senior, executive
+    company_size: str = "unknown"  # startup, small, medium, large, enterprise
+    industry_sector: str = "unknown"  # marketing, operations, tech, consulting, healthcare, etc.
+    technical_level: str = "unknown"  # beginner, intermediate, advanced
+    decision_making_power: str = "unknown"  # influencer, decision_maker, budget_holder
+    
+    # Advanced insights
+    budget_indicators: Optional[List[str]] = None  # low, medium, high, premium signals
+    urgency_signals: Optional[List[str]] = None  # urgency indicators from conversation
+    conversation_history: Optional[List[Dict]] = None  # detailed conversation log
+    insights_confidence: float = 0.0  # confidence in extracted insights (0.0-1.0)
+    last_insights_update: Optional[str] = None  # last time insights were updated
+    
+    # Personalization context
+    response_style_preference: str = "business"  # business, technical, casual, executive
+    communication_frequency: str = "standard"  # low, standard, high
+    preferred_examples: Optional[List[str]] = None  # types of examples that resonate
+    
     def is_first_interaction(self) -> bool:
         """Verifica si es la primera interacción del usuario."""
         return self.interaction_count <= 1 and self.stage == "first_contact"
@@ -57,6 +78,134 @@ class LeadMemory:
         if self.pain_points:
             context += f", Necesidades: {', '.join(self.pain_points[:3])}"
         return context
+    
+    # 🆕 MÉTODOS DE PERSONALIZACIÓN AVANZADA (FASE 2)
+    
+    def get_buyer_persona_info(self) -> Dict[str, Any]:
+        """Obtiene información completa del buyer persona detectado."""
+        return {
+            'persona': self.buyer_persona_match,
+            'professional_level': self.professional_level,
+            'company_size': self.company_size,
+            'industry_sector': self.industry_sector,
+            'technical_level': self.technical_level,
+            'decision_making_power': self.decision_making_power,
+            'confidence': self.insights_confidence
+        }
+    
+    def get_personalization_context(self) -> Dict[str, Any]:
+        """Obtiene contexto completo para personalización de respuestas."""
+        return {
+            'user_profile': {
+                'name': self.name,
+                'role': self.role,
+                'buyer_persona': self.buyer_persona_match,
+                'professional_level': self.professional_level,
+                'company_size': self.company_size,
+                'industry_sector': self.industry_sector,
+                'technical_level': self.technical_level,
+                'decision_making_power': self.decision_making_power
+            },
+            'interests_and_needs': {
+                'interests': self.interests or [],
+                'pain_points': self.pain_points or [],
+                'automation_needs': self.automation_needs or {},
+                'buying_signals': self.buying_signals or []
+            },
+            'communication_context': {
+                'interaction_count': self.interaction_count,
+                'stage': self.stage,
+                'interest_level': self.interest_level,
+                'lead_score': self.lead_score,
+                'response_style_preference': self.response_style_preference,
+                'urgency_signals': self.urgency_signals or []
+            },
+            'metadata': {
+                'insights_confidence': self.insights_confidence,
+                'last_insights_update': self.last_insights_update,
+                'privacy_accepted': self.privacy_accepted
+            }
+        }
+    
+    def is_high_value_lead(self) -> bool:
+        """Determina si es un lead de alto valor basado en características."""
+        high_value_indicators = 0
+        
+        # Buyer persona de alto valor
+        if self.buyer_persona_match in ['sofia_visionaria', 'daniel_data_innovador']:
+            high_value_indicators += 2
+        
+        # Nivel profesional senior
+        if self.professional_level in ['senior', 'executive']:
+            high_value_indicators += 2
+        
+        # Poder de decisión
+        if self.decision_making_power in ['decision_maker', 'budget_holder']:
+            high_value_indicators += 2
+        
+        # Empresa mediana/grande
+        if self.company_size in ['medium', 'large', 'enterprise']:
+            high_value_indicators += 1
+        
+        # Señales de urgencia
+        if self.urgency_signals and len(self.urgency_signals) > 0:
+            high_value_indicators += 1
+        
+        # Lead score alto
+        if self.lead_score >= 75:
+            high_value_indicators += 1
+        
+        return high_value_indicators >= 4
+    
+    def get_recommended_approach(self) -> str:
+        """Recomienda approach de comunicación basado en perfil."""
+        if self.buyer_persona_match == 'lucia_copypro':
+            return 'creative_roi_focused'
+        elif self.buyer_persona_match == 'marcos_multitask':
+            return 'efficiency_operational'
+        elif self.buyer_persona_match == 'sofia_visionaria':
+            return 'strategic_executive'
+        elif self.buyer_persona_match == 'ricardo_rh_agil':
+            return 'people_development'
+        elif self.buyer_persona_match == 'daniel_data_innovador':
+            return 'technical_analytical'
+        else:
+            return 'general_business'
+    
+    def should_use_technical_language(self) -> bool:
+        """Determina si usar lenguaje técnico basado en perfil."""
+        technical_personas = ['daniel_data_innovador']
+        technical_levels = ['intermediate', 'advanced']
+        
+        return (self.buyer_persona_match in technical_personas or 
+                self.technical_level in technical_levels)
+    
+    def get_conversation_priority_score(self) -> int:
+        """Calcula puntuación de prioridad para esta conversación."""
+        priority_score = 0
+        
+        # Base score from lead score
+        priority_score += self.lead_score
+        
+        # High-value persona bonus
+        if self.is_high_value_lead():
+            priority_score += 20
+        
+        # Urgency signals
+        if self.urgency_signals:
+            priority_score += len(self.urgency_signals) * 5
+        
+        # Stage bonus (closer to conversion = higher priority)
+        stage_bonuses = {
+            'first_contact': 0,
+            'privacy_flow': 5,
+            'course_selection': 15,
+            'sales_agent': 25,
+            'converted': 30
+        }
+        priority_score += stage_bonuses.get(self.stage, 0)
+        
+        return min(priority_score, 100)  # Cap at 100
 
 class MemoryManager:
     """

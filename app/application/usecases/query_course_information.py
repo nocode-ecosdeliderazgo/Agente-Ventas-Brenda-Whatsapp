@@ -231,7 +231,7 @@ class QueryCourseInformationUseCase:
             options = await self.get_available_options()
             
             # Obtener algunos cursos destacados
-            featured_courses = await self.course_repo.get_all_courses(limit=3)
+            featured_courses = await self.course_repo.get_active_courses(limit=3)
             
             summary = {
                 "statistics": stats,

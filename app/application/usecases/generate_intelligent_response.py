@@ -1,15 +1,21 @@
 """
 Caso de uso para generar respuestas inteligentes.
-Combina análisis de intención, plantillas de mensajes y respuestas de IA.
+Combina análisis de intención, plantillas de mensajes y respuestas de IA con sistema anti-inventos.
 """
 import logging
 from typing import Dict, Any, Optional
 
 from app.application.usecases.analyze_message_intent import AnalyzeMessageIntentUseCase
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
+from app.application.usecases.validate_response_use_case import ValidateResponseUseCase
+from app.application.usecases.anti_hallucination_use_case import AntiHallucinationUseCase
+from app.application.usecases.extract_user_info_use_case import ExtractUserInfoUseCase
+from app.application.usecases.personalize_response_use_case import PersonalizeResponseUseCase
 # from app.application.usecases.bonus_activation_use_case import BonusActivationUseCase  # Comentado temporalmente
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.infrastructure.openai.client import OpenAIClient
+from app.infrastructure.database.client import DatabaseClient
+from app.infrastructure.database.repositories.course_repository import CourseRepository
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
 from prompts.agent_prompts import WhatsAppMessageTemplates, get_response_generation_prompt
 
@@ -36,15 +42,19 @@ class GenerateIntelligentResponseUseCase:
         intent_analyzer: AnalyzeMessageIntentUseCase,
         twilio_client: TwilioWhatsAppClient,
         openai_client: OpenAIClient,
+        db_client: DatabaseClient,
+        course_repository: CourseRepository,
         course_query_use_case: Optional[QueryCourseInformationUseCase] = None
     ):
         """
-        Inicializa el caso de uso.
+        Inicializa el caso de uso con sistema anti-inventos.
         
         Args:
             intent_analyzer: Analizador de intención de mensajes
             twilio_client: Cliente Twilio para envío de mensajes
-            openai_client: Cliente OpenAI para validación
+            openai_client: Cliente OpenAI para generación y validación
+            db_client: Cliente de base de datos
+            course_repository: Repositorio de cursos
             course_query_use_case: Caso de uso para consultar información de cursos
         """
         self.intent_analyzer = intent_analyzer
@@ -52,6 +62,19 @@ class GenerateIntelligentResponseUseCase:
         self.openai_client = openai_client
         self.course_query_use_case = course_query_use_case
         self.course_system_available = course_query_use_case is not None
+        
+        # Inicializar sistema anti-inventos
+        self.validate_response_use_case = ValidateResponseUseCase(db_client, course_repository)
+        self.anti_hallucination_use_case = AntiHallucinationUseCase(
+            openai_client, course_repository, self.validate_response_use_case
+        )
+        
+        # Inicializar sistema de personalización avanzada (FASE 2)
+        self.extract_user_info_use_case = ExtractUserInfoUseCase(openai_client)
+        self.personalize_response_use_case = PersonalizeResponseUseCase(
+            openai_client, self.extract_user_info_use_case
+        )
+        
         self.logger = logging.getLogger(__name__)
     
     async def execute(
@@ -160,30 +183,172 @@ class GenerateIntelligentResponseUseCase:
         user_id: str
     ) -> str:
         """
-        Genera respuesta contextual con activación inteligente de bonos.
+        Genera respuesta contextual con sistema anti-inventos y activación inteligente de bonos.
         """
         try:
             intent_analysis = analysis_result.get('intent_analysis', {})
             category = intent_analysis.get('category', 'general')
-            user_memory = analysis_result.get('updated_memory')  # Cambiar de 'user_memory' a 'updated_memory'
+            user_memory = analysis_result.get('updated_memory')
             
             debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
             
-            # 1. Activar sistema de bonos inteligente
-            bonus_activation_result = await self._activate_intelligent_bonuses(
-                category, user_memory, incoming_message, user_id
-            )
+            # 1. Obtener información de curso si es relevante
+            course_info = None
+            if category in ['EXPLORATION', 'BUYING_SIGNALS', 'TEAM_TRAINING']:
+                course_info = await self._get_course_info_for_validation(user_memory)
+                debug_print(f"📚 Información de curso obtenida: {bool(course_info)}", "_generate_contextual_response")
             
-            # 2. Generar respuesta con bonos contextuales
-            response_text = await self._generate_response_with_bonuses(
-                category, user_memory, incoming_message, user_id, bonus_activation_result
-            )
+            # 2. Determinar si usar personalización avanzada
+            should_use_personalization = self._should_use_advanced_personalization(category, user_memory, incoming_message.body)
+            
+            if should_use_personalization:
+                debug_print("🎯 Usando personalización avanzada (FASE 2)", "_generate_contextual_response")
+                personalization_result = await self.personalize_response_use_case.generate_personalized_response(
+                    incoming_message.body, user_memory, category
+                )
+                response_text = personalization_result.personalized_response
+                
+                # Log información de personalización
+                debug_print(f"✅ Personalización aplicada - Persona: {personalization_result.buyer_persona_detected}, Confianza: {personalization_result.personalization_confidence:.2f}", "_generate_contextual_response")
+                debug_print(f"📊 Personalizaciones: {', '.join(personalization_result.applied_personalizations)}", "_generate_contextual_response")
+                
+            elif self._should_use_ai_generation(category, incoming_message.body):
+                debug_print("🤖 Usando generación IA con anti-inventos", "_generate_contextual_response")
+                safe_response_result = await self.anti_hallucination_use_case.generate_safe_response(
+                    incoming_message.body, user_memory, intent_analysis, course_info
+                )
+                response_text = safe_response_result['message']
+                
+                # Log información de validación
+                if safe_response_result.get('anti_hallucination_applied'):
+                    validation_info = safe_response_result.get('validation_result', {})
+                    debug_print(f"✅ Anti-inventos aplicado - Confianza: {validation_info.get('confidence_score', 0):.2f}", "_generate_contextual_response")
+            else:
+                debug_print("📝 Usando templates seguros", "_generate_contextual_response")
+                # 3. Activar sistema de bonos inteligente
+                bonus_activation_result = await self._activate_intelligent_bonuses(
+                    category, user_memory, incoming_message, user_id
+                )
+                
+                # 4. Generar respuesta con templates validados
+                response_text = await self._generate_response_with_bonuses(
+                    category, user_memory, incoming_message, user_id, bonus_activation_result
+                )
+                
+                # 5. Validar respuesta de template si menciona información específica
+                if course_info and self._mentions_specific_course_info(response_text):
+                    debug_print("🔍 Validando respuesta de template", "_generate_contextual_response")
+                    validation_result = await self.validate_response_use_case.validate_response(
+                        response_text, course_info, incoming_message.body
+                    )
+                    
+                    if not validation_result.is_valid and validation_result.corrected_response:
+                        debug_print("⚠️ Template corregido por validación", "_generate_contextual_response")
+                        response_text = validation_result.corrected_response
             
             return response_text
             
         except Exception as e:
             self.logger.error(f"❌ Error en generación contextual: {e}")
             return WhatsAppMessageTemplates.business_error_fallback()
+
+    def _should_use_ai_generation(self, category: str, message_text: str) -> bool:
+        """
+        Determina si debe usar generación IA con anti-inventos o templates seguros.
+        """
+        # Usar IA para preguntas específicas que requieren información detallada
+        ai_generation_categories = [
+            'EXPLORATION_COURSE_DETAILS', 'EXPLORATION_PRICING', 'EXPLORATION_SCHEDULE',
+            'OBJECTION_COMPLEX', 'TECHNICAL_QUESTIONS'
+        ]
+        
+        # Keywords que indican necesidad de información específica
+        specific_keywords = [
+            'cuánto cuesta', 'precio exacto', 'duración específica', 'contenido detallado',
+            'módulos incluye', 'certificado', 'cuando empieza', 'requisitos técnicos'
+        ]
+        
+        message_lower = message_text.lower()
+        has_specific_keywords = any(keyword in message_lower for keyword in specific_keywords)
+        
+        return category in ai_generation_categories or has_specific_keywords
+
+    async def _get_course_info_for_validation(self, user_memory) -> Optional[Dict]:
+        """
+        Obtiene información de curso para validación desde la base de datos.
+        """
+        try:
+            if not self.course_query_use_case:
+                return None
+                
+            # Si el usuario tiene un curso seleccionado, obtener su información
+            if user_memory and hasattr(user_memory, 'selected_course') and user_memory.selected_course:
+                course_info = await self.course_query_use_case.get_course_details(user_memory.selected_course)
+                if course_info:
+                    return course_info
+            
+            # Si no, obtener información general del catálogo
+            catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
+            if catalog_summary and catalog_summary.get('sample_course'):
+                return catalog_summary['sample_course']
+                
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo información de curso para validación: {e}")
+            return None
+
+    def _mentions_specific_course_info(self, response_text: str) -> bool:
+        """
+        Verifica si la respuesta menciona información específica de cursos que requiere validación.
+        """
+        response_lower = response_text.lower()
+        
+        specific_mentions = [
+            'precio', 'cuesta', '$', 'pesos', 'dólares',
+            'duración', 'horas', 'minutos', 'sesiones',
+            'módulos', 'certificado', 'nivel', 'requisitos'
+        ]
+        
+        return any(mention in response_lower for mention in specific_mentions)
+
+    def _should_use_advanced_personalization(self, category: str, user_memory, message_text: str) -> bool:
+        """
+        Determina si debe usar personalización avanzada basada en contexto del usuario.
+        """
+        # Usar personalización si tenemos información suficiente del usuario
+        has_buyer_persona = (hasattr(user_memory, 'buyer_persona_match') and 
+                            user_memory.buyer_persona_match != 'unknown')
+        
+        has_sufficient_info = (
+            user_memory.name and user_memory.role and 
+            user_memory.interaction_count > 1
+        )
+        
+        # Categorías que se benefician más de personalización
+        personalization_categories = [
+            'EXPLORATION', 'BUYING_SIGNALS', 'OBJECTION_PRICE', 'OBJECTION_VALUE',
+            'AUTOMATION_NEED', 'TEAM_TRAINING', 'CONTACT_ADVISOR_EXECUTIVE'
+        ]
+        
+        # Keywords que indican necesidad de personalización
+        personalization_keywords = [
+            'mi empresa', 'nuestro negocio', 'mi equipo', 'mi sector', 'mi industria',
+            'como director', 'como gerente', 'en mi rol', 'mi experiencia'
+        ]
+        
+        message_lower = message_text.lower()
+        has_personalization_keywords = any(keyword in message_lower for keyword in personalization_keywords)
+        
+        # Usar personalización si:
+        # 1. Tenemos buyer persona detectado, O
+        # 2. Tenemos información suficiente Y la categoría se beneficia, O
+        # 3. El usuario usa lenguaje personal/empresarial
+        return (
+            has_buyer_persona or
+            (has_sufficient_info and category in personalization_categories) or
+            has_personalization_keywords
+        )
 
     async def _activate_intelligent_bonuses(
         self,
@@ -211,22 +376,49 @@ class GenerateIntelligentResponseUseCase:
             conversation_context = self._determine_conversation_context(category, message_text)
             urgency_level = self._determine_urgency_level(category, user_memory)
             
-            # Activar bonos contextuales (simulado sin base de datos)
-            # Por ahora, simular bonos contextuales sin depender de la BD
-            contextual_bonuses = [
-                {
-                    "name": "Workbook Interactivo Coda.io",
-                    "description": "Plantillas y actividades colaborativas preconfiguradas",
-                    "priority_reason": "Ideal para tu rol",
-                    "sales_angle": "Acelera la implementación"
-                },
-                {
-                    "name": "Biblioteca de Prompts Avanzada", 
-                    "description": "Más de 100 ejemplos comentados para casos empresariales",
-                    "priority_reason": "Perfecto para crear contenido",
-                    "sales_angle": "Ahorra horas de trabajo semanal"
-                }
-            ]
+            # Obtener bonos contextuales desde la base de datos
+            contextual_bonuses = []
+            
+            if self.course_query_use_case:
+                try:
+                    # Buscar bonos disponibles para esta categoría
+                    available_bonuses = await self.course_query_use_case.get_available_options()
+                    bonus_options = available_bonuses.get('bonuses', [])
+                    
+                    # Filtrar bonos relevantes para la categoría
+                    relevant_bonuses = []
+                    for bonus in bonus_options[:2]:  # Máximo 2 bonos
+                        if isinstance(bonus, dict):
+                            relevant_bonuses.append({
+                                "name": bonus.get('name', 'Bono disponible'),
+                                "description": bonus.get('description', 'Descripción del bono'),
+                                "priority_reason": bonus.get('priority_reason', 'Ideal para tu perfil'),
+                                "sales_angle": bonus.get('sales_angle', 'Valor agregado')
+                            })
+                    
+                    contextual_bonuses = relevant_bonuses
+                    
+                except Exception as e:
+                    self.logger.error(f"Error obteniendo bonos de la base de datos: {e}")
+                    # Fallback a bonos básicos si no hay BD
+                    contextual_bonuses = [
+                        {
+                            "name": "Recursos Adicionales",
+                            "description": "Material complementario incluido",
+                            "priority_reason": "Ideal para tu perfil",
+                            "sales_angle": "Valor agregado"
+                        }
+                    ]
+            else:
+                # Fallback si no hay sistema de cursos
+                contextual_bonuses = [
+                    {
+                        "name": "Recursos Adicionales",
+                        "description": "Material complementario incluido",
+                        "priority_reason": "Ideal para tu perfil",
+                        "sales_angle": "Valor agregado"
+                    }
+                ]
             
             bonus_result = {
                 'should_activate': True,
@@ -297,11 +489,13 @@ class GenerateIntelligentResponseUseCase:
             user_name = user_memory.name if user_memory else "Usuario"
             user_role = user_memory.role if user_memory else "Profesional"
             
-            # Generar respuesta básica con información de bonos
-            base_response = self._get_template_response(category, user_memory, incoming_message)
+            # Generar respuesta básica
+            base_response = await self._get_template_response(category, user_memory, incoming_message)
             
-            # Agregar información de bonos si está disponible
-            if bonus_activation_result.get('should_activate_bonuses', False):
+            # Solo agregar bonos para categorías específicas (no para respuestas generales)
+            categories_with_bonuses = ['BUYING_SIGNALS', 'EXPLORATION', 'AUTOMATION_NEED', 'OBJECTION_PRICE']
+            if (category in categories_with_bonuses and 
+                bonus_activation_result.get('should_activate_bonuses', False)):
                 bonus_info = self._format_bonus_information(bonus_activation_result)
                 if bonus_info:
                     base_response += f"\n\n{bonus_info}"
@@ -310,7 +504,7 @@ class GenerateIntelligentResponseUseCase:
                 
         except Exception as e:
             self.logger.error(f"❌ Error generando respuesta con bonos: {e}")
-            return self._get_template_response(category, user_memory, incoming_message)
+            return await self._get_template_response(category, user_memory, incoming_message)
 
     def _format_bonus_information(self, bonus_activation_result: Dict[str, Any]) -> str:
         """
@@ -323,17 +517,23 @@ class GenerateIntelligentResponseUseCase:
             
             bonus_text = "\n🎁 **BONOS INCLUIDOS:**\n"
             for i, bonus in enumerate(contextual_bonuses[:3], 1):
-                content = bonus.get('content', 'Bono disponible')
-                bonus_text += f"• {content}\n"
+                bonus_name = bonus.get('name', 'Bono disponible')
+                bonus_description = bonus.get('description', '')
+                if bonus_description:
+                    bonus_text += f"• {bonus_name}: {bonus_description}\n"
+                else:
+                    bonus_text += f"• {bonus_name}\n"
             
-            bonus_text += "\n💡 **Valor total:** Más de $2,000 USD en bonos adicionales incluidos GRATIS."
+            # Calcular valor total dinámicamente
+            total_value = len(contextual_bonuses) * 500  # Valor estimado por bono
+            bonus_text += f"\n💡 **Valor total:** Más de ${total_value} USD en bonos adicionales incluidos GRATIS."
             return bonus_text
             
         except Exception as e:
             self.logger.error(f"❌ Error formateando información de bonos: {e}")
             return ""
     
-    def _get_template_response(
+    async def _get_template_response(
         self,
         category: str,
         user_memory,
@@ -360,7 +560,6 @@ class GenerateIntelligentResponseUseCase:
             'FREE_RESOURCES': lambda: WhatsAppMessageTemplates.business_resources_offer(user_name, user_role),
             'CONTACT_REQUEST': lambda: WhatsAppMessageTemplates.executive_advisor_transition(user_name, user_role),
             'OBJECTION_PRICE': lambda: WhatsAppMessageTemplates.business_price_objection_response(role=user_role),
-            'EXPLORATION': lambda: self._get_exploration_response(user_name, user_role),
             'AUTOMATION_NEED': lambda: self._get_automation_response(user_name, user_role),
             'BUYING_SIGNALS': lambda: self._get_buying_signals_response(user_name),
             'PROFESSION_CHANGE': lambda: self._get_profession_change_response(user_name),
@@ -385,20 +584,60 @@ class GenerateIntelligentResponseUseCase:
             return WhatsAppMessageTemplates.business_role_inquiry(user_name)
         
         # Usar template correspondiente o respuesta general
+        if category == 'EXPLORATION':
+            return await self._get_exploration_response(user_name, user_role)
+        
+        # Para categorías relacionadas con cursos, usar información de la base de datos
+        course_related_categories = ['TEAM_TRAINING', 'CONTACT_ADVISOR_EXECUTIVE', 'BUYING_SIGNALS']
+        if category in course_related_categories:
+            return await self._generate_course_enhanced_response(
+                category, user_name, [], incoming_message.body
+            )
+        
         template_func = template_map.get(category, template_map['GENERAL_QUESTION'])
         return template_func()
     
-    def _get_exploration_response(self, user_name: str, user_role: str) -> str:
-        """Respuesta para usuarios explorando opciones."""
+    async def _get_exploration_response(self, user_name: str, user_role: str) -> str:
+        """Respuesta para usuarios explorando opciones usando información de la BD."""
         name_part = f"{user_name}, " if user_name else ""
         role_context = f"Como {user_role}, " if user_role else ""
         
-        return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
+        try:
+            if self.course_query_use_case:
+                # Obtener información de cursos disponibles
+                catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
+                total_courses = catalog_summary.get('total_courses', 0) if catalog_summary else 0
+                
+                return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
 
 {role_context}estoy segura de que la IA puede transformar completamente tu forma de trabajar.
 
 **📚 Te puedo mostrar:**
-• Temario completo del curso
+• Temario completo de nuestros {total_courses} cursos
+• Recursos gratuitos para empezar hoy
+• Casos de éxito de personas como tú
+
+¿Qué te gustaría ver primero?"""
+            else:
+                return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
+
+{role_context}estoy segura de que la IA puede transformar completamente tu forma de trabajar.
+
+**📚 Te puedo mostrar:**
+• Temario completo de nuestros cursos
+• Recursos gratuitos para empezar hoy
+• Casos de éxito de personas como tú
+
+¿Qué te gustaría ver primero?"""
+                
+        except Exception as e:
+            self.logger.error(f"Error obteniendo información de exploración: {e}")
+            return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
+
+{role_context}estoy segura de que la IA puede transformar completamente tu forma de trabajar.
+
+**📚 Te puedo mostrar:**
+• Temario completo de nuestros cursos
 • Recursos gratuitos para empezar hoy
 • Casos de éxito de personas como tú
 
@@ -672,51 +911,109 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
         name_part = f"{user_name}, " if user_name else ""
         
         try:
-            # Por ahora, usar respuesta estándar sin base de datos
-            return self._get_standard_course_response(category, user_name)
+            # Intentar obtener información real de la base de datos
+            if self.course_query_use_case:
+                # Buscar cursos relevantes basados en el mensaje
+                relevant_courses = await self.course_query_use_case.search_courses_by_keyword(
+                    message_text, limit=3
+                )
+                
+                if relevant_courses:
+                    # Formatear información de cursos para chat
+                    course_info = await self.course_query_use_case.format_course_list_for_chat(relevant_courses)
+                    return f"""¡Perfecto{', ' + name_part if name_part else ''}! 📚
+
+He encontrado estos cursos que podrían interesarte:
+
+{course_info}
+
+¿Te gustaría que te dé más detalles sobre alguno de estos cursos?"""
+                
+                # Si no encuentra cursos específicos, buscar recomendados
+                recommended_courses = await self.course_query_use_case.get_recommended_courses(
+                    user_interests=user_interests, limit=3
+                )
+                
+                if recommended_courses:
+                    course_info = await self.course_query_use_case.format_course_list_for_chat(recommended_courses)
+                    return f"""¡Excelente{', ' + name_part if name_part else ''}! 🎯
+
+Basándome en tus intereses, te recomiendo estos cursos:
+
+{course_info}
+
+¿Te gustaría conocer más detalles sobre alguno de ellos?"""
+            
+            # Fallback a respuesta estándar si no hay base de datos
+            return await self._get_standard_course_response(category, user_name)
         
         except Exception as e:
             self.logger.error(f"Error generando respuesta con cursos: {e}")
-            return self._get_standard_course_response(category, user_name)
+            return await self._get_standard_course_response(category, user_name)
     
-    def _get_standard_course_response(self, category: str, user_name: str) -> str:
-        """Respuesta estándar cuando no hay información de cursos disponible."""
+    async def _get_standard_course_response(self, category: str, user_name: str) -> str:
+        """Respuesta estándar usando información de la base de datos."""
         name_part = f"{user_name}, " if user_name else ""
         
-        if category == 'EXPLORATION':
-            return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
+        try:
+            if self.course_query_use_case:
+                # Obtener catálogo de cursos desde la base de datos
+                catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
+                
+                if catalog_summary:
+                    statistics = catalog_summary.get('statistics', {})
+                    total_courses = statistics.get('total_courses', 0)
+                    available_options = catalog_summary.get('available_options', {})
+                    available_modalities = available_options.get('modalities', [])
+                    course_categories = available_options.get('levels', [])
+                    
+                    if category == 'EXPLORATION':
+                        return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
 
-**📚 Nuestros cursos de IA te enseñan:**
-• Automatización de procesos
+**📚 Tenemos {total_courses} cursos de IA que te enseñan:**
+• Automatización de procesos empresariales
 • Análisis inteligente de datos
 • Creación de contenido con IA
 • Optimización de flujos de trabajo
 
 **💡 Modalidades disponibles:**
-• Online en vivo
-• Acceso a grabaciones
-• Mentoría personalizada
+{chr(10).join([f"• {modality}" for modality in available_modalities[:3]])}
 
-¿Te gustaría conocer el temario completo?"""
-        
-        elif category == 'BUYING_SIGNALS':
-            return f"""Me da mucho gusto tu interés{', ' + name_part if name_part else ''}! 🚀
+¿Te gustaría conocer el temario completo de algún curso específico?"""
+                    
+                    elif category == 'BUYING_SIGNALS':
+                        return f"""Me da mucho gusto tu interés{', ' + name_part if name_part else ''}! 🚀
 
 **🎯 Para facilitar tu decisión:**
-• Puedo mostrarte el programa completo
+• Puedo mostrarte el programa completo de cualquier curso
 • Conectarte con un asesor especializado
-• Explicarte nuestras opciones de pago
-• Testimonios de profesionales exitosos
+• Explicarte nuestras opciones de pago flexibles
+• Compartir testimonios de profesionales exitosos
 
 ¿Qué prefieres hacer primero?"""
-        
-        else:
-            return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
+                    
+                    else:
+                        return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
 
 **📚 Te ayudo con información sobre:**
-• Cursos de IA aplicada
-• Programas de automatización
-• Capacitación personalizada
-• Recursos gratuitos
+• {total_courses} cursos de IA aplicada
+• Programas de automatización empresarial
+• Capacitación personalizada según tu sector
+• Recursos gratuitos para empezar
+
+¿En qué área te gustaría especializarte?"""
+            
+            # Fallback si no hay base de datos
+            return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
+
+**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
+
+¿En qué área te gustaría especializarte?"""
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo información de cursos: {e}")
+            return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
+
+**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
 
 ¿En qué área te gustaría especializarte?"""

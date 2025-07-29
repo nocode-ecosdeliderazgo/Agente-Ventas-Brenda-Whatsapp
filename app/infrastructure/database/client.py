@@ -25,6 +25,7 @@ class DatabaseClient:
                 min_size=1,
                 max_size=10,
                 command_timeout=30,
+                statement_cache_size=0,  # Deshabilitar prepared statements para pgbouncer
                 server_settings={
                     'jit': 'off'  # Mejora performance para queries simples
                 }
@@ -79,8 +80,15 @@ class DatabaseClient:
                     await conn.execute(query, *args)
                     return []
                 
-                # Convertir records a diccionarios
-                return [dict(record) for record in records] if records else []
+                # Convertir records a diccionarios manteniendo los nombres originales
+                result = []
+                for record in records:
+                    record_dict = {}
+                    for key, value in record.items():
+                        # Mantener nombres originales de columnas
+                        record_dict[key] = value
+                    result.append(record_dict)
+                return result if result else []
                 
         except Exception as e:
             logger.error(f"❌ Error ejecutando query: {e}")
