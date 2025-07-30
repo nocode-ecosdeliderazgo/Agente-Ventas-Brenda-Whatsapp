@@ -198,6 +198,10 @@ class GenerateIntelligentResponseUseCase:
             if (openai_response and len(openai_response.strip()) > 50 and 
                 self._should_use_ai_generation(category, incoming_message.body)):
                 debug_print("🎯 Usando respuesta inteligente ya generada por OpenAI", "_generate_contextual_response")
+                
+                # ⚠️ PROBLEMA: Esta respuesta no tiene información específica del curso
+                # TODO: En el futuro, mejorar el análisis de intención para incluir info de curso
+                debug_print("⚠️ NOTA: Respuesta OpenAI previa puede no tener nombre específico del curso", "_generate_contextual_response")
                 return openai_response.strip()
             
             # 2. Obtener información de curso si es relevante
@@ -222,8 +226,13 @@ class GenerateIntelligentResponseUseCase:
                 
             elif self._should_use_ai_generation(category, incoming_message.body):
                 debug_print("🤖 Usando generación IA con anti-inventos", "_generate_contextual_response")
+                
+                # Obtener información detallada del curso para OpenAI
+                course_detailed_info = await self._get_course_detailed_info()
+                debug_print(f"📚 Información de curso para OpenAI: {course_detailed_info.get('name', 'No disponible') if course_detailed_info else 'No disponible'}", "_generate_contextual_response")
+                
                 safe_response_result = await self.anti_hallucination_use_case.generate_safe_response(
-                    incoming_message.body, user_memory, intent_analysis, course_info
+                    incoming_message.body, user_memory, intent_analysis, course_info, course_detailed_info
                 )
                 response_text = safe_response_result['message']
                 
@@ -637,13 +646,17 @@ class GenerateIntelligentResponseUseCase:
                 catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
                 if catalog_summary and catalog_summary.get('statistics', {}).get('total_courses', 0) > 0:
                     total_courses = catalog_summary['statistics']['total_courses']
+                    featured_courses = catalog_summary.get('featured_courses', [])
+                    
+                    # Generar información de cursos contextual
+                    course_info_text = self._generate_course_info_text(total_courses, featured_courses, 'EXPLORATION')
                     
                     return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
 
 {role_context}estoy segura de que la IA puede transformar completamente tu forma de trabajar.
 
 **📚 Te puedo mostrar:**
-• Temario completo de nuestros {total_courses} cursos
+• Temario completo de {self._get_course_name_text(total_courses, featured_courses)}
 • Recursos gratuitos para empezar hoy
 • Casos de éxito de personas como tú
 
@@ -779,14 +792,18 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
                 if catalog_summary and catalog_summary.get('statistics', {}).get('total_courses', 0) > 0:
                     total_courses = catalog_summary['statistics']['total_courses']
                     available_levels = catalog_summary.get('available_options', {}).get('levels', [])
+                    featured_courses = catalog_summary.get('featured_courses', [])
                     
                     levels_text = ", ".join(available_levels) if available_levels else "todos los niveles"
+                    course_name_text = self._get_course_name_text(total_courses, featured_courses)
+                    
+                    courses_text = f"**📚 Tenemos {course_name_text}** para {levels_text}, diseñados específicamente para profesionales como tú." if total_courses == 1 else f"**📚 Tenemos {total_courses} cursos disponibles** para {levels_text}, diseñados específicamente para profesionales como tú."
                     
                     return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
 
 {role_context}estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
 
-**📚 Tenemos {total_courses} cursos disponibles** para {levels_text}, diseñados específicamente para profesionales como tú.
+{courses_text}
 
 **🎯 Puedo ayudarte con:**
 • Información detallada sobre nuestros cursos
@@ -1189,11 +1206,15 @@ Basándome en tus intereses, te recomiendo estos cursos:
                     available_options = catalog_summary.get('available_options', {})
                     available_modalities = available_options.get('modalities', [])
                     course_categories = available_options.get('levels', [])
+                    featured_courses = catalog_summary.get('featured_courses', [])
+                    
+                    # Generar información de cursos contextual
+                    course_info_text = self._generate_course_info_text(total_courses, featured_courses, category)
                     
                     if category == 'EXPLORATION':
                         return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
 
-**📚 Tenemos {total_courses} cursos de IA que te enseñan:**
+{course_info_text}
 • Automatización de procesos empresariales
 • Análisis inteligente de datos
 • Creación de contenido con IA
@@ -1216,10 +1237,11 @@ Basándome en tus intereses, te recomiendo estos cursos:
 ¿Qué prefieres hacer primero?"""
                     
                     else:
+                        course_name_text = self._get_course_name_text(total_courses, featured_courses)
                         return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
 
 **📚 Te ayudo con información sobre:**
-• {total_courses} cursos de IA aplicada
+• {course_name_text}
 • Programas de automatización empresarial
 • Capacitación personalizada según tu sector
 • Recursos gratuitos para empezar
@@ -1240,3 +1262,114 @@ Basándome en tus intereses, te recomiendo estos cursos:
 **📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
 
 ¿En qué área te gustaría especializarte?"""
+    
+    def _generate_course_info_text(self, total_courses: int, featured_courses: list, category: str) -> str:
+        """
+        Genera texto informativo sobre cursos según el contexto.
+        
+        Args:
+            total_courses: Número total de cursos disponibles
+            featured_courses: Lista de cursos destacados con información
+            category: Categoría de la consulta
+            
+        Returns:
+            Texto formateado con información de cursos
+        """
+        if total_courses == 1 and featured_courses:
+            # Caso actual: Solo 1 curso - mostrar nombre específico
+            course_name = featured_courses[0].get('name', 'nuestro curso de IA')
+            level = featured_courses[0].get('level', '')
+            modality = featured_courses[0].get('modality', '')
+            
+            level_text = f" (Nivel: {level})" if level else ""
+            modality_text = f" - Modalidad: {modality}" if modality else ""
+            
+            return f"""**📚 Tenemos el curso: "{course_name}"{level_text}**{modality_text}
+
+Este curso te enseña:"""
+            
+        elif total_courses > 1:
+            # Caso futuro: Múltiples cursos - mostrar los más relevantes
+            if category in ['EXPLORATION_SECTOR', 'AUTOMATION_CONTENT', 'AUTOMATION_REPORTS']:
+                # Para categorías específicas, filtrar cursos relevantes
+                relevant_courses = [course for course in featured_courses[:3]]  # Top 3 más relevantes
+                
+                if relevant_courses:
+                    course_list = []
+                    for course in relevant_courses:
+                        name = course.get('name', 'Curso de IA')
+                        level = course.get('level', '')
+                        level_text = f" ({level})" if level else ""
+                        course_list.append(f"• **{name}**{level_text}")
+                    
+                    return f"""**📚 Cursos disponibles relacionados con tu consulta:**
+
+{chr(10).join(course_list)}
+
+Cada curso te enseña:"""
+                
+            # Caso general: mostrar resumen de cursos
+            return f"**📚 Tenemos {total_courses} cursos de IA especializados que te enseñan:**"
+            
+        else:
+            # Fallback genérico
+            return f"**📚 Tenemos {total_courses} cursos de IA que te enseñan:**"
+    
+    def _get_course_name_text(self, total_courses: int, featured_courses: list) -> str:
+        """
+        Obtiene texto simple del nombre del curso para uso en listas.
+        
+        Args:
+            total_courses: Número total de cursos
+            featured_courses: Lista de cursos destacados
+            
+        Returns:
+            Texto simple con nombre(s) de curso(s)
+        """
+        if total_courses == 1 and featured_courses:
+            course_name = featured_courses[0].get('name', 'nuestro curso de IA')
+            return f'"{course_name}"'
+        elif total_courses > 1:
+            return f"nuestros {total_courses} cursos de IA"
+        else:
+            return f"nuestros {total_courses} cursos de IA"
+    
+    async def _get_course_detailed_info(self) -> dict:
+        """
+        Obtiene información detallada del curso para incluir en prompts de OpenAI.
+        
+        Returns:
+            Dict con información completa del curso o {} si no está disponible
+        """
+        try:
+            if not self.course_query_use_case:
+                return {}
+            
+            # Obtener catálogo de cursos
+            catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
+            if not catalog_summary or not catalog_summary.get('featured_courses'):
+                return {}
+            
+            # Obtener el primer curso (actualmente solo hay 1)
+            featured_courses = catalog_summary.get('featured_courses', [])
+            if not featured_courses:
+                return {}
+            
+            first_course = featured_courses[0]
+            
+            # Estructurar información para OpenAI
+            course_info = {
+                'name': first_course.get('name', ''),
+                'short_description': first_course.get('short_description', ''),
+                'level': first_course.get('level', ''),
+                'modality': first_course.get('modality', ''),
+                'id': first_course.get('id', ''),
+                'total_courses': catalog_summary.get('statistics', {}).get('total_courses', 1)
+            }
+            
+            self.logger.info(f"📚 Información de curso obtenida para OpenAI: {course_info['name']}")
+            return course_info
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo información detallada del curso: {e}")
+            return {}

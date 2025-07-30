@@ -44,7 +44,8 @@ class AntiHallucinationUseCase:
         user_message: str,
         user_memory: Any,
         intent_analysis: Dict,
-        course_info: Optional[Dict] = None
+        course_info: Optional[Dict] = None,
+        course_detailed_info: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """
         Generates a safe, validated response that prevents hallucination.
@@ -54,6 +55,7 @@ class AntiHallucinationUseCase:
             user_memory: User memory object
             intent_analysis: Intent analysis result
             course_info: Course information from database
+            course_detailed_info: Detailed course info for OpenAI (name, description, etc.)
             
         Returns:
             Dict with safe response and validation metadata
@@ -63,13 +65,18 @@ class AntiHallucinationUseCase:
             needs_specific_info = self._user_needs_specific_info(user_message, intent_analysis)
             
             # 2. Verificar disponibilidad de datos en BD
-            data_availability = await self._check_data_availability(course_info, needs_specific_info)
+            # Combinar course_info y course_detailed_info para tener información completa
+            combined_course_info = course_info or {}
+            if course_detailed_info:
+                combined_course_info.update(course_detailed_info)
+                
+            data_availability = await self._check_data_availability(combined_course_info, needs_specific_info)
             
             # 3. Generar respuesta según disponibilidad de datos
             if data_availability['has_sufficient_data']:
                 # Generar respuesta con datos verificados
                 response = await self._generate_verified_response(
-                    user_message, user_memory, intent_analysis, course_info
+                    user_message, user_memory, intent_analysis, combined_course_info
                 )
             else:
                 # Generar respuesta segura sin datos específicos

@@ -115,7 +115,7 @@ def parse_openai_json(content):
 
 ### **👨‍💻 DESARROLLADOR A: Backend & Base de Datos**
 
-#### **Prioridad 1: Arreglar Parser JSON OpenAI**
+#### **Prioridad 1: Arreglar Parser JSON OpenAI** (arreglado)
 - **Archivo**: `app/infrastructure/openai/client.py`
 - **Tarea**: Implementar limpieza de markdown en JSON parsing
 - **Tiempo**: 2 horas
