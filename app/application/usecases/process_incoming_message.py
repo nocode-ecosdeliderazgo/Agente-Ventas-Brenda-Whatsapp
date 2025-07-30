@@ -13,6 +13,7 @@ from app.application.usecases.tool_activation_use_case import ToolActivationUseC
 from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
 from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
 from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
+from app.application.usecases.welcome_flow_use_case import WelcomeFlowUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,8 @@ class ProcessIncomingMessageUseCase:
         tool_activation_use_case: ToolActivationUseCase = None,
         course_announcement_use_case: CourseAnnouncementUseCase = None,
         detect_ad_hashtags_use_case: DetectAdHashtagsUseCase = None,
-        process_ad_flow_use_case: ProcessAdFlowUseCase = None
+        process_ad_flow_use_case: ProcessAdFlowUseCase = None,
+        welcome_flow_use_case: WelcomeFlowUseCase = None
     ):
         """
         Inicializa el caso de uso.
@@ -50,6 +52,7 @@ class ProcessIncomingMessageUseCase:
         self.course_announcement_use_case = course_announcement_use_case
         self.detect_ad_hashtags_use_case = detect_ad_hashtags_use_case
         self.process_ad_flow_use_case = process_ad_flow_use_case
+        self.welcome_flow_use_case = welcome_flow_use_case
     
     async def execute(self, webhook_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -234,6 +237,46 @@ class ProcessIncomingMessageUseCase:
                 except Exception as e:
                     logger.error(f"❌ Error procesando anuncio de curso: {e}")
                     # Continuar con procesamiento normal como fallback
+            
+            # PRIORIDAD 1.7: Verificar si es un mensaje genérico que debe activar el flujo de bienvenida
+            if self.welcome_flow_use_case:
+                try:
+                    # Obtener memoria del usuario
+                    user_memory = self.memory_use_case.get_user_memory(user_id)
+                    
+                    # Verificar si debe manejar el flujo de bienvenida
+                    if self.welcome_flow_use_case.should_handle_welcome_flow(incoming_message, user_memory):
+                        logger.info(f"🎯 Iniciando flujo de bienvenida genérico para usuario {user_id}")
+                        
+                        welcome_result = await self.welcome_flow_use_case.handle_welcome_flow(
+                            user_id, incoming_message
+                        )
+                        
+                        if welcome_result.get('success'):
+                            logger.info(f"✅ Flujo de bienvenida procesado para {user_id}")
+                            return {
+                                'success': True,
+                                'processed': True,
+                                'incoming_message': {
+                                    'from': incoming_message.from_number,
+                                    'body': incoming_message.body,
+                                    'message_sid': incoming_message.message_sid
+                                },
+                                'response_sent': True,
+                                'response_sid': welcome_result.get('response_sid'),
+                                'response_text': welcome_result.get('response_text', ''),
+                                'processing_type': 'welcome_flow',
+                                'welcome_flow_completed': welcome_result.get('welcome_flow_completed', False),
+                                'course_selected': welcome_result.get('course_selected', False),
+                                'ready_for_intelligent_agent': welcome_result.get('ready_for_intelligent_agent', False)
+                            }
+                        else:
+                            logger.error(f"❌ Error en flujo de bienvenida: {welcome_result}")
+                            # Continuar con procesamiento normal
+                    
+                except Exception as e:
+                    logger.error(f"❌ Error procesando flujo de bienvenida: {e}")
+                    # Continuar con procesamiento normal
             
             # PRIORIDAD 2: Usar respuesta inteligente si está disponible
             if self.intelligent_response_use_case:

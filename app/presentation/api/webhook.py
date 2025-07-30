@@ -17,6 +17,7 @@ from app.application.usecases.privacy_flow_use_case import PrivacyFlowUseCase
 from app.application.usecases.tool_activation_use_case import ToolActivationUseCase
 from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
+from app.application.usecases.welcome_flow_use_case import WelcomeFlowUseCase
 from memory.lead_memory import MemoryManager
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ process_message_use_case = None
 privacy_flow_use_case = None
 tool_activation_use_case = None
 course_announcement_use_case = None
+welcome_flow_use_case = None
 
 @app.on_event("startup")
 async def startup_event():
@@ -100,10 +102,17 @@ async def startup_event():
         )
         debug_print("✅ Sistema de anuncios de cursos inicializado correctamente", "startup", "webhook.py")
         
+        # Inicializar flujo de bienvenida genérico
+        debug_print("🎯 Inicializando flujo de bienvenida genérico...", "startup", "webhook.py")
+        welcome_flow_use_case = WelcomeFlowUseCase(
+            privacy_flow_use_case, course_query_use_case, memory_use_case, twilio_client
+        )
+        debug_print("✅ Flujo de bienvenida genérico inicializado correctamente", "startup", "webhook.py")
+        
         # Crear caso de uso de procesamiento con capacidades inteligentes
         debug_print("⚙️ Creando procesador de mensajes principal...", "startup", "webhook.py")
         process_message_use_case = ProcessIncomingMessageUseCase(
-            twilio_client, memory_use_case, intelligent_response_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case
+            twilio_client, memory_use_case, intelligent_response_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case, welcome_flow_use_case=welcome_flow_use_case
         )
         debug_print("✅ Procesador de mensajes principal creado", "startup", "webhook.py")
         

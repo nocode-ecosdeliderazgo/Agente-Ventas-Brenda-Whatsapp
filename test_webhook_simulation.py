@@ -28,6 +28,7 @@ from app.application.usecases.tool_activation_use_case import ToolActivationUseC
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
 from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
 from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
+from app.application.usecases.welcome_flow_use_case import WelcomeFlowUseCase
 from memory.lead_memory import MemoryManager
 
 def debug_print(message: str, function_name: str = "", file_name: str = "webhook_simulation.py"):
@@ -49,6 +50,7 @@ class WebhookSimulation:
         self.tool_activation_use_case = None
         self.detect_ad_hashtags_use_case = None
         self.process_ad_flow_use_case = None
+        self.welcome_flow_use_case = None
         self.openai_client = None
         self.db_client = None
         self.course_repository = None
@@ -132,6 +134,16 @@ class WebhookSimulation:
             )
             debug_print("✅ Sistema de flujo de anuncios inicializado correctamente", "initialize_system", "webhook_simulation.py")
             
+            # Inicializar flujo de bienvenida genérico
+            debug_print("🎯 Inicializando flujo de bienvenida genérico...", "initialize_system", "webhook_simulation.py")
+            self.welcome_flow_use_case = WelcomeFlowUseCase(
+                self.privacy_flow_use_case, 
+                self.course_query_use_case, 
+                self.memory_use_case, 
+                self.twilio_client
+            )
+            debug_print("✅ Flujo de bienvenida genérico inicializado correctamente", "initialize_system", "webhook_simulation.py")
+            
             # Crear caso de uso de procesamiento con capacidades inteligentes
             debug_print("⚙️ Creando procesador de mensajes principal...", "initialize_system", "webhook_simulation.py")
             self.process_message_use_case = ProcessIncomingMessageUseCase(
@@ -141,7 +153,8 @@ class WebhookSimulation:
                 self.privacy_flow_use_case, 
                 self.tool_activation_use_case,
                 detect_ad_hashtags_use_case=self.detect_ad_hashtags_use_case,
-                process_ad_flow_use_case=self.process_ad_flow_use_case
+                process_ad_flow_use_case=self.process_ad_flow_use_case,
+                welcome_flow_use_case=self.welcome_flow_use_case
             )
             debug_print("✅ Procesador de mensajes principal creado", "initialize_system", "webhook_simulation.py")
             
