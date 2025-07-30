@@ -33,6 +33,10 @@ class LeadMemory:
     flow_step: int = 0  # paso actual dentro del flujo
     waiting_for_response: str = ""  # qué tipo de respuesta espera (name, privacy_acceptance, course_choice, etc.)
     
+    # 🆕 CAMPOS PARA MENSAJE ORIGINAL (para activación automática de flujo de anuncios)
+    original_message_body: Optional[str] = None  # Cuerpo del mensaje original que inició el flujo
+    original_message_sid: Optional[str] = None   # SID del mensaje original
+    
     # 🆕 CAMPOS DE PERSONALIZACIÓN AVANZADA (FASE 2)
     # Buyer persona information
     buyer_persona_match: str = "unknown"  # lucia_copypro, marcos_multitask, sofia_visionaria, ricardo_rh_agil, daniel_data_innovador

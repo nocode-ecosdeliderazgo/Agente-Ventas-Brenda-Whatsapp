@@ -82,6 +82,11 @@ class WebhookSimulation:
             # Inicializar base de datos y repositorio de cursos
             debug_print("🗄️ Inicializando cliente de base de datos...", "initialize_system", "webhook_simulation.py")
             self.db_client = DatabaseClient()
+            
+            # Conectar la instancia global de base de datos
+            from app.infrastructure.database.client import database_client
+            await database_client.connect()
+            
             self.course_repository = CourseRepository()
             debug_print("✅ Cliente de base de datos inicializado correctamente", "initialize_system", "webhook_simulation.py")
             
@@ -130,8 +135,11 @@ class WebhookSimulation:
             # Crear caso de uso de procesamiento con capacidades inteligentes
             debug_print("⚙️ Creando procesador de mensajes principal...", "initialize_system", "webhook_simulation.py")
             self.process_message_use_case = ProcessIncomingMessageUseCase(
-                self.twilio_client, self.memory_use_case, self.intelligent_response_use_case, 
-                self.privacy_flow_use_case, self.tool_activation_use_case,
+                self.twilio_client, 
+                self.memory_use_case, 
+                self.intelligent_response_use_case, 
+                self.privacy_flow_use_case, 
+                self.tool_activation_use_case,
                 detect_ad_hashtags_use_case=self.detect_ad_hashtags_use_case,
                 process_ad_flow_use_case=self.process_ad_flow_use_case
             )
@@ -172,6 +180,11 @@ class WebhookSimulation:
             
             # Procesar mensaje de forma síncrona (exactamente como en webhook.py)
             debug_print("🚀 INICIANDO PROCESAMIENTO SÍNCRONO...", "process_webhook_message", "webhook_simulation.py")
+            
+            if self.process_message_use_case is None:
+                debug_print("❌ ERROR: process_message_use_case no está inicializado", "process_webhook_message", "webhook_simulation.py")
+                return {'success': False, 'error': 'Process message use case not initialized'}
+                
             result = await self.process_message_use_case.execute(webhook_data)
             debug_print(f"📊 Resultado del procesamiento: {result}", "process_webhook_message", "webhook_simulation.py")
             

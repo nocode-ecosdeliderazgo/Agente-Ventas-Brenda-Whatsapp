@@ -245,7 +245,9 @@ class QueryCourseInformationUseCase:
                         "modality": course.modality
                     }
                     for course in featured_courses
-                ]
+                ],
+                # Agregar sample_course para validación anti-inventos
+                "sample_course": featured_courses[0].__dict__ if featured_courses else None
             }
             
             logger.info("📊 Resumen del catálogo generado")

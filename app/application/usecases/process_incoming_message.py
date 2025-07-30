@@ -115,6 +115,27 @@ class ProcessIncomingMessageUseCase:
                             }
                         elif not privacy_result['in_privacy_flow'] and privacy_result.get('should_continue_normal_flow'):
                             logger.info(f"🔄 Usuario {user_id} no está en flujo privacidad, continuando procesamiento normal")
+                            # Verificar si el flujo de privacidad activó automáticamente el flujo de anuncios
+                            if privacy_result.get('ad_flow_activated') and privacy_result.get('ad_flow_result'):
+                                logger.info(f"🎯 Flujo de anuncios ya activado automáticamente por flujo de privacidad")
+                                ad_result = privacy_result['ad_flow_result']
+                                return {
+                                    'success': True,
+                                    'processed': True,
+                                    'incoming_message': {
+                                        'from': incoming_message.from_number,
+                                        'body': incoming_message.body,
+                                        'message_sid': incoming_message.message_sid
+                                    },
+                                    'response_sent': True,
+                                    'response_sid': None,
+                                    'response_text': ad_result.get('response_text', ''),
+                                    'processing_type': 'privacy_flow_to_ad_flow',
+                                    'course_id': ad_result.get('course_id'),
+                                    'campaign_name': ad_result.get('campaign_name'),
+                                    'ad_flow_completed': True,
+                                    'privacy_flow_completed': True
+                                }
                             # Continuar con procesamiento normal
                         else:
                             logger.error(f"❌ Error en flujo de privacidad para {user_id}: {privacy_result}")
@@ -125,18 +146,30 @@ class ProcessIncomingMessageUseCase:
                     # Continuar con procesamiento normal como fallback
             
             # PRIORIDAD 1.5: Verificar si es un anuncio con hashtags específicos
+            # O si el usuario ya completó privacidad y tiene hashtags de anuncio
             if self.detect_ad_hashtags_use_case and self.process_ad_flow_use_case:
                 try:
                     # Detectar hashtags de anuncios
                     hashtags_info = await self.detect_ad_hashtags_use_case.execute(incoming_message.body)
                     
-                    if hashtags_info.get('is_ad'):
+                    # Verificar si es un anuncio directo O si el usuario ya completó privacidad y tiene hashtags
+                    user_memory = self.memory_use_case.get_user_memory(user_id)
+                    is_ad = hashtags_info.get('is_ad')
+                    has_completed_privacy = (user_memory and 
+                                          getattr(user_memory, 'privacy_accepted', False) and 
+                                          getattr(user_memory, 'name', None))  # Usar 'name' en lugar de 'user_name'
+                    
+                    # Activar flujo de anuncios si:
+                    # 1. Es un anuncio directo (usuario nuevo con hashtags)
+                    # 2. Usuario existente con privacidad completa envía hashtags
+                    if is_ad or (has_completed_privacy and hashtags_info.get('has_course_hashtag')):
                         logger.info(f"📢 Detectado anuncio con hashtags para {user_id}: {hashtags_info}")
+                        logger.info(f"📊 Estado usuario - Privacidad: {has_completed_privacy}, Hashtags: {is_ad}")
                         
                         # Procesar flujo de anuncios
                         ad_flow_result = await self.process_ad_flow_use_case.execute(
                             webhook_data, 
-                            {'id': user_id, 'first_name': 'Usuario'}, 
+                            {'id': user_id, 'first_name': getattr(user_memory, 'name', 'Usuario') if user_memory else 'Usuario'}, 
                             hashtags_info
                         )
                         

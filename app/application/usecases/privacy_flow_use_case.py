@@ -54,62 +54,66 @@ class PrivacyFlowUseCase:
         incoming_message: IncomingMessage
     ) -> Dict[str, Any]:
         """
-        Maneja todo el flujo de privacidad según el estado actual del usuario.
+        Maneja el flujo de privacidad para un usuario.
         
         Args:
             user_id: ID del usuario
-            incoming_message: Mensaje entrante
+            incoming_message: Mensaje entrante del usuario
             
         Returns:
-            Dict con resultado del procesamiento
+            Resultado del procesamiento del flujo de privacidad
         """
+        debug_print(f"🔐 INICIANDO FLUJO DE PRIVACIDAD\n👤 Usuario: {user_id}\n💬 Mensaje: '{incoming_message.body}'")
+        
         try:
-            debug_print(f"🔐 INICIANDO FLUJO DE PRIVACIDAD\\n👤 Usuario: {user_id}\\n💬 Mensaje: '{incoming_message.body}'", "handle_privacy_flow")
-            
-            # Obtener memoria actual del usuario
+            # Obtener memoria del usuario
             user_memory = self.memory_use_case.get_user_memory(user_id)
-            debug_print(f"📋 Estado usuario - Stage: {user_memory.stage}, Privacidad: {user_memory.privacy_accepted}, Esperando: {user_memory.waiting_for_response}", "handle_privacy_flow")
             
-            # Determinar qué hacer según el estado actual
-            if user_memory.is_first_interaction() and user_memory.needs_privacy_flow():
-                debug_print("🆕 Primera interacción detectada - Iniciando flujo de privacidad", "handle_privacy_flow")
+            debug_print(f"📋 Estado usuario - Stage: {user_memory.stage}, Privacidad: {user_memory.privacy_accepted}, Esperando: {user_memory.waiting_for_response}")
+            
+            # Si es la primera interacción, iniciar flujo de privacidad
+            if user_memory.stage == "first_contact":
+                debug_print("🆕 Primera interacción detectada - Iniciando flujo de privacidad")
                 return await self._initiate_privacy_flow(user_id, incoming_message, user_memory)
             
+            # Si está esperando respuesta de consentimiento de privacidad
             elif user_memory.waiting_for_response == "privacy_acceptance":
-                debug_print("⏳ Esperando respuesta de consentimiento", "handle_privacy_flow")
+                debug_print("⏳ Esperando respuesta de consentimiento")
                 return await self._handle_privacy_response(user_id, incoming_message, user_memory)
             
+            # Si está esperando nombre del usuario
             elif user_memory.waiting_for_response == "user_name":
-                debug_print("⏳ Esperando nombre personalizado del usuario", "handle_privacy_flow")
+                debug_print("⏳ Esperando nombre personalizado del usuario")
                 return await self._handle_name_response(user_id, incoming_message, user_memory)
             
+            # Si está esperando rol/cargo del usuario
             elif user_memory.waiting_for_response == "user_role":
-                debug_print("⏳ Esperando rol/cargo del usuario", "handle_privacy_flow")
+                debug_print("⏳ Esperando rol/cargo del usuario")
                 return await self._handle_role_response(user_id, incoming_message, user_memory)
             
-            else:
-                debug_print("❌ Usuario no está en flujo de privacidad", "handle_privacy_flow")
+            # Si ya completó el flujo de privacidad
+            elif user_memory.stage == "privacy_flow_completed":
+                debug_print("✅ Usuario ya completó flujo de privacidad")
                 return {
-                    'success': False,
+                    'success': True,
                     'in_privacy_flow': False,
-                    'reason': 'User not in privacy flow',
-                    'should_continue_normal_flow': True
+                    'should_continue_normal_flow': True,
+                    'stage': 'privacy_flow_completed'
                 }
-        
+            
+            # Caso por defecto - no está en flujo de privacidad
+            else:
+                debug_print("ℹ️ Usuario no está en flujo de privacidad")
+                return {
+                    'success': True,
+                    'in_privacy_flow': False,
+                    'should_continue_normal_flow': True,
+                    'stage': user_memory.stage
+                }
+                
         except Exception as e:
-            debug_print(f"💥 ERROR EN FLUJO DE PRIVACIDAD: {e}", "handle_privacy_flow")
-            self.logger.error(f"Error in privacy flow: {e}")
-            
-            # Enviar mensaje de error y continuar
-            error_response = "Disculpa, hubo un problema técnico. ¿Podrías intentar de nuevo?"
-            await self._send_message(incoming_message.from_number, error_response)
-            
-            return {
-                'success': False,
-                'error': str(e),
-                'in_privacy_flow': True,
-                'message_sent': True
-            }
+            debug_print(f"💥 ERROR EN FLUJO DE PRIVACIDAD: {e}")
+            raise
     
     async def _initiate_privacy_flow(
         self,
@@ -128,26 +132,25 @@ class PrivacyFlowUseCase:
         Returns:
             Resultado del procesamiento
         """
+        debug_print("🚀 Iniciando flujo de consentimiento de privacidad", "_initiate_privacy_flow")
+        
         try:
-            debug_print("🚀 Iniciando flujo de consentimiento de privacidad", "_initiate_privacy_flow")
-            
-            # Actualizar memoria con el mensaje entrante
-            self.memory_use_case.update_user_memory(user_id, incoming_message)
-            
             # Extraer nombre de WhatsApp si está disponible
-            whatsapp_name = self.templates.get_whatsapp_display_name(incoming_message.raw_data)
-            debug_print(f"👤 Nombre extraído de WhatsApp: {whatsapp_name or 'No disponible'}", "_initiate_privacy_flow")
+            whatsapp_name = incoming_message.from_number.replace("+", "").replace("whatsapp:", "")
+            debug_print(f"👤 Nombre extraído de WhatsApp: {whatsapp_name}", "_initiate_privacy_flow")
             
-            # Iniciar flujo de privacidad en memoria
-            updated_memory = self.memory_use_case.start_privacy_flow(user_id)
-            debug_print(f"📝 Flujo iniciado - Stage: {updated_memory.stage}, Esperando: {updated_memory.waiting_for_response}", "_initiate_privacy_flow")
+            # Almacenar mensaje original en memoria para verificar hashtags después
+            user_memory.original_message_body = incoming_message.body
+            user_memory.original_message_sid = incoming_message.message_sid
+            self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
             
-            # Generar mensaje de consentimiento
-            privacy_message = self.templates.privacy_consent_request(whatsapp_name)
-            debug_print(f"💬 Enviando mensaje de consentimiento ({len(privacy_message)} caracteres)", "_initiate_privacy_flow")
+            # Iniciar flujo de privacidad
+            self.memory_use_case.start_privacy_flow(user_id)
+            debug_print("📝 Flujo iniciado - Stage: privacy_flow, Esperando: privacy_acceptance", "_initiate_privacy_flow")
             
-            # Enviar mensaje
-            send_result = await self._send_message(incoming_message.from_number, privacy_message)
+            # Enviar mensaje de consentimiento
+            consent_message = self.templates.privacy_consent_request(whatsapp_name)
+            send_result = await self._send_message(incoming_message.from_number, consent_message)
             
             if send_result:
                 debug_print("✅ Mensaje de consentimiento enviado exitosamente", "_initiate_privacy_flow")
@@ -155,7 +158,7 @@ class PrivacyFlowUseCase:
                     'success': True,
                     'in_privacy_flow': True,
                     'stage': 'privacy_consent_requested',
-                    'whatsapp_name_extracted': whatsapp_name,
+                    'privacy_accepted': False,
                     'message_sent': True,
                     'waiting_for': 'privacy_acceptance'
                 }
@@ -164,9 +167,9 @@ class PrivacyFlowUseCase:
                 return {
                     'success': False,
                     'in_privacy_flow': True,
-                    'error': 'Failed to send privacy consent message'
+                    'error': 'Failed to send consent message'
                 }
-        
+                
         except Exception as e:
             debug_print(f"💥 ERROR INICIANDO FLUJO: {e}", "_initiate_privacy_flow")
             raise
@@ -413,7 +416,24 @@ class PrivacyFlowUseCase:
             
             if user_role:
                 debug_print(f"✅ Rol válido recibido: {user_role}", "_handle_role_response")
-                return await self._complete_role_collection(user_id, incoming_message.from_number, user_role)
+                
+                # Crear mensaje original si está almacenado en memoria
+                original_message = None
+                if user_memory.original_message_body and user_memory.original_message_sid:
+                    from app.domain.entities.message import IncomingMessage
+                    original_message = IncomingMessage(
+                        from_number=incoming_message.from_number,
+                        body=user_memory.original_message_body,
+                        message_sid=user_memory.original_message_sid,
+                        to_number=incoming_message.to_number,
+                        timestamp=incoming_message.timestamp,
+                        raw_data=incoming_message.raw_data
+                    )
+                    debug_print(f"📝 Mensaje original recuperado: {user_memory.original_message_body}", "_handle_role_response")
+                else:
+                    debug_print(f"⚠️ No hay mensaje original almacenado en memoria", "_handle_role_response")
+                
+                return await self._complete_role_collection(user_id, incoming_message.from_number, user_role, original_message)
             else:
                 debug_print("❌ Rol no válido - pidiendo rol nuevamente", "_handle_role_response")
                 return await self._request_role_again(user_id, incoming_message.from_number)
@@ -560,7 +580,8 @@ class PrivacyFlowUseCase:
         self,
         user_id: str,
         user_number: str,
-        user_role: str
+        user_role: str,
+        original_message: Optional[IncomingMessage] = None
     ) -> Dict[str, Any]:
         """
         Completa la recolección del rol y inicia el flujo de ventas.
@@ -569,6 +590,7 @@ class PrivacyFlowUseCase:
             user_id: ID del usuario
             user_number: Número de WhatsApp del usuario
             user_role: Rol validado del usuario
+            original_message: Mensaje original que inició el flujo (opcional)
             
         Returns:
             Resultado del procesamiento
@@ -578,12 +600,74 @@ class PrivacyFlowUseCase:
         # Actualizar rol en memoria
         updated_memory = self.memory_use_case.update_user_role(user_id, user_role)
         
+        # Completar flujo de privacidad
+        updated_memory = self.memory_use_case.complete_privacy_flow(user_id)
+        debug_print("✅ Flujo de privacidad completado", "_complete_role_collection")
+        
         # Iniciar flujo del agente de ventas
         self.memory_use_case.start_sales_agent_flow(user_id)
         debug_print("🤖 Flujo de agente de ventas iniciado", "_complete_role_collection")
         
-        # Enviar mensaje de bienvenida personalizado
-        welcome_message = f"""¡Perfecto! 🎯
+        # Verificar si el mensaje original tenía hashtags de anuncio
+        ad_flow_activated = False
+        if original_message:
+            try:
+                from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
+                from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
+                from app.application.usecases.query_course_information import QueryCourseInformationUseCase
+                
+                # Crear instancias temporales para verificar hashtags
+                detect_hashtags = DetectAdHashtagsUseCase()
+                hashtags_info = await detect_hashtags.execute(original_message.body)
+                
+                if hashtags_info.get('has_course_hashtag'):
+                    debug_print(f"🎯 Detectados hashtags de anuncio en mensaje original: {hashtags_info}", "_complete_role_collection")
+                    
+                    # Procesar flujo de anuncios automáticamente
+                    course_query_use_case = QueryCourseInformationUseCase()
+                    process_ad = ProcessAdFlowUseCase(
+                        self.memory_use_case,
+                        self.twilio_client,
+                        course_query_use_case
+                    )
+                    
+                    webhook_data = {
+                        'From': original_message.from_number,
+                        'Body': original_message.body,
+                        'MessageSid': original_message.message_sid
+                    }
+                    
+                    ad_flow_result = await process_ad.execute(
+                        webhook_data,
+                        {'id': user_id, 'first_name': updated_memory.name},
+                        hashtags_info
+                    )
+                    
+                    if ad_flow_result['success'] and ad_flow_result['ad_flow_completed']:
+                        debug_print("✅ Flujo de anuncios activado automáticamente después de privacidad", "_complete_role_collection")
+                        ad_flow_activated = True
+                        return {
+                            'success': True,
+                            'in_privacy_flow': False,
+                            'stage': 'privacy_flow_completed',
+                            'user_role': user_role,
+                            'privacy_accepted': True,
+                            'ready_for_sales_agent': True,
+                            'message_sent': True,
+                            'flow_completed': True,
+                            'ad_flow_activated': True,
+                            'ad_flow_result': ad_flow_result
+                        }
+                    else:
+                        debug_print(f"⚠️ Error activando flujo de anuncios: {ad_flow_result}", "_complete_role_collection")
+                        
+            except Exception as e:
+                debug_print(f"❌ Error verificando hashtags de anuncio: {e}", "_complete_role_collection")
+        
+        # Si no se activó el flujo de anuncios, enviar mensaje de bienvenida normal
+        if not ad_flow_activated:
+            # Enviar mensaje de bienvenida personalizado
+            welcome_message = f"""¡Perfecto! 🎯
 
 Ahora que sé que te desempeñas en **{user_role}**, puedo ofrecerte una asesoría mucho más específica.
 
@@ -596,28 +680,40 @@ Te puedo ayudar con:
 👥 **Conectarte con nuestro equipo de asesores**
 
 ¡Solo escríbeme lo que te interesa! 😊"""
+            
+            send_result = await self._send_message(user_number, welcome_message)
+            
+            if send_result:
+                debug_print("✅ Flujo completado exitosamente", "_complete_role_collection")
+                return {
+                    'success': True,
+                    'in_privacy_flow': False,  # Flujo completado
+                    'stage': 'privacy_flow_completed',
+                    'user_role': user_role,
+                    'privacy_accepted': True,
+                    'ready_for_sales_agent': True,
+                    'message_sent': True,
+                    'flow_completed': True
+                }
+            else:
+                debug_print("❌ Error enviando bienvenida", "_complete_role_collection")
+                return {
+                    'success': True,
+                    'in_privacy_flow': True,
+                    'error': 'Failed to send welcome message'
+                }
         
-        send_result = await self._send_message(user_number, welcome_message)
-        
-        if send_result:
-            debug_print("✅ Flujo completado exitosamente", "_complete_role_collection")
-            return {
-                'success': True,
-                'in_privacy_flow': False,  # Flujo completado
-                'stage': 'privacy_flow_completed',
-                'user_role': user_role,
-                'privacy_accepted': True,
-                'ready_for_sales_agent': True,
-                'message_sent': True,
-                'flow_completed': True
-            }
-        else:
-            debug_print("❌ Error enviando bienvenida", "_complete_role_collection")
-            return {
-                'success': True,
-                'in_privacy_flow': True,
-                'error': 'Failed to send welcome message'
-            }
+        # Return por defecto (no debería llegar aquí)
+        return {
+            'success': True,
+            'in_privacy_flow': False,
+            'stage': 'privacy_flow_completed',
+            'user_role': user_role,
+            'privacy_accepted': True,
+            'ready_for_sales_agent': True,
+            'message_sent': False,
+            'flow_completed': True
+        }
     
     async def _request_role_again(
         self,
