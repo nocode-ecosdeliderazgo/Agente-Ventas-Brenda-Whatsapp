@@ -193,13 +193,20 @@ class GenerateIntelligentResponseUseCase:
             
             debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
             
-            # 1. Obtener información de curso si es relevante
+            # 1. Verificar si OpenAI ya generó una respuesta de buena calidad
+            openai_response = analysis_result.get('generated_response', '')
+            if (openai_response and len(openai_response.strip()) > 50 and 
+                self._should_use_ai_generation(category, incoming_message.body)):
+                debug_print("🎯 Usando respuesta inteligente ya generada por OpenAI", "_generate_contextual_response")
+                return openai_response.strip()
+            
+            # 2. Obtener información de curso si es relevante
             course_info = None
             if category in ['EXPLORATION', 'BUYING_SIGNALS', 'TEAM_TRAINING']:
                 course_info = await self._get_course_info_for_validation(user_memory)
                 debug_print(f"📚 Información de curso obtenida: {bool(course_info)}", "_generate_contextual_response")
             
-            # 2. Determinar si usar personalización avanzada
+            # 3. Determinar si usar personalización avanzada
             should_use_personalization = self._should_use_advanced_personalization(category, user_memory, incoming_message.body)
             
             if should_use_personalization:
@@ -259,14 +266,19 @@ class GenerateIntelligentResponseUseCase:
         """
         # Usar IA para preguntas específicas que requieren información detallada
         ai_generation_categories = [
+            'EXPLORATION_SECTOR', 'EXPLORATION_ROI', 'EXPLORATION_COMPETITORS',
             'EXPLORATION_COURSE_DETAILS', 'EXPLORATION_PRICING', 'EXPLORATION_SCHEDULE',
-            'OBJECTION_COMPLEX', 'TECHNICAL_QUESTIONS'
+            'OBJECTION_COMPLEX', 'TECHNICAL_QUESTIONS', 'AUTOMATION_REPORTS',
+            'AUTOMATION_CONTENT', 'TEAM_TRAINING', 'STRATEGIC_CONSULTATION'
         ]
         
         # Keywords que indican necesidad de información específica
         specific_keywords = [
             'cuánto cuesta', 'precio exacto', 'duración específica', 'contenido detallado',
-            'módulos incluye', 'certificado', 'cuando empieza', 'requisitos técnicos'
+            'módulos incluye', 'certificado', 'cuando empieza', 'requisitos técnicos',
+            'de que trata', 'que trata', 'temario', 'programa', 'contenido',
+            'qué aprendo', 'que aprendo', 'incluye', 'abarca', 'curso', 'sesiones',
+            'nivel', 'modalidad', 'horarios', 'fechas', 'instructor', 'profesor'
         ]
         
         message_lower = message_text.lower()

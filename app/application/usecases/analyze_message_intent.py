@@ -183,10 +183,16 @@ class AnalyzeMessageIntentUseCase:
                 )
                 self.logger.info(f"👤 Nombre actualizado: {extracted_info['name']}")
             
-            # Actualizar rol si se detectó
+            # Actualizar rol si se detectó y es válido
             if extracted_info.get('role') and extracted_info['role'] != current_memory.role:
-                current_memory.role = extracted_info['role']
-                self.logger.info(f"💼 Rol actualizado: {extracted_info['role']}")
+                new_role = extracted_info['role']
+                
+                # Validar que el rol sea un cargo profesional válido (no saludos o mensajes)
+                if self._is_valid_professional_role(new_role):
+                    current_memory.role = new_role
+                    self.logger.info(f"💼 Rol actualizado: {new_role}")
+                else:
+                    self.logger.warning(f"⚠️ Rol inválido rechazado: '{new_role}' - manteniendo rol actual: '{current_memory.role}'")
             
             # Agregar nuevos intereses
             if extracted_info.get('interests'):
@@ -291,3 +297,45 @@ class AnalyzeMessageIntentUseCase:
         ]
         
         return category in high_confidence_categories and confidence >= 0.7
+    
+    def _is_valid_professional_role(self, role: str) -> bool:
+        """
+        Valida si un rol es un cargo profesional válido.
+        
+        Args:
+            role: Rol/cargo a validar
+            
+        Returns:
+            True si es un rol profesional válido, False si no
+        """
+        if not role or len(role.strip()) < 3:
+            return False
+            
+        role_lower = role.lower().strip()
+        
+        # Rechazar saludos y palabras comunes que no son roles
+        invalid_roles = {
+            'hola', 'hello', 'hi', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches',
+            'si', 'no', 'ok', 'perfecto', 'gracias', 'muchas gracias',
+            'de que trata', 'temario', '¿de que trata?', 'info', 'información',
+            'curso', 'cursos', 'precio', 'costo', 'cuanto cuesta',
+            'no mencionado', 'por identificar', 'unknown', 'n/a', 'na'
+        }
+        
+        if role_lower in invalid_roles:
+            return False
+        
+        # Validar que contenga palabras típicas de cargos profesionales
+        valid_role_keywords = {
+            'director', 'gerente', 'manager', 'ceo', 'cto', 'cfo', 'coo',
+            'fundador', 'founder', 'coordinador', 'supervisor', 'jefe',
+            'analista', 'especialista', 'consultor', 'asesor', 'ejecutivo',
+            'líder', 'lider', 'responsable', 'encargado', 'administrador',
+            'marketing', 'ventas', 'operaciones', 'recursos humanos', 'rh',
+            'tecnología', 'innovación', 'desarrollo', 'producción', 'calidad'
+        }
+        
+        # Verificar si contiene al menos una palabra clave de rol profesional
+        has_professional_keyword = any(keyword in role_lower for keyword in valid_role_keywords)
+        
+        return has_professional_keyword
