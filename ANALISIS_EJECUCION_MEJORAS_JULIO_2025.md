@@ -147,11 +147,7 @@ def parse_openai_json(content):
 - **Tiempo**: 2 horas
 - **Entregable**: `extracted_info` con datos empresariales ricos
 
-#### **Prioridad 3: Testing & Validación**
-- **Archivo**: `test_webhook_simulation.py`
-- **Tarea**: Crear suite de tests para validar todas las mejoras
-- **Tiempo**: 2 horas
-- **Validación**: Tests automatizados para cada flujo
+.
 
 ### **🔄 Punto de Sincronización (Después de 4 horas)**
 
