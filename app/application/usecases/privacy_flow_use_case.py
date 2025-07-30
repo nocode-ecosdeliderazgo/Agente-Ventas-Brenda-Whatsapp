@@ -664,44 +664,21 @@ class PrivacyFlowUseCase:
             except Exception as e:
                 debug_print(f"❌ Error verificando hashtags de anuncio: {e}", "_complete_role_collection")
         
-        # Si no se activó el flujo de anuncios, enviar mensaje de bienvenida normal
+        # Si no se activó el flujo de anuncios, activar automáticamente el flujo de bienvenida
         if not ad_flow_activated:
-            # Enviar mensaje de bienvenida personalizado
-            welcome_message = f"""¡Perfecto! 🎯
-
-Ahora que sé que te desempeñas en **{user_role}**, puedo ofrecerte una asesoría mucho más específica.
-
-**¿En qué puedo ayudarte hoy?**
-
-Te puedo ayudar con:
-🤖 **Información sobre nuestros cursos de IA**
-📚 **Recursos gratuitos para empezar**
-🎯 **Consultas sobre automatización y IA aplicada**
-👥 **Conectarte con nuestro equipo de asesores**
-
-¡Solo escríbeme lo que te interesa! 😊"""
-            
-            send_result = await self._send_message(user_number, welcome_message)
-            
-            if send_result:
-                debug_print("✅ Flujo completado exitosamente", "_complete_role_collection")
-                return {
-                    'success': True,
-                    'in_privacy_flow': False,  # Flujo completado
-                    'stage': 'privacy_flow_completed',
-                    'user_role': user_role,
-                    'privacy_accepted': True,
-                    'ready_for_sales_agent': True,
-                    'message_sent': True,
-                    'flow_completed': True
-                }
-            else:
-                debug_print("❌ Error enviando bienvenida", "_complete_role_collection")
-                return {
-                    'success': True,
-                    'in_privacy_flow': True,
-                    'error': 'Failed to send welcome message'
-                }
+            debug_print("✅ Flujo de privacidad completado, activando automáticamente flujo de bienvenida", "_complete_role_collection")
+            return {
+                'success': True,
+                'in_privacy_flow': False,  # Flujo completado
+                'stage': 'privacy_flow_completed',
+                'user_role': user_role,
+                'privacy_accepted': True,
+                'ready_for_sales_agent': True,
+                'message_sent': False,  # NO enviar mensaje aquí
+                'flow_completed': True,
+                'should_continue_normal_flow': True,  # Indicar que debe continuar con las siguientes prioridades
+                'trigger_welcome_flow': True  # TRIGGER para activar flujo de bienvenida automáticamente
+            }
         
         # Return por defecto (no debería llegar aquí)
         return {

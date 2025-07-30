@@ -107,6 +107,48 @@ class QueryCourseInformationUseCase:
             logger.error(f"Error obteniendo contenido detallado del curso {course_id}: {e}")
             return {}
     
+    async def get_all_courses(self) -> List[Dict[str, Any]]:
+        """
+        Obtiene todos los cursos disponibles de la base de datos.
+        
+        Returns:
+            Lista de diccionarios con información de cursos disponibles
+        """
+        try:
+            # Obtener todos los cursos desde el repositorio
+            courses = await self.course_repo.get_all_courses()
+            
+            if courses:
+                logger.info(f"📚 Obtenidos {len(courses)} cursos de la base de datos")
+                
+                # Convertir a formato de diccionario para el welcome flow
+                courses_data = []
+                for course in courses:
+                    course_data = {
+                        'code': str(course.id_course),
+                        'name': course.name,
+                        'title': course.name,
+                        'description': course.short_description or 'Descripción no disponible',
+                        'price': course.price or 'Precio no disponible',
+                        'cost': course.price or 'Precio no disponible',
+                        'level': course.level or 'Nivel no disponible',
+                        'difficulty': course.level or 'Nivel no disponible',
+                        'sessions': course.session_count or 'Duración no disponible',
+                        'duration_weeks': course.session_count or 'Duración no disponible',
+                        'duration_hours': course.total_duration_min or 'Horas no disponibles',
+                        'total_hours': course.total_duration_min or 'Horas no disponibles'
+                    }
+                    courses_data.append(course_data)
+                
+                return courses_data
+            else:
+                logger.warning("⚠️ No se encontraron cursos en la base de datos")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error obteniendo todos los cursos: {e}")
+            return []
+    
     async def get_courses_by_level(self, level: str, limit: int = 5) -> List[Course]:
         """
         Obtiene cursos filtrados por nivel.
