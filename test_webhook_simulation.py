@@ -67,12 +67,12 @@ class WebhookSimulation:
         memory_manager = MemoryManager(memory_dir="memorias")
         
         # 🆕 LIMPIAR MEMORIA PARA TESTING - Cada ejecución es una conversación nueva
-        debug_print("🧹 Limpiando memorias anteriores para testing...", "initialize_system", "webhook_simulation.py")
-        memory_cleared = memory_manager.clear_all_memories()
-        if memory_cleared:
-            debug_print("✅ Memorias anteriores limpiadas correctamente", "initialize_system", "webhook_simulation.py")
-        else:
-            debug_print("⚠️ No se pudieron limpiar todas las memorias, continuando...", "initialize_system", "webhook_simulation.py")
+        #debug_print("🧹 Limpiando memorias anteriores para testing...", "initialize_system", "webhook_simulation.py")
+        #memory_cleared = memory_manager.clear_all_memories()
+        #if memory_cleared:
+        #    debug_print("✅ Memorias anteriores limpiadas correctamente", "initialize_system", "webhook_simulation.py")
+        #else:
+        #    debug_print("⚠️ No se pudieron limpiar todas las memorias, continuando...", "initialize_system", "webhook_simulation.py")
         
         self.memory_use_case = ManageUserMemoryUseCase(memory_manager)
         debug_print("✅ Sistema de memoria inicializado correctamente", "initialize_system", "webhook_simulation.py")
