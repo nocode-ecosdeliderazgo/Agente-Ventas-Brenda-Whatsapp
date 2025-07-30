@@ -2,6 +2,7 @@
 Caso de uso para generar respuestas inteligentes.
 Combina análisis de intención, plantillas de mensajes y respuestas de IA con sistema anti-inventos.
 """
+import asyncio
 import logging
 from typing import Dict, Any, Optional
 
@@ -192,13 +193,20 @@ class GenerateIntelligentResponseUseCase:
             
             debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
             
-            # 1. Obtener información de curso si es relevante
+            # 1. Verificar si OpenAI ya generó una respuesta de buena calidad
+            openai_response = analysis_result.get('generated_response', '')
+            if (openai_response and len(openai_response.strip()) > 50 and 
+                self._should_use_ai_generation(category, incoming_message.body)):
+                debug_print("🎯 Usando respuesta inteligente ya generada por OpenAI", "_generate_contextual_response")
+                return openai_response.strip()
+            
+            # 2. Obtener información de curso si es relevante
             course_info = None
             if category in ['EXPLORATION', 'BUYING_SIGNALS', 'TEAM_TRAINING']:
                 course_info = await self._get_course_info_for_validation(user_memory)
                 debug_print(f"📚 Información de curso obtenida: {bool(course_info)}", "_generate_contextual_response")
             
-            # 2. Determinar si usar personalización avanzada
+            # 3. Determinar si usar personalización avanzada
             should_use_personalization = self._should_use_advanced_personalization(category, user_memory, incoming_message.body)
             
             if should_use_personalization:
@@ -258,14 +266,19 @@ class GenerateIntelligentResponseUseCase:
         """
         # Usar IA para preguntas específicas que requieren información detallada
         ai_generation_categories = [
+            'EXPLORATION_SECTOR', 'EXPLORATION_ROI', 'EXPLORATION_COMPETITORS',
             'EXPLORATION_COURSE_DETAILS', 'EXPLORATION_PRICING', 'EXPLORATION_SCHEDULE',
-            'OBJECTION_COMPLEX', 'TECHNICAL_QUESTIONS'
+            'OBJECTION_COMPLEX', 'TECHNICAL_QUESTIONS', 'AUTOMATION_REPORTS',
+            'AUTOMATION_CONTENT', 'TEAM_TRAINING', 'STRATEGIC_CONSULTATION'
         ]
         
         # Keywords que indican necesidad de información específica
         specific_keywords = [
             'cuánto cuesta', 'precio exacto', 'duración específica', 'contenido detallado',
-            'módulos incluye', 'certificado', 'cuando empieza', 'requisitos técnicos'
+            'módulos incluye', 'certificado', 'cuando empieza', 'requisitos técnicos',
+            'de que trata', 'que trata', 'temario', 'programa', 'contenido',
+            'qué aprendo', 'que aprendo', 'incluye', 'abarca', 'curso', 'sesiones',
+            'nivel', 'modalidad', 'horarios', 'fechas', 'instructor', 'profesor'
         ]
         
         message_lower = message_text.lower()
@@ -555,7 +568,7 @@ class GenerateIntelligentResponseUseCase:
         
         debug_print(f"🔍 DEBUG TEMPLATE SELECTION - Categoría: {category}, Nombre: '{user_name}', Rol: '{user_role}'", "_get_template_response")
         
-        # Mapeo de categorías a templates
+        # Mapeo de categorías a templates - EXPANDIDO con más categorías PyME
         template_map = {
             'FREE_RESOURCES': lambda: WhatsAppMessageTemplates.business_resources_offer(user_name, user_role),
             'CONTACT_REQUEST': lambda: WhatsAppMessageTemplates.executive_advisor_transition(user_name, user_role),
@@ -566,7 +579,18 @@ class GenerateIntelligentResponseUseCase:
             'OBJECTION_TIME': lambda: self._get_time_objection_response(user_name),
             'OBJECTION_VALUE': lambda: self._get_value_objection_response(user_name),
             'OBJECTION_TRUST': lambda: self._get_trust_objection_response(user_name),
-            'GENERAL_QUESTION': lambda: self._get_general_response(user_name, user_role)
+            'GENERAL_QUESTION': lambda: self._get_general_response(user_name, user_role),
+            # Nuevas categorías PyME específicas
+            'EXPLORATION_SECTOR': lambda: asyncio.create_task(self._get_exploration_response(user_name, user_role)),
+            'EXPLORATION_ROI': lambda: self._get_roi_exploration_response(user_name, user_role),
+            'OBJECTION_BUDGET_PYME': lambda: WhatsAppMessageTemplates.business_price_objection_response(role=user_role),
+            'OBJECTION_TECHNICAL_TEAM': lambda: self._get_technical_objection_response(user_name, user_role),
+            'AUTOMATION_REPORTS': lambda: self._get_automation_response(user_name, user_role),
+            'AUTOMATION_CONTENT': lambda: self._get_content_automation_response(user_name, user_role),
+            'BUYING_SIGNALS_EXECUTIVE': lambda: self._get_buying_signals_response(user_name),
+            'PILOT_REQUEST': lambda: self._get_pilot_request_response(user_name, user_role),
+            'TEAM_TRAINING': lambda: asyncio.create_task(self._get_team_training_response(user_name, user_role)),
+            'STRATEGIC_CONSULTATION': lambda: self._get_strategic_consultation_response(user_name, user_role)
         }
         
         # Manejar casos especiales según estado del usuario
@@ -595,7 +619,12 @@ class GenerateIntelligentResponseUseCase:
             )
         
         template_func = template_map.get(category, template_map['GENERAL_QUESTION'])
-        return template_func()
+        result = template_func()
+        
+        # Manejar funciones asíncronas
+        if hasattr(result, '__await__'):
+            return await result
+        return result
     
     async def _get_exploration_response(self, user_name: str, user_role: str) -> str:
         """Respuesta para usuarios explorando opciones usando información de la BD."""
@@ -606,9 +635,10 @@ class GenerateIntelligentResponseUseCase:
             if self.course_query_use_case:
                 # Obtener información de cursos disponibles
                 catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
-                total_courses = catalog_summary.get('total_courses', 0) if catalog_summary else 0
-                
-                return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
+                if catalog_summary and catalog_summary.get('statistics', {}).get('total_courses', 0) > 0:
+                    total_courses = catalog_summary['statistics']['total_courses']
+                    
+                    return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
 
 {role_context}estoy segura de que la IA puede transformar completamente tu forma de trabajar.
 
@@ -737,22 +767,215 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
 
 ¿Te gustaría que te conecte con algunos graduados para que te cuenten su experiencia?"""
     
-    def _get_general_response(self, user_name: str, user_role: str) -> str:
-        """Respuesta general personalizada."""
+    async def _get_general_response(self, user_name: str, user_role: str) -> str:
+        """Respuesta general personalizada con información de base de datos."""
         name_part = f"{user_name}, " if user_name else ""
         role_context = f"Como {user_role}, " if user_role else ""
         
+        try:
+            # Intentar obtener información de cursos de la base de datos
+            if self.course_query_use_case:
+                catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
+                if catalog_summary and catalog_summary.get('statistics', {}).get('total_courses', 0) > 0:
+                    total_courses = catalog_summary['statistics']['total_courses']
+                    available_levels = catalog_summary.get('available_options', {}).get('levels', [])
+                    
+                    levels_text = ", ".join(available_levels) if available_levels else "todos los niveles"
+                    
+                    return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
+
+{role_context}estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
+
+**📚 Tenemos {total_courses} cursos disponibles** para {levels_text}, diseñados específicamente para profesionales como tú.
+
+**🎯 Puedo ayudarte con:**
+• Información detallada sobre nuestros cursos
+• Recursos gratuitos para empezar hoy mismo
+• Consultas específicas sobre automatización
+• Conexión con nuestro equipo de asesores especializados
+
+¿En qué puedo asistirte específicamente?"""
+        except Exception as e:
+            self.logger.error(f"Error obteniendo información de cursos para respuesta general: {e}")
+        
+        # Fallback sin información de BD
         return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
 
 {role_context}estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
 
 **🎯 Puedo ayudarte con:**
-• Información sobre nuestros cursos
+• Información sobre nuestros cursos especializados
 • Recursos gratuitos para empezar
 • Consultas específicas sobre automatización
 • Conexión con nuestro equipo de asesores
 
 ¿En qué puedo asistirte específicamente?"""
+    
+    def _get_roi_exploration_response(self, user_name: str, user_role: str) -> str:
+        """Respuesta para exploración de ROI específica por rol."""
+        name_part = f"{user_name}, " if user_name else ""
+        role_context = f"Como {user_role}, " if user_role else ""
+        
+        # ROI específico por buyer persona
+        roi_examples = {
+            'Marketing': f"• 80% menos tiempo creando contenido\n• $300 ahorro por campaña → Recuperas inversión en 2 campañas",
+            'Operaciones': f"• 30% reducción en procesos manuales\n• $2,000 ahorro mensual → ROI del 400% en primer mes",
+            'CEO': f"• 40% más productividad del equipo\n• $27,600 ahorro anual vs contratar analista → ROI del 1,380% anual",
+            'Recursos Humanos': f"• 70% más eficiencia en capacitaciones\n• $1,500 ahorro mensual → ROI del 300% primer trimestre"
+        }
+        
+        roi_text = roi_examples.get(user_role, "• 50% más eficiencia en procesos\n• $1,000 ahorro mensual → ROI del 250% primeros 3 meses")
+        
+        return f"""¡Excelente pregunta sobre ROI{', ' + name_part if name_part else ''}! 📊
+
+{role_context}te muestro resultados reales de profesionales como tú:
+
+**💰 RESULTADOS COMPROBADOS:**
+{roi_text}
+
+**⚡ Beneficios inmediatos:**
+• Automatización de tareas repetitivas desde día 1
+• Mejora en calidad y consistencia del trabajo
+• Más tiempo para actividades estratégicas
+
+¿Te gustaría ver casos específicos de tu sector?"""
+    
+    def _get_technical_objection_response(self, user_name: str, user_role: str) -> str:
+        """Respuesta para objeciones técnicas (falta de equipo técnico)."""
+        name_part = f"{user_name}, " if user_name else ""
+        
+        return f"""Entiendo perfectamente tu preocupación{', ' + name_part if name_part else ''}! 🔧
+
+**🎯 Nuestro enfoque está diseñado ESPECÍFICAMENTE para PyMEs sin equipo técnico:**
+
+• **Sin programación**: Herramientas con interfaz visual
+• **Sin infraestructura**: Todo en la nube, listo para usar
+• **Sin mantenimiento**: Automatizado y escalable
+• **Soporte incluido**: Acompañamiento técnico completo
+
+**📊 El 90% de nuestros estudiantes NO tienen background técnico** y obtienen resultados desde la primera semana.
+
+¿Te gustaría ver ejemplos específicos de tu área sin complejidad técnica?"""
+    
+    def _get_content_automation_response(self, user_name: str, user_role: str) -> str:
+        """Respuesta específica para automatización de contenido."""
+        name_part = f"{user_name}, " if user_name else ""
+        
+        return f"""¡Perfecto{', ' + name_part if name_part else ''}! 📝
+
+La automatización de contenido es donde vemos el **mayor impacto inmediato**:
+
+**🚀 AUTOMATIZACIONES PRÁCTICAS:**
+• Emails marketing personalizados (5 min vs 2 horas)
+• Posts para redes sociales (calendario completo en 30 min)
+• Propuestas comerciales (plantillas inteligentes)
+• Reportes ejecutivos (datos → insights automáticamente)
+
+**💡 CASO REAL:**
+Una agencia redujo 80% el tiempo de creación de contenido, pasando de 8 horas/día a 1.5 horas/día.
+
+¿En qué tipo de contenido inviertes más tiempo actualmente?"""
+    
+    def _get_pilot_request_response(self, user_name: str, user_role: str) -> str:
+        """Respuesta para solicitudes de proyecto piloto."""
+        name_part = f"{user_name}, " if user_name else ""
+        
+        return f"""¡Excelente enfoque{', ' + name_part if name_part else ''}! 🎯
+
+**🚀 PILOTO PERFECTO PARA TI:**
+
+• **Duración**: 30 días de implementación práctica
+• **Enfoque**: Un proceso específico de tu área
+• **Entregables**: Automatización funcionando + ROI medible
+• **Soporte**: Acompañamiento personalizado
+
+**📊 Resultados típicos del piloto:**
+• 40-60% reducción de tiempo en proceso elegido
+• ROI visible desde la primera semana
+• Team buy-in del 95% (equipo convencido de beneficios)
+
+¿Qué proceso te gustaría automatizar primero en el piloto?"""
+    
+    async def _get_team_training_response(self, user_name: str, user_role: str) -> str:
+        """Respuesta para capacitación de equipos con información de BD."""
+        name_part = f"{user_name}, " if user_name else ""
+        
+        try:
+            if self.course_query_use_case:
+                catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
+                training_programs = catalog_summary.get('available_options', {}).get('modalities', [])
+                
+                modalities_text = ", ".join(training_programs[:3]) if training_programs else "presencial, online e híbrida"
+                
+                return f"""¡Perfecto{', ' + name_part if name_part else ''}! 👥
+
+**🎓 CAPACITACIÓN EMPRESARIAL PERSONALIZADA:**
+
+• **Modalidades**: {modalities_text}  
+• **Grupos**: 5-20 personas por cohorte
+• **Duración**: Flexible según necesidades del equipo
+• **Aplicación**: Casos reales de tu empresa
+
+**💼 BENEFICIOS CORPORATIVOS:**
+• Descuentos por volumen (15-30% según tamaño grupo)
+• Certificación oficial para todo el equipo
+• Implementación inmediata en proyectos reales
+• Mentoring post-capacitación incluido
+
+¿Cuántas personas de tu equipo participarían?"""
+            else:
+                return f"""¡Perfecto{', ' + name_part if name_part else ''}! 👥
+
+**🎓 CAPACITACIÓN EMPRESARIAL PERSONALIZADA:**
+
+• **Modalidades**: Presencial, online e híbrida
+• **Grupos**: 5-20 personas por cohorte
+• **Duración**: Flexible según necesidades del equipo
+• **Aplicación**: Casos reales de tu empresa
+
+**💼 BENEFICIOS CORPORATIVOS:**
+• Descuentos por volumen (15-30% según tamaño grupo)
+• Certificación oficial para todo el equipo
+• Implementación inmediata en proyectos reales
+• Mentoring post-capacitación incluido
+
+¿Cuántas personas de tu equipo participarían?"""
+                
+        except Exception as e:
+            self.logger.error(f"Error obteniendo información de capacitación: {e}")
+            return f"""¡Perfecto{', ' + name_part if name_part else ''}! 👥
+
+**🎓 CAPACITACIÓN EMPRESARIAL PERSONALIZADA:**
+
+• **Modalidades**: Presencial, online e híbrida
+• **Grupos**: 5-20 personas por cohorte
+• **Duración**: Flexible según necesidades del equipo
+• **Aplicación**: Casos reales de tu empresa
+
+¿Cuántas personas de tu equipo participarían?"""
+    
+    def _get_strategic_consultation_response(self, user_name: str, user_role: str) -> str:
+        """Respuesta para consultoría estratégica."""
+        name_part = f"{user_name}, " if user_name else ""
+        
+        return f"""¡Excelente visión estratégica{', ' + name_part if name_part else ''}! 🎯
+
+**🏢 CONSULTORÍA ESTRATÉGICA EN IA:**
+
+**📋 PROCESO DE CONSULTORÍA:**
+• **Diagnóstico**: Análisis actual de procesos (2 semanas)
+• **Roadmap**: Plan de implementación IA personalizado
+• **Priorización**: ROI máximo con recursos disponibles
+• **Implementación**: Acompañamiento en ejecución
+
+**💼 IDEAL PARA:**
+• Directores que definen estrategia tecnológica
+• Empresas 50+ empleados evaluando transformación digital
+• Organizaciones que buscan ventaja competitiva sostenible
+
+**⏰ INVERSIÓN:** 2-4 semanas → Plan estratégico completo
+
+¿Cuál es tu principal desafío estratégico con IA actualmente?"""
     
     async def _send_response(self, to_number: str, response_text: str) -> Dict[str, Any]:
         """
@@ -960,7 +1183,7 @@ Basándome en tus intereses, te recomiendo estos cursos:
                 # Obtener catálogo de cursos desde la base de datos
                 catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
                 
-                if catalog_summary:
+                if catalog_summary and catalog_summary.get('statistics', {}).get('total_courses', 0) > 0:
                     statistics = catalog_summary.get('statistics', {})
                     total_courses = statistics.get('total_courses', 0)
                     available_options = catalog_summary.get('available_options', {})

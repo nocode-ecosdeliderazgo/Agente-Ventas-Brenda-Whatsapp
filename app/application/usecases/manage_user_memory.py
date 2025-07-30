@@ -284,10 +284,11 @@ class ManageUserMemoryUseCase:
         try:
             memory = self.get_user_memory(user_id)
             memory.privacy_accepted = True
-            memory.stage = "course_selection"
-            memory.current_flow = "course_selection"
-            memory.flow_step = 1
-            memory.waiting_for_response = "course_interest"
+            memory.privacy_requested = True
+            # NO cambiar el stage aquí, mantener el flujo de privacidad
+            memory.current_flow = "privacy"
+            memory.flow_step = 2  # Siguiente paso en privacidad
+            memory.waiting_for_response = "user_name"
             memory.updated_at = datetime.now()
             
             self.memory_manager.save_lead_memory(user_id, memory)
@@ -388,4 +389,29 @@ class ManageUserMemoryUseCase:
             return memory
         except Exception as e:
             self.logger.error(f"❌ Error avanzando flujo para {user_id}: {e}")
+            raise
+    
+    def complete_privacy_flow(self, user_id: str) -> LeadMemory:
+        """
+        Completa el flujo de privacidad y marca al usuario como listo para el agente de ventas.
+        
+        Args:
+            user_id: Identificador único del usuario
+            
+        Returns:
+            LeadMemory: Memoria actualizada
+        """
+        try:
+            memory = self.get_user_memory(user_id)
+            memory.stage = "privacy_flow_completed"
+            memory.current_flow = "sales_conversation"
+            memory.flow_step = 1
+            memory.waiting_for_response = ""
+            memory.updated_at = datetime.now()
+            
+            self.memory_manager.save_lead_memory(user_id, memory)
+            self.logger.info(f"✅ Flujo de privacidad completado para usuario {user_id}")
+            return memory
+        except Exception as e:
+            self.logger.error(f"❌ Error completando flujo de privacidad para {user_id}: {e}")
             raise

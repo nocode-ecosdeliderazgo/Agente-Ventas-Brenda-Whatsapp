@@ -26,6 +26,8 @@ from app.application.usecases.generate_intelligent_response import GenerateIntel
 from app.application.usecases.privacy_flow_use_case import PrivacyFlowUseCase
 from app.application.usecases.tool_activation_use_case import ToolActivationUseCase
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
+from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
+from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
 from memory.lead_memory import MemoryManager
 
 def debug_print(message: str, function_name: str = "", file_name: str = "webhook_simulation.py"):
@@ -45,6 +47,8 @@ class WebhookSimulation:
         self.process_message_use_case = None
         self.privacy_flow_use_case = None
         self.tool_activation_use_case = None
+        self.detect_ad_hashtags_use_case = None
+        self.process_ad_flow_use_case = None
         self.openai_client = None
         self.db_client = None
         self.course_repository = None
@@ -87,6 +91,11 @@ class WebhookSimulation:
             # Inicializar base de datos y repositorio de cursos
             debug_print("🗄️ Inicializando cliente de base de datos...", "initialize_system", "webhook_simulation.py")
             self.db_client = DatabaseClient()
+            
+            # Conectar la instancia global de base de datos
+            from app.infrastructure.database.client import database_client
+            await database_client.connect()
+            
             self.course_repository = CourseRepository()
             debug_print("✅ Cliente de base de datos inicializado correctamente", "initialize_system", "webhook_simulation.py")
             
@@ -122,11 +131,26 @@ class WebhookSimulation:
             self.tool_activation_use_case = ToolActivationUseCase()
             debug_print("✅ Sistema de herramientas inicializado correctamente", "initialize_system", "webhook_simulation.py")
             
+            # Inicializar sistema de flujo de anuncios
+            debug_print("📢 Inicializando sistema de flujo de anuncios...", "initialize_system", "webhook_simulation.py")
+            self.detect_ad_hashtags_use_case = DetectAdHashtagsUseCase()
+            self.process_ad_flow_use_case = ProcessAdFlowUseCase(
+                self.memory_use_case, 
+                self.privacy_flow_use_case, 
+                self.course_query_use_case
+            )
+            debug_print("✅ Sistema de flujo de anuncios inicializado correctamente", "initialize_system", "webhook_simulation.py")
+            
             # Crear caso de uso de procesamiento con capacidades inteligentes
             debug_print("⚙️ Creando procesador de mensajes principal...", "initialize_system", "webhook_simulation.py")
             self.process_message_use_case = ProcessIncomingMessageUseCase(
-                self.twilio_client, self.memory_use_case, self.intelligent_response_use_case, 
-                self.privacy_flow_use_case, self.tool_activation_use_case
+                self.twilio_client, 
+                self.memory_use_case, 
+                self.intelligent_response_use_case, 
+                self.privacy_flow_use_case, 
+                self.tool_activation_use_case,
+                detect_ad_hashtags_use_case=self.detect_ad_hashtags_use_case,
+                process_ad_flow_use_case=self.process_ad_flow_use_case
             )
             debug_print("✅ Procesador de mensajes principal creado", "initialize_system", "webhook_simulation.py")
             
@@ -165,6 +189,11 @@ class WebhookSimulation:
             
             # Procesar mensaje de forma síncrona (exactamente como en webhook.py)
             debug_print("🚀 INICIANDO PROCESAMIENTO SÍNCRONO...", "process_webhook_message", "webhook_simulation.py")
+            
+            if self.process_message_use_case is None:
+                debug_print("❌ ERROR: process_message_use_case no está inicializado", "process_webhook_message", "webhook_simulation.py")
+                return {'success': False, 'error': 'Process message use case not initialized'}
+                
             result = await self.process_message_use_case.execute(webhook_data)
             debug_print(f"📊 Resultado del procesamiento: {result}", "process_webhook_message", "webhook_simulation.py")
             
