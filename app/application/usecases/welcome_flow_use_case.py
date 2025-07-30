@@ -83,39 +83,22 @@ class WelcomeFlowUseCase:
             True si debe manejar el flujo de bienvenida
         """
         try:
+            logger.info(f"🔍 DEBUG: Verificando flujo de bienvenida para usuario")
+            logger.info(f"🔍 DEBUG: privacy_accepted = {user_memory.privacy_accepted}")
+            logger.info(f"🔍 DEBUG: name = {user_memory.name}")
+            logger.info(f"🔍 DEBUG: selected_course = {user_memory.selected_course}")
+            logger.info(f"🔍 DEBUG: stage = {user_memory.stage}")
+            
             # Si el usuario ya completó privacidad y tiene nombre, pero no ha seleccionado curso
             if (user_memory.privacy_accepted and 
                 user_memory.name and 
                 not user_memory.selected_course and
                 user_memory.stage == "privacy_flow_completed"):
                 
-                # Verificar si es un mensaje genérico (saludo, pregunta general, etc.)
-                message_text = incoming_message.body.lower().strip()
-                
-                # Patrones de mensajes genéricos que activan el flujo de bienvenida
-                generic_patterns = [
-                    r'^hola',
-                    r'^buenos días',
-                    r'^buenas tardes',
-                    r'^buenas noches',
-                    r'^saludos',
-                    r'^qué tal',
-                    r'^cómo estás',
-                    r'^me interesa',
-                    r'^información',
-                    r'^cursos',
-                    r'^ayuda',
-                    r'^inicio',
-                    r'^empezar'
-                ]
-                
-                for pattern in generic_patterns:
-                    if re.search(pattern, message_text):
-                        logger.info(f"🎯 Mensaje genérico detectado: '{incoming_message.body}' - Activando flujo de bienvenida")
-                        return True
-                
-                return False
+                logger.info(f"🎯 Usuario completó privacidad pero no tiene curso seleccionado - Activando flujo de bienvenida")
+                return True
             
+            logger.info(f"❌ No se activa flujo de bienvenida - Condiciones no cumplidas")
             return False
             
         except Exception as e:
@@ -200,8 +183,21 @@ class WelcomeFlowUseCase:
         try:
             logger.info(f"📚 Ofreciendo cursos disponibles a usuario {user_id}")
             
+            # ELIMINAR CURSO PREVIO si existe
+            if user_memory.selected_course:
+                logger.info(f"🗑️ Eliminando curso previo: {user_memory.selected_course}")
+                user_memory.selected_course = None
+                self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+            
+            # OBTENER CURSOS DE LA BASE DE DATOS
+            available_courses = await self._get_courses_from_database()
+            
+            if not available_courses:
+                logger.warning("⚠️ No se pudieron obtener cursos de la base de datos, usando cursos por defecto")
+                available_courses = self.available_courses
+            
             # Crear mensaje con cursos disponibles
-            courses_message = self._create_courses_offer_message(user_memory)
+            courses_message = self._create_courses_offer_message(user_memory, available_courses)
             
             # Enviar mensaje
             outgoing_message = OutgoingMessage(
@@ -218,6 +214,8 @@ class WelcomeFlowUseCase:
                 user_memory.current_flow = "course_selection"
                 user_memory.flow_step = 1
                 user_memory.stage = "course_selection"
+                # Guardar cursos disponibles en memoria para referencia
+                user_memory.available_courses = [course['code'] for course in available_courses]
                 self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
                 
                 logger.info(f"✅ Cursos ofrecidos exitosamente a usuario {user_id}")
@@ -237,12 +235,36 @@ class WelcomeFlowUseCase:
             logger.error(f"Error ofreciendo cursos: {e}")
             return {'success': False, 'error': str(e)}
     
-    def _create_courses_offer_message(self, user_memory: LeadMemory) -> str:
+    async def _get_courses_from_database(self) -> List[Dict[str, Any]]:
+        """
+        Obtiene los cursos disponibles de la base de datos.
+        
+        Returns:
+            Lista de cursos disponibles
+        """
+        try:
+            if self.course_query_use_case:
+                courses = await self.course_query_use_case.get_all_courses()
+                if courses:
+                    logger.info(f"✅ Obtenidos {len(courses)} cursos de la base de datos")
+                    return courses
+                else:
+                    logger.warning("⚠️ No se encontraron cursos en la base de datos")
+                    return []
+            else:
+                logger.warning("⚠️ Course query use case no disponible")
+                return []
+        except Exception as e:
+            logger.error(f"Error obteniendo cursos de la base de datos: {e}")
+            return []
+    
+    def _create_courses_offer_message(self, user_memory: LeadMemory, available_courses: List[Dict[str, Any]]) -> str:
         """
         Crea el mensaje ofreciendo los cursos disponibles.
         
         Args:
             user_memory: Memoria del usuario
+            available_courses: Lista de cursos disponibles
             
         Returns:
             Mensaje con oferta de cursos
@@ -261,22 +283,29 @@ class WelcomeFlowUseCase:
             ]
             
             # Agregar cada curso
-            for i, course in enumerate(self.available_courses, 1):
+            for i, course in enumerate(available_courses, 1):
+                course_name = course.get('name', course.get('title', 'Curso sin nombre'))
+                course_description = course.get('description', 'Descripción no disponible')
+                course_price = course.get('price', course.get('cost', 'Precio no disponible'))
+                course_level = course.get('level', course.get('difficulty', 'Nivel no disponible'))
+                course_sessions = course.get('sessions', course.get('duration_weeks', 'Duración no disponible'))
+                course_hours = course.get('duration_hours', course.get('total_hours', 'Horas no disponibles'))
+                
                 message_parts.extend([
-                    f"**{i}. {course['name']}**",
-                    f"📝 {course['description']}",
-                    f"💰 Inversión: ${course['price']} USD",
-                    f"📊 Nivel: {course['level']}",
-                    f"🗓️ Duración: {course['sessions']} sesiones ({course['duration']} horas)",
+                    f"**{i}. {course_name}**",
+                    f"📝 {course_description}",
+                    f"💰 Inversión: ${course_price} USD",
+                    f"📊 Nivel: {course_level}",
+                    f"🗓️ Duración: {course_sessions} sesiones ({course_hours} horas)",
                     ""
                 ])
             
             message_parts.extend([
                 "**🎯 ¿CUÁL TE INTERESA MÁS?**",
                 "",
-                "Responde con el número del curso (1, 2 o 3) o escribe el nombre del curso que te interese.",
+                "Responde con el número del curso o escribe el nombre del curso que te interese.",
                 "",
-                "💡 **Recomendación:** Si es tu primera vez con IA, te sugiero empezar con el curso 1 (Principiante)."
+                "💡 **Recomendación:** Si es tu primera vez con IA, te sugiero empezar con un curso de nivel básico."
             ])
             
             return "\n".join(message_parts)
@@ -304,21 +333,31 @@ class WelcomeFlowUseCase:
         """
         try:
             message_text = incoming_message.body.strip()
-            selected_course = self._extract_course_selection(message_text)
+            
+            # Obtener cursos disponibles de la memoria o base de datos
+            available_courses = await self._get_courses_from_database()
+            if not available_courses:
+                available_courses = self.available_courses
+            
+            selected_course = self._extract_course_selection(message_text, available_courses)
             
             if selected_course:
-                logger.info(f"✅ Usuario {user_id} seleccionó curso: {selected_course['name']}")
+                logger.info(f"✅ Usuario {user_id} seleccionó curso: {selected_course.get('name', 'Curso seleccionado')}")
                 
                 # Guardar curso seleccionado en memoria
-                user_memory.selected_course = selected_course['code']
+                course_code = selected_course.get('code', selected_course.get('id', 'curso_seleccionado'))
+                user_memory.selected_course = course_code
                 user_memory.waiting_for_response = ""
                 user_memory.current_flow = "sales_conversation"
                 user_memory.stage = "ready_for_sales_agent"
                 user_memory.flow_step = 0
                 
                 # Agregar interés en el curso
-                if selected_course['name'] not in user_memory.interests:
-                    user_memory.interests.append(selected_course['name'])
+                course_name = selected_course.get('name', selected_course.get('title', 'Curso de IA'))
+                if user_memory.interests is None:
+                    user_memory.interests = []
+                if course_name not in user_memory.interests:
+                    user_memory.interests.append(course_name)
                 
                 # Incrementar score por selección específica
                 user_memory.lead_score += 20
@@ -339,8 +378,8 @@ class WelcomeFlowUseCase:
                 return {
                     'success': True,
                     'course_selected': True,
-                    'selected_course_code': selected_course['code'],
-                    'selected_course_name': selected_course['name'],
+                    'selected_course_code': course_code,
+                    'selected_course_name': course_name,
                     'ready_for_intelligent_agent': True,
                     'stage': 'ready_for_sales_agent',
                     'response_text': confirmation_message,
@@ -349,59 +388,79 @@ class WelcomeFlowUseCase:
                 }
             else:
                 # Solicitar selección válida
-                return await self._request_valid_course_selection(user_id, user_memory)
+                return await self._request_valid_course_selection(user_id, user_memory, available_courses)
                 
         except Exception as e:
             logger.error(f"Error manejando selección de curso: {e}")
             return {'success': False, 'error': str(e)}
     
-    def _extract_course_selection(self, message_text: str) -> Optional[Dict[str, Any]]:
+    def _extract_course_selection(self, message_text: str, available_courses: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """
-        Extrae la selección de curso del mensaje del usuario.
+        Extrae la selección de curso del mensaje del usuario usando interpretación inteligente.
         
         Args:
             message_text: Texto del mensaje
+            available_courses: Lista de cursos disponibles
             
         Returns:
             Información del curso seleccionado o None
         """
         try:
-            message_lower = message_text.lower()
+            message_lower = message_text.lower().strip()
             
-            # Buscar por número
-            if message_text.strip() in ['1', '2', '3']:
+            # Buscar por número exacto
+            if message_text.strip().isdigit():
                 index = int(message_text.strip()) - 1
-                if 0 <= index < len(self.available_courses):
-                    return self.available_courses[index]
+                if 0 <= index < len(available_courses):
+                    return available_courses[index]
             
-            # Buscar por palabras clave
-            course_keywords = {
-                'básico': 0,
-                'basico': 0,
-                'principiante': 0,
-                'introducción': 0,
-                'introduccion': 0,
-                'intermedio': 1,
-                'intermedio': 1,
-                'automatización': 1,
-                'automatizacion': 1,
-                'avanzado': 2,
-                'avanzado': 2,
-                'transformación': 2,
-                'transformacion': 2,
-                'digital': 2
+            # Palabras clave para niveles
+            level_keywords = {
+                'básico': ['básico', 'basico', 'principiante', 'inicial', 'introductorio', 'básica', 'basica'],
+                'intermedio': ['intermedio', 'intermedia', 'medio', 'media', 'automatización', 'automatizacion'],
+                'avanzado': ['avanzado', 'avanzada', 'experto', 'experta', 'transformación', 'transformacion', 'digital']
             }
             
-            for keyword, index in course_keywords.items():
-                if keyword in message_lower:
-                    if 0 <= index < len(self.available_courses):
-                        return self.available_courses[index]
+            # Buscar por nivel
+            for level, keywords in level_keywords.items():
+                if any(keyword in message_lower for keyword in keywords):
+                    # Buscar cursos que coincidan con el nivel
+                    for course in available_courses:
+                        course_level = course.get('level', course.get('difficulty', '')).lower()
+                        if level in course_level or any(keyword in course_level for keyword in keywords):
+                            return course
             
-            # Buscar por nombre del curso
-            for course in self.available_courses:
-                course_name_lower = course['name'].lower()
-                if any(word in course_name_lower for word in message_lower.split()):
+            # Buscar por palabras específicas del nombre del curso
+            for course in available_courses:
+                course_name = course.get('name', course.get('title', '')).lower()
+                course_description = course.get('description', '').lower()
+                
+                # Buscar coincidencias en el nombre
+                if any(word in course_name for word in message_lower.split()):
                     return course
+                
+                # Buscar coincidencias en la descripción
+                if any(word in course_description for word in message_lower.split()):
+                    return course
+            
+            # Buscar por palabras clave específicas
+            course_keywords = {
+                'ia': ['inteligencia artificial', 'ia', 'ai', 'artificial'],
+                'automatización': ['automatización', 'automatizacion', 'automatizar', 'procesos'],
+                'transformación': ['transformación', 'transformacion', 'transformar', 'digital'],
+                'marketing': ['marketing', 'ventas', 'comercial'],
+                'operaciones': ['operaciones', 'operacional', 'procesos'],
+                'datos': ['datos', 'analytics', 'análisis', 'analisis']
+            }
+            
+            for keyword, variations in course_keywords.items():
+                if any(variation in message_lower for variation in variations):
+                    for course in available_courses:
+                        course_name = course.get('name', '').lower()
+                        course_description = course.get('description', '').lower()
+                        
+                        if keyword in course_name or keyword in course_description:
+                            return course
             
             return None
             
@@ -428,25 +487,26 @@ class WelcomeFlowUseCase:
             user_name = user_memory.name if user_memory.name != "Usuario" else ""
             name_greeting = f"{user_name}, " if user_name else ""
             
+            course_name = selected_course.get('name', selected_course.get('title', 'Curso seleccionado'))
+            course_description = selected_course.get('description', 'Descripción no disponible')
+            course_price = selected_course.get('price', selected_course.get('cost', 'Precio no disponible'))
+            course_level = selected_course.get('level', selected_course.get('difficulty', 'Nivel no disponible'))
+            course_sessions = selected_course.get('sessions', selected_course.get('duration_weeks', 'Duración no disponible'))
+            course_hours = selected_course.get('duration_hours', selected_course.get('total_hours', 'Horas no disponibles'))
+            
             message_parts = [
                 f"🎯 ¡Perfecto {name_greeting}has seleccionado el curso ideal para ti!",
                 "",
-                f"📚 **{selected_course['name']}**",
-                f"📝 {selected_course['description']}",
+                f"📚 **{course_name}**",
+                f"📝 {course_description}",
                 "",
-                f"💰 **Inversión:** ${selected_course['price']} USD",
-                f"📊 **Nivel:** {selected_course['level']}",
-                f"🗓️ **Duración:** {selected_course['sessions']} sesiones ({selected_course['duration']} horas)",
+                f"💰 **Inversión:** ${course_price} USD",
+                f"📊 **Nivel:** {course_level}",
+                f"🗓️ **Duración:** {course_sessions} sesiones ({course_hours} horas)",
                 "",
                 "✅ **Curso guardado en tu perfil**",
                 "",
                 "🚀 **¿Qué te gustaría hacer ahora?**",
-                "",
-                "• 📋 Ver temario completo del curso",
-                "• 💰 Conocer opciones de pago",
-                "• 🎯 Ver casos de éxito en tu sector",
-                "• 👥 Conectarte con un asesor especializado",
-                "• ❓ Hacer preguntas específicas sobre el curso",
                 "",
                 "¡Solo escríbeme lo que te interesa! 😊"
             ]
@@ -455,12 +515,13 @@ class WelcomeFlowUseCase:
             
         except Exception as e:
             logger.error(f"Error creando mensaje de confirmación: {e}")
-            return f"✅ Curso seleccionado: {selected_course['name']}. ¿En qué puedo ayudarte?"
+            return f"✅ Curso seleccionado: {course_name}. ¿En qué puedo ayudarte?"
     
     async def _request_valid_course_selection(
         self, 
         user_id: str, 
-        user_memory: LeadMemory
+        user_memory: LeadMemory,
+        available_courses: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
         Solicita una selección válida de curso.
@@ -468,26 +529,36 @@ class WelcomeFlowUseCase:
         Args:
             user_id: ID del usuario
             user_memory: Memoria del usuario
+            available_courses: Lista de cursos disponibles
             
         Returns:
             Resultado del procesamiento
         """
         try:
-            message = """🤔 **Selección no válida**
-
-Por favor, selecciona uno de nuestros cursos disponibles:
-
-**📚 CURSOS DISPONIBLES:**
-1. Introducción a la Inteligencia Artificial para PyMEs
-2. IA Intermedia para Automatización Empresarial  
-3. IA Avanzada: Transformación Digital Completa
-
-**Responde con:**
-• El número del curso (1, 2 o 3)
-• El nombre del curso que te interese
-• El nivel que prefieres (Principiante, Intermedio, Avanzado)
-
-¿Cuál te interesa más?"""
+            message_parts = [
+                "🤔 **Selección no válida**",
+                "",
+                "Por favor, selecciona uno de nuestros cursos disponibles:",
+                "",
+                "**📚 CURSOS DISPONIBLES:**"
+            ]
+            
+            # Agregar cada curso disponible
+            for i, course in enumerate(available_courses, 1):
+                course_name = course.get('name', course.get('title', 'Curso sin nombre'))
+                message_parts.append(f"{i}. {course_name}")
+            
+            message_parts.extend([
+                "",
+                "**Responde con:**",
+                "• El número del curso",
+                "• El nombre del curso que te interese",
+                "• El nivel que prefieres (Básico, Intermedio, Avanzado)",
+                "",
+                "¿Cuál te interesa más?"
+            ])
+            
+            message = "\n".join(message_parts)
 
             outgoing_message = OutgoingMessage(
                 to_number=f"whatsapp:+{user_id}",

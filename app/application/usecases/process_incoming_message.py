@@ -116,6 +116,45 @@ class ProcessIncomingMessageUseCase:
                                 'privacy_stage': privacy_result.get('stage', 'unknown'),
                                 'privacy_flow_completed': privacy_result.get('flow_completed', False)
                             }
+                        elif privacy_result['success'] and not privacy_result['in_privacy_flow'] and privacy_result.get('flow_completed'):
+                            logger.info(f"✅ Flujo de privacidad completado para {user_id}, continuando con procesamiento normal")
+                            
+                            # Verificar si debe activar automáticamente el flujo de bienvenida
+                            if privacy_result.get('trigger_welcome_flow') and self.welcome_flow_use_case:
+                                logger.info(f"🎯 TRIGGER detectado: Activando automáticamente flujo de bienvenida para {user_id}")
+                                
+                                # Obtener memoria del usuario
+                                user_memory = self.memory_use_case.get_user_memory(user_id)
+                                
+                                # Activar flujo de bienvenida automáticamente
+                                welcome_result = await self.welcome_flow_use_case.handle_welcome_flow(
+                                    user_id, incoming_message
+                                )
+                                
+                                if welcome_result.get('success'):
+                                    logger.info(f"✅ Flujo de bienvenida activado automáticamente para {user_id}")
+                                    return {
+                                        'success': True,
+                                        'processed': True,
+                                        'incoming_message': {
+                                            'from': incoming_message.from_number,
+                                            'body': incoming_message.body,
+                                            'message_sid': incoming_message.message_sid
+                                        },
+                                        'response_sent': True,
+                                        'response_sid': welcome_result.get('response_sid'),
+                                        'response_text': welcome_result.get('response_text', ''),
+                                        'processing_type': 'welcome_flow_auto_triggered',
+                                        'welcome_flow_completed': welcome_result.get('welcome_flow_completed', False),
+                                        'course_selected': welcome_result.get('course_selected', False),
+                                        'ready_for_intelligent_agent': welcome_result.get('ready_for_intelligent_agent', False)
+                                    }
+                                else:
+                                    logger.error(f"❌ Error en flujo de bienvenida automático: {welcome_result}")
+                                    # Continuar con procesamiento normal como fallback
+                            
+                            # Si no hay trigger, continuar con las siguientes prioridades
+                            # NO retornar aquí, dejar que continúe con PRIORIDAD 1.7 (welcome flow)
                         elif not privacy_result['in_privacy_flow'] and privacy_result.get('should_continue_normal_flow'):
                             logger.info(f"🔄 Usuario {user_id} no está en flujo privacidad, continuando procesamiento normal")
                             # Verificar si el flujo de privacidad activó automáticamente el flujo de anuncios
@@ -241,6 +280,7 @@ class ProcessIncomingMessageUseCase:
             # PRIORIDAD 1.7: Verificar si es un mensaje genérico que debe activar el flujo de bienvenida
             if self.welcome_flow_use_case:
                 try:
+                    logger.info(f"🔍 DEBUG: Verificando flujo de bienvenida para {user_id}")
                     # Obtener memoria del usuario
                     user_memory = self.memory_use_case.get_user_memory(user_id)
                     
@@ -273,6 +313,8 @@ class ProcessIncomingMessageUseCase:
                         else:
                             logger.error(f"❌ Error en flujo de bienvenida: {welcome_result}")
                             # Continuar con procesamiento normal
+                    else:
+                        logger.info(f"🔍 DEBUG: Flujo de bienvenida NO activado para {user_id}")
                     
                 except Exception as e:
                     logger.error(f"❌ Error procesando flujo de bienvenida: {e}")
