@@ -115,19 +115,19 @@ def parse_openai_json(content):
 
 ### **👨‍💻 DESARROLLADOR A: Backend & Base de Datos**
 
-#### **Prioridad 1: Arreglar Parser JSON OpenAI**
+#### **Prioridad 1: Arreglar Parser JSON OpenAI** (arreglado)
 - **Archivo**: `app/infrastructure/openai/client.py`
 - **Tarea**: Implementar limpieza de markdown en JSON parsing
 - **Tiempo**: 2 horas
 - **Validación**: `extracted_info` debe poblarse correctamente
 
-#### **Prioridad 2: Optimizar Queries de Base de Datos**
-- **Archivos**: `app/infrastructure/database/repositories/course_repository.py`
+#### **Prioridad 2: Optimizar Queries de Base de Datos** (arreglado)
+- **Archivos**: `app/infrastructure/database/repositories/course_repository.py` 
 - **Tarea**: Implementar queries para información específica vs hardcodeada
 - **Tiempo**: 4 horas
 - **Entregable**: Sistema 100% basado en BD, 0% hardcodeado
 
-#### **Prioridad 3: Sistema de Bonos Contextual**
+#### **Prioridad 3: Sistema de Bonos Contextual** (arreglado)
 - **Archivo**: `app/application/usecases/bonus_activation_use_case.py`
 - **Tarea**: Debugging y activación correcta del sistema de bonos
 - **Tiempo**: 3 horas

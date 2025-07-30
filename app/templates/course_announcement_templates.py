@@ -31,7 +31,7 @@ class CourseAnnouncementTemplates:
         # Información básica
         course_name = course_info.get('name', 'Curso de IA')
         description = course_info.get('short_description', '')
-        price = course_info.get('price', 497)
+        price = course_info.get('price', 0)
         currency = course_info.get('currency', 'USD')
         level = course_info.get('level', 'Todos los niveles')
         sessions = course_info.get('session_count', 8)
@@ -259,7 +259,7 @@ Dirigido específicamente a líderes de PyMEs (20-200 empleados) que buscan:
             Mensaje de seguimiento
         """
         course_name = course_info.get('name', 'este curso')
-        price = course_info.get('price', 497)
+        price = course_info.get('price', 0)
         
         return f"""🚀 **¿LISTO PARA TRANSFORMAR TU PYME CON IA?**
 
@@ -295,7 +295,7 @@ Lo siento, no pude encontrar información para el código **{course_code}**.
 📚 **CURSOS DISPONIBLES ACTUALMENTE:**
 
 **#CursoIA1** - Introducción a IA para PyMEs
-💰 $497 USD | 📊 Principiante | 🗓️ 8 sesiones
+💰 {course_info.get('price_formatted', 'Consultar precio')} | 📊 {course_info.get('level', 'Profesional')} | 🗓️ {course_info.get('session_count', 'Múltiples')} sesiones
 
 **#CursoIA2** - IA Intermedia para Automatización
 💰 $797 USD | 📊 Intermedio | 🗓️ 12 sesiones
@@ -318,7 +318,7 @@ Solo escribe el código que te llame la atención (ej: #CursoIA1)"""
             Mensaje de promoción especial
         """
         course_name = course_info.get('name', 'este curso')
-        original_price = course_info.get('price', 497)
+        original_price = course_info.get('price', 0)
         promo_price = int(original_price * 0.8)  # 20% descuento
         savings = original_price - promo_price
         

@@ -67,6 +67,15 @@ class WebhookSimulation:
         # Crear manager de memoria y caso de uso
         debug_print("Inicializando sistema de memoria...", "initialize_system", "webhook_simulation.py")
         memory_manager = MemoryManager(memory_dir="memorias")
+        
+        # 🆕 LIMPIAR MEMORIA PARA TESTING - Cada ejecución es una conversación nueva
+        #debug_print("🧹 Limpiando memorias anteriores para testing...", "initialize_system", "webhook_simulation.py")
+        #memory_cleared = memory_manager.clear_all_memories()
+        #if memory_cleared:
+        #    debug_print("✅ Memorias anteriores limpiadas correctamente", "initialize_system", "webhook_simulation.py")
+        #else:
+        #    debug_print("⚠️ No se pudieron limpiar todas las memorias, continuando...", "initialize_system", "webhook_simulation.py")
+        
         self.memory_use_case = ManageUserMemoryUseCase(memory_manager)
         debug_print("✅ Sistema de memoria inicializado correctamente", "initialize_system", "webhook_simulation.py")
 
@@ -232,6 +241,7 @@ class WebhookSimulation:
         print("="*80)
         print("💬 Escribe tu mensaje y presiona Enter")
         print("🛑 Escribe 'salir' para terminar la conversación")
+        print("🔄 Escribe 'reset' para reiniciar la conversación (nueva memoria)")
         print("="*80)
         
     def print_debug_separator(self):
@@ -295,6 +305,24 @@ class WebhookSimulation:
                 if user_message.lower() in ['salir', 'exit', 'quit', 's']:
                     print("\n👋 ¡Hasta luego! Gracias por probar el sistema Brenda.")
                     break
+                
+                # Verificar si quiere resetear la conversación
+                if user_message.lower() in ['reset', 'reiniciar', 'r']:
+                    print("\n🔄 Reiniciando conversación...")
+                    print("🧹 Limpiando memoria del usuario...")
+                    
+                    # Resetear memoria del usuario actual
+                    user_id = "console_user_001"
+                    memory_reset = self.memory_use_case.memory_manager.reset_user_memory(user_id)
+                    
+                    if memory_reset:
+                        print("✅ Memoria reiniciada correctamente")
+                        print("🎯 ¡Nueva conversación iniciada! Prueba con 'Hola' para comenzar el flujo de privacidad")
+                    else:
+                        print("⚠️ Error reiniciando memoria, continuando con conversación actual")
+                    
+                    conversation_count = 0  # Resetear contador
+                    continue
                     
                 # Verificar mensaje vacío
                 if not user_message:

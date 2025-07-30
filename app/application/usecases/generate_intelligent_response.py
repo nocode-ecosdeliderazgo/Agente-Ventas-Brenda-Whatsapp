@@ -12,7 +12,9 @@ from app.application.usecases.validate_response_use_case import ValidateResponse
 from app.application.usecases.anti_hallucination_use_case import AntiHallucinationUseCase
 from app.application.usecases.extract_user_info_use_case import ExtractUserInfoUseCase
 from app.application.usecases.personalize_response_use_case import PersonalizeResponseUseCase
-# from app.application.usecases.bonus_activation_use_case import BonusActivationUseCase  # Comentado temporalmente
+from app.application.usecases.dynamic_course_info_provider import DynamicCourseInfoProvider
+from app.application.usecases.bonus_activation_use_case import BonusActivationUseCase
+from uuid import UUID
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.infrastructure.openai.client import OpenAIClient
 from app.infrastructure.database.client import DatabaseClient
@@ -75,6 +77,9 @@ class GenerateIntelligentResponseUseCase:
         self.personalize_response_use_case = PersonalizeResponseUseCase(
             openai_client, self.extract_user_info_use_case
         )
+        
+        # Inicializar proveedor dinámico de información de cursos (MEJORA BD)
+        self.dynamic_course_provider = DynamicCourseInfoProvider(course_repository)
         
         self.logger = logging.getLogger(__name__)
     
@@ -193,11 +198,22 @@ class GenerateIntelligentResponseUseCase:
             
             debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
             
+            # 🆕 PRIORIDAD ESPECIAL: Preguntas directas de precio usan método específico
+            if category == 'PRICE_INQUIRY':
+                debug_print("💰 Usando método directo para pregunta de precio", "_generate_contextual_response")
+                user_name = user_memory.name if user_memory and user_memory.name != "Usuario" else ""
+                user_role = user_memory.role if user_memory and user_memory.role != "No disponible" else ""
+                return await self._get_direct_price_response(user_name, user_role, user_memory)
+            
             # 1. Verificar si OpenAI ya generó una respuesta de buena calidad
             openai_response = analysis_result.get('generated_response', '')
             if (openai_response and len(openai_response.strip()) > 50 and 
                 self._should_use_ai_generation(category, incoming_message.body)):
                 debug_print("🎯 Usando respuesta inteligente ya generada por OpenAI", "_generate_contextual_response")
+                
+                # ⚠️ PROBLEMA: Esta respuesta no tiene información específica del curso
+                # TODO: En el futuro, mejorar el análisis de intención para incluir info de curso
+                debug_print("⚠️ NOTA: Respuesta OpenAI previa puede no tener nombre específico del curso", "_generate_contextual_response")
                 return openai_response.strip()
             
             # 2. Obtener información de curso si es relevante
@@ -222,8 +238,13 @@ class GenerateIntelligentResponseUseCase:
                 
             elif self._should_use_ai_generation(category, incoming_message.body):
                 debug_print("🤖 Usando generación IA con anti-inventos", "_generate_contextual_response")
+                
+                # Obtener información detallada del curso para OpenAI
+                course_detailed_info = await self._get_course_detailed_info()
+                debug_print(f"📚 Información de curso para OpenAI: {course_detailed_info.get('name', 'No disponible') if course_detailed_info else 'No disponible'}", "_generate_contextual_response")
+                
                 safe_response_result = await self.anti_hallucination_use_case.generate_safe_response(
-                    incoming_message.body, user_memory, intent_analysis, course_info
+                    incoming_message.body, user_memory, intent_analysis, course_info, course_detailed_info
                 )
                 response_text = safe_response_result['message']
                 
@@ -264,6 +285,10 @@ class GenerateIntelligentResponseUseCase:
         """
         Determina si debe usar generación IA con anti-inventos o templates seguros.
         """
+        # 🆕 EXCLUSIONES: Categorías que tienen métodos específicos dedicados
+        if category == 'PRICE_INQUIRY':
+            return False  # PRICE_INQUIRY usa método directo específico
+        
         # Usar IA para preguntas específicas que requieren información detallada
         ai_generation_categories = [
             'EXPLORATION_SECTOR', 'EXPLORATION_ROI', 'EXPLORATION_COMPETITORS',
@@ -375,8 +400,8 @@ class GenerateIntelligentResponseUseCase:
         """
         try:
             # Inicializar caso de uso de bonos si no existe
-            # if not hasattr(self, 'bonus_activation_use_case'):
-            #     self.bonus_activation_use_case = BonusActivationUseCase()
+            if not hasattr(self, 'bonus_activation_use_case'):
+                self.bonus_activation_use_case = BonusActivationUseCase()
             
             debug_print(f"🎁 Activando bonos para categoría: {category}", "_activate_intelligent_bonuses")
             
@@ -389,47 +414,55 @@ class GenerateIntelligentResponseUseCase:
             conversation_context = self._determine_conversation_context(category, message_text)
             urgency_level = self._determine_urgency_level(category, user_memory)
             
-            # Obtener bonos contextuales desde la base de datos
+            # 🆕 Obtener bonos contextuales usando el sistema inteligente
             contextual_bonuses = []
             
-            if self.course_query_use_case:
-                try:
-                    # Buscar bonos disponibles para esta categoría
-                    available_bonuses = await self.course_query_use_case.get_available_options()
-                    bonus_options = available_bonuses.get('bonuses', [])
+            try:
+                # Usar el sistema inteligente de bonos 
+                if hasattr(self, 'dynamic_course_provider') and self.dynamic_course_provider:
+                    # Obtener ID del curso principal
+                    course_data = await self.dynamic_course_provider.get_primary_course_info()
+                    course_id = course_data.get('id')  # La clave correcta es 'id', no 'id_course'
                     
-                    # Filtrar bonos relevantes para la categoría
-                    relevant_bonuses = []
-                    for bonus in bonus_options[:2]:  # Máximo 2 bonos
-                        if isinstance(bonus, dict):
-                            relevant_bonuses.append({
-                                "name": bonus.get('name', 'Bono disponible'),
-                                "description": bonus.get('description', 'Descripción del bono'),
+                    if course_id:
+                        # Usar el sistema de bonos inteligente
+                        debug_print(f"🎯 Obteniendo bonos contextuales para curso {course_id}", "_activate_intelligent_bonuses")
+                        # Convertir string a UUID si es necesario
+                        course_uuid = UUID(course_id) if isinstance(course_id, str) else course_id
+                        raw_bonuses = await self.bonus_activation_use_case.get_contextual_bonuses(
+                            course_id=course_uuid,
+                            user_memory=user_memory,
+                            conversation_context=conversation_context,
+                            limit=3
+                        )
+                        
+                        # Convertir formato para compatibilidad
+                        contextual_bonuses = []
+                        for bonus in raw_bonuses:
+                            contextual_bonuses.append({
+                                "name": bonus.get('content', 'Bono disponible'),
+                                "description": bonus.get('content', 'Descripción del bono'),
                                 "priority_reason": bonus.get('priority_reason', 'Ideal para tu perfil'),
                                 "sales_angle": bonus.get('sales_angle', 'Valor agregado')
                             })
-                    
-                    contextual_bonuses = relevant_bonuses
-                    
-                except Exception as e:
-                    self.logger.error(f"Error obteniendo bonos de la base de datos: {e}")
-                    # Fallback a bonos básicos si no hay BD
-                    contextual_bonuses = [
-                        {
-                            "name": "Recursos Adicionales",
-                            "description": "Material complementario incluido",
-                            "priority_reason": "Ideal para tu perfil",
-                            "sales_angle": "Valor agregado"
-                        }
-                    ]
-            else:
-                # Fallback si no hay sistema de cursos
+                        
+                        debug_print(f"✅ {len(contextual_bonuses)} bonos contextuales obtenidos", "_activate_intelligent_bonuses")
+                    else:
+                        debug_print("⚠️ No se pudo obtener ID del curso", "_activate_intelligent_bonuses")
+                        
+            except Exception as e:
+                self.logger.error(f"Error obteniendo bonos contextuales inteligentes: {e}")
+                debug_print(f"❌ Error en bonos inteligentes: {e}", "_activate_intelligent_bonuses")
+            
+            # Fallback si no se obtuvieron bonos inteligentes
+            if not contextual_bonuses:
+                debug_print("🔄 Usando fallback de bonos básicos", "_activate_intelligent_bonuses")
                 contextual_bonuses = [
                     {
-                        "name": "Recursos Adicionales",
-                        "description": "Material complementario incluido",
-                        "priority_reason": "Ideal para tu perfil",
-                        "sales_angle": "Valor agregado"
+                        "name": "Recursos Adicionales Especializados",
+                        "description": "Material complementario adaptado a tu sector",
+                        "priority_reason": "Ideal para tu perfil empresarial",
+                        "sales_angle": "Valor agregado inmediato"
                     }
                 ]
             
@@ -583,7 +616,8 @@ class GenerateIntelligentResponseUseCase:
             # Nuevas categorías PyME específicas
             'EXPLORATION_SECTOR': lambda: asyncio.create_task(self._get_exploration_response(user_name, user_role)),
             'EXPLORATION_ROI': lambda: self._get_roi_exploration_response(user_name, user_role),
-            'OBJECTION_BUDGET_PYME': lambda: WhatsAppMessageTemplates.business_price_objection_response(role=user_role),
+            'PRICE_INQUIRY': lambda: asyncio.create_task(self._get_direct_price_response(user_name, user_role, user_memory)),
+            'OBJECTION_BUDGET_PYME': lambda: asyncio.create_task(self._get_dynamic_price_objection_response(user_name, user_role, user_memory)),
             'OBJECTION_TECHNICAL_TEAM': lambda: self._get_technical_objection_response(user_name, user_role),
             'AUTOMATION_REPORTS': lambda: self._get_automation_response(user_name, user_role),
             'AUTOMATION_CONTENT': lambda: self._get_content_automation_response(user_name, user_role),
@@ -637,13 +671,17 @@ class GenerateIntelligentResponseUseCase:
                 catalog_summary = await self.course_query_use_case.get_course_catalog_summary()
                 if catalog_summary and catalog_summary.get('statistics', {}).get('total_courses', 0) > 0:
                     total_courses = catalog_summary['statistics']['total_courses']
+                    featured_courses = catalog_summary.get('featured_courses', [])
+                    
+                    # Generar información de cursos contextual
+                    course_info_text = self._generate_course_info_text(total_courses, featured_courses, 'EXPLORATION')
                     
                     return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
 
 {role_context}estoy segura de que la IA puede transformar completamente tu forma de trabajar.
 
 **📚 Te puedo mostrar:**
-• Temario completo de nuestros {total_courses} cursos
+• Temario completo de {self._get_course_name_text(total_courses, featured_courses)}
 • Recursos gratuitos para empezar hoy
 • Casos de éxito de personas como tú
 
@@ -779,14 +817,18 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
                 if catalog_summary and catalog_summary.get('statistics', {}).get('total_courses', 0) > 0:
                     total_courses = catalog_summary['statistics']['total_courses']
                     available_levels = catalog_summary.get('available_options', {}).get('levels', [])
+                    featured_courses = catalog_summary.get('featured_courses', [])
                     
                     levels_text = ", ".join(available_levels) if available_levels else "todos los niveles"
+                    course_name_text = self._get_course_name_text(total_courses, featured_courses)
+                    
+                    courses_text = f"**📚 Tenemos {course_name_text}** para {levels_text}, diseñados específicamente para profesionales como tú." if total_courses == 1 else f"**📚 Tenemos {total_courses} cursos disponibles** para {levels_text}, diseñados específicamente para profesionales como tú."
                     
                     return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
 
 {role_context}estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
 
-**📚 Tenemos {total_courses} cursos disponibles** para {levels_text}, diseñados específicamente para profesionales como tú.
+{courses_text}
 
 **🎯 Puedo ayudarte con:**
 • Información detallada sobre nuestros cursos
@@ -819,7 +861,7 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
         # ROI específico por buyer persona
         roi_examples = {
             'Marketing': f"• 80% menos tiempo creando contenido\n• $300 ahorro por campaña → Recuperas inversión en 2 campañas",
-            'Operaciones': f"• 30% reducción en procesos manuales\n• $2,000 ahorro mensual → ROI del 400% en primer mes",
+            'Operaciones': f"• 30% reducción en procesos manuales\n• ROI calculado según tu empresa específica",
             'CEO': f"• 40% más productividad del equipo\n• $27,600 ahorro anual vs contratar analista → ROI del 1,380% anual",
             'Recursos Humanos': f"• 70% más eficiencia en capacitaciones\n• $1,500 ahorro mensual → ROI del 300% primer trimestre"
         }
@@ -1189,11 +1231,15 @@ Basándome en tus intereses, te recomiendo estos cursos:
                     available_options = catalog_summary.get('available_options', {})
                     available_modalities = available_options.get('modalities', [])
                     course_categories = available_options.get('levels', [])
+                    featured_courses = catalog_summary.get('featured_courses', [])
+                    
+                    # Generar información de cursos contextual
+                    course_info_text = self._generate_course_info_text(total_courses, featured_courses, category)
                     
                     if category == 'EXPLORATION':
                         return f"""¡Excelente que estés explorando{', ' + name_part if name_part else ''}! 🎯
 
-**📚 Tenemos {total_courses} cursos de IA que te enseñan:**
+{course_info_text}
 • Automatización de procesos empresariales
 • Análisis inteligente de datos
 • Creación de contenido con IA
@@ -1216,10 +1262,11 @@ Basándome en tus intereses, te recomiendo estos cursos:
 ¿Qué prefieres hacer primero?"""
                     
                     else:
+                        course_name_text = self._get_course_name_text(total_courses, featured_courses)
                         return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
 
 **📚 Te ayudo con información sobre:**
-• {total_courses} cursos de IA aplicada
+• {course_name_text}
 • Programas de automatización empresarial
 • Capacitación personalizada según tu sector
 • Recursos gratuitos para empezar
@@ -1240,3 +1287,331 @@ Basándome en tus intereses, te recomiendo estos cursos:
 **📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
 
 ¿En qué área te gustaría especializarte?"""
+    
+    def _generate_course_info_text(self, total_courses: int, featured_courses: list, category: str) -> str:
+        """
+        Genera texto informativo sobre cursos según el contexto.
+        
+        Args:
+            total_courses: Número total de cursos disponibles
+            featured_courses: Lista de cursos destacados con información
+            category: Categoría de la consulta
+            
+        Returns:
+            Texto formateado con información de cursos
+        """
+        if total_courses == 1 and featured_courses:
+            # Caso actual: Solo 1 curso - mostrar nombre específico
+            course_name = featured_courses[0].get('name', 'nuestro curso de IA')
+            level = featured_courses[0].get('level', '')
+            modality = featured_courses[0].get('modality', '')
+            
+            level_text = f" (Nivel: {level})" if level else ""
+            modality_text = f" - Modalidad: {modality}" if modality else ""
+            
+            return f"""**📚 Tenemos el curso: "{course_name}"{level_text}**{modality_text}
+
+Este curso te enseña:"""
+            
+        elif total_courses > 1:
+            # Caso futuro: Múltiples cursos - mostrar los más relevantes
+            if category in ['EXPLORATION_SECTOR', 'AUTOMATION_CONTENT', 'AUTOMATION_REPORTS']:
+                # Para categorías específicas, filtrar cursos relevantes
+                relevant_courses = [course for course in featured_courses[:3]]  # Top 3 más relevantes
+                
+                if relevant_courses:
+                    course_list = []
+                    for course in relevant_courses:
+                        name = course.get('name', 'Curso de IA')
+                        level = course.get('level', '')
+                        level_text = f" ({level})" if level else ""
+                        course_list.append(f"• **{name}**{level_text}")
+                    
+                    return f"""**📚 Cursos disponibles relacionados con tu consulta:**
+
+{chr(10).join(course_list)}
+
+Cada curso te enseña:"""
+                
+            # Caso general: mostrar resumen de cursos
+            return f"**📚 Tenemos {total_courses} cursos de IA especializados que te enseñan:**"
+            
+        else:
+            # Fallback genérico
+            return f"**📚 Tenemos {total_courses} cursos de IA que te enseñan:**"
+    
+    def _get_course_name_text(self, total_courses: int, featured_courses: list) -> str:
+        """
+        Obtiene texto simple del nombre del curso para uso en listas.
+        
+        Args:
+            total_courses: Número total de cursos
+            featured_courses: Lista de cursos destacados
+            
+        Returns:
+            Texto simple con nombre(s) de curso(s)
+        """
+        if total_courses == 1 and featured_courses:
+            course_name = featured_courses[0].get('name', 'nuestro curso de IA')
+            return f'"{course_name}"'
+        elif total_courses > 1:
+            return f"nuestros {total_courses} cursos de IA"
+        else:
+            return f"nuestros {total_courses} cursos de IA"
+    
+    async def _get_course_detailed_info(self) -> dict:
+        """
+        Obtiene información detallada del curso dinámicamente desde BD.
+        Reemplaza datos hardcodeados con información real de la base de datos.
+        
+        Returns:
+            Dict con información completa del curso para OpenAI
+        """
+        try:
+            # Usar el nuevo proveedor dinámico de información
+            course_data = await self.dynamic_course_provider.get_primary_course_info()
+            
+            # Estructurar información para OpenAI con datos reales de BD
+            course_info = {
+                'name': course_data['name'],
+                'short_description': course_data['short_description'],
+                'long_description': course_data['long_description'],
+                'level': course_data['level'],
+                'modality': course_data['modality'],
+                'price': course_data['price'],
+                'price_formatted': course_data['price_formatted'],
+                'currency': course_data['currency'],
+                'session_count': course_data['session_count'],
+                'total_duration_hours': course_data['total_duration_hours'],
+                'total_duration_formatted': course_data['total_duration_formatted'],
+                'bonds': course_data['bonds'][:5],  # Top 5 bonos para OpenAI
+                'bonds_count': course_data['bonds_count'],
+                'roi_examples': course_data['roi_examples'],
+                'id': course_data['id'],
+                'has_real_data': course_data['price'] > 0,  # Flag para OpenAI
+                'data_source': 'database' if course_data['price'] > 0 else 'fallback'
+            }
+            
+            self.logger.info(f"📚 Información dinámica de curso obtenida para OpenAI: {course_info['name']} (${course_info['price']})")
+            return course_info
+            
+        except Exception as e:
+            self.logger.error(f"Error obteniendo información detallada del curso: {e}")
+            return {
+                'name': 'Curso de IA Profesional',
+                'short_description': 'Información por confirmar',
+                'level': 'Profesional',
+                'modality': 'Online',
+                'price': 0,
+                'price_formatted': 'Consultar precio',
+                'currency': 'USD',
+                'session_count': 0,
+                'total_duration_hours': 0,
+                'bonds': [],
+                'bonds_count': 0,
+                'roi_examples': {},
+                'has_real_data': False,
+                'data_source': 'error_fallback'
+            }
+    
+    async def _get_dynamic_price_objection_response(self, user_name: str, user_role: str, user_memory) -> str:
+        """
+        Respuesta a objeciones de precio con información dinámica desde BD.
+        Reemplaza valores hardcodeados con datos reales del curso.
+        """
+        try:
+            # Obtener información dinámica del curso desde BD
+            course_data = await self.dynamic_course_provider.get_primary_course_info()
+            
+            name_part = f"{user_name}, " if user_name else ""
+            course_name = course_data['name']
+            price_formatted = course_data['price_formatted']
+            currency = course_data['currency']
+            price_numeric = course_data['price']
+            
+            # Calcular ROI dinámico basado en precio real
+            roi_example = self._calculate_dynamic_roi_for_role(price_numeric, user_role, currency)
+            
+            response = f"""Entiendo la preocupación por el presupuesto{', ' + name_part if name_part else ''} - es típico de líderes PyME responsables. 💰
+
+**🏢 PERSPECTIVA EMPRESARIAL:**
+• {course_name}: {price_formatted} (inversión única, resultados permanentes)
+• Contratar especialista IA: $3,000-5,000/mes (+ prestaciones)
+• Consultoría externa: $200/hora × 40 horas = $8,000 USD
+• Seguir perdiendo eficiencia: **Costo de oportunidad ilimitado**
+
+**📊 VALOR ESPECÍFICO PARA PYMES:**
+• Framework IMPULSO: aplicable a cualquier proceso desde día 1
+• Sin dependencia técnica: tu equipo actual puede implementarlo
+• Actualizaciones incluidas: siempre al día con nueva tecnología
+• Casos reales PyME: ejemplos de tu mismo tamaño de empresa{roi_example}
+
+**🎯 LA PREGUNTA ESTRATÉGICA:**
+¿Puedes permitirte que tu competencia implemente IA antes que tú?
+
+¿Te gustaría que revisemos un plan de implementación por fases para optimizar tu inversión?"""
+            
+            self.logger.info(f"✅ Respuesta de precio generada con datos dinámicos: {price_formatted}")
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error generando respuesta dinámica de precio: {e}")
+            # Fallback sin datos específicos
+            return f"""Entiendo tu preocupación por el presupuesto{', ' + user_name + ', ' if user_name else ''} - es típico de líderes responsables. 💰
+
+**🏢 PERSPECTIVA EMPRESARIAL:**
+• Nuestro curso: Inversión única con resultados permanentes
+• Contratar especialista: $3,000-5,000/mes + prestaciones
+• Consultoría externa: $8,000+ USD por proyecto
+
+**📊 VALOR PARA PYMES:**
+• Sin dependencia técnica: tu equipo puede implementarlo
+• ROI personalizado según tu empresa específica
+
+¿Te gustaría que revisemos las opciones de inversión disponibles?"""
+    
+    def _calculate_dynamic_roi_for_role(self, price_numeric: int, user_role: str, currency: str = "MXN") -> str:
+        """
+        Calcula ROI dinámico basado en precio real del curso y rol del usuario.
+        """
+        if price_numeric <= 0:
+            return "\n• ROI personalizado según tu empresa y necesidades específicas"
+        
+        currency_symbol = "$" if currency in ["USD", "MXN"] else currency + " "
+        
+        # ROI específico por buyer persona con precio real
+        if "marketing" in user_role.lower() or "content" in user_role.lower():
+            monthly_savings = 4800 if currency == "MXN" else 300  # Ajuste por moneda
+            monthly_savings_formatted = f"{currency_symbol}{monthly_savings:,}"
+            months_to_break_even = max(1, round(price_numeric / (monthly_savings * 4), 1))  # 4 campañas/mes
+            return f"""
+
+**💡 ROI para Marketing (casos documentados):**
+• Antes: 8 horas/campaña = {monthly_savings_formatted}/mes en 4 campañas
+• Después: 2 horas con IA = reducción del 75%
+• **Ahorro mensual: {monthly_savings_formatted}** → Break-even en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'}"""
+        
+        elif "operaciones" in user_role.lower() or "manufactura" in user_role.lower():
+            monthly_savings = 8000 if currency == "MXN" else 500  # Ajuste por moneda
+            monthly_savings_formatted = f"{currency_symbol}{monthly_savings:,}"
+            months_to_break_even = max(1, round(price_numeric / monthly_savings, 1))
+            return f"""
+
+**💡 ROI para Operaciones (casos reales):**
+• Antes: 12 horas/semana reportes = {currency_symbol}{monthly_savings * 3:,}/mes
+• Después: 2 horas automatizadas = {currency_symbol}{monthly_savings // 4:,}/mes
+• **Ahorro mensual: {monthly_savings_formatted}** → Break-even en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'}"""
+        
+        elif "ceo" in user_role.lower() or "fundador" in user_role.lower():
+            monthly_cost_analyst = 12000 if currency == "MXN" else 750  # Costo analista
+            course_monthly_equivalent = max(200, round(price_numeric / 12, 0))
+            monthly_savings = monthly_cost_analyst - course_monthly_equivalent
+            monthly_savings_formatted = f"{currency_symbol}{monthly_savings:,}"
+            months_to_break_even = max(1, round(price_numeric / monthly_savings, 1))
+            return f"""
+
+**💡 ROI Ejecutivo (análisis de costos):**
+• Costo analista junior: {currency_symbol}{monthly_cost_analyst:,}/mes
+• Costo curso amortizado: {currency_symbol}{course_monthly_equivalent:,}/mes
+• **Ahorro mensual: {monthly_savings_formatted}** → Break-even en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'}"""
+        
+        else:
+            # ROI genérico calculado dinámicamente
+            estimated_monthly_savings = max(2000 if currency == "MXN" else 125, price_numeric // 4)
+            months_to_break_even = max(1, round(price_numeric / estimated_monthly_savings, 1))
+            return f"""
+
+**💡 ROI Personalizado para tu área:**
+• Ahorro estimado: {currency_symbol}{estimated_monthly_savings:,}/mes en procesos optimizados
+• **Break-even: {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'}**
+• ROI anual proyectado: {round((estimated_monthly_savings * 12 / price_numeric) * 100)}%"""
+    
+    async def _get_direct_price_response(self, user_name: str, user_role: str, user_memory) -> str:
+        """
+        Respuesta directa a preguntas específicas de precio.
+        Proporciona información clara y luego agrega valor/beneficios.
+        """
+        try:
+            # Obtener información dinámica del curso desde BD
+            course_data = await self.dynamic_course_provider.get_primary_course_info()
+            
+            name_part = f"{user_name}, " if user_name else ""
+            course_name = course_data['name']
+            price_formatted = course_data['price_formatted']
+            currency = course_data['currency']
+            price_numeric = course_data['price']
+            session_count = course_data['session_count']
+            duration_formatted = course_data['total_duration_formatted']
+            
+            # ROI específico pero más breve para respuesta directa
+            roi_brief = self._get_brief_roi_for_role(price_numeric, user_role, currency)
+            
+            response = f"""¡Hola{', ' + name_part if name_part else ''}! 💰
+
+**🎓 {course_name}**
+💰 **Precio**: {price_formatted}
+⏱️ **Duración**: {duration_formatted} ({session_count} sesiones)
+📊 **Modalidad**: Online
+
+{roi_brief}
+
+**🎁 INCLUYE:**
+• Acceso 100% online a grabaciones
+• Workbook interactivo en Coda.io  
+• Soporte en Telegram
+• Comunidad privada vitalicia
+
+**💡 Lo mejor:** Puedes aplicar lo que aprendes desde la primera sesión, recuperando tu inversión rápidamente con la automatización de procesos.
+
+¿Te gustaría conocer más detalles sobre el contenido del curso o tienes alguna otra pregunta?"""
+            
+            self.logger.info(f"✅ Respuesta directa de precio enviada: {price_formatted}")
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error generando respuesta directa de precio: {e}")
+            # Fallback directo
+            return f"""¡Hola{', ' + user_name + ', ' if user_name else ''}! 💰
+
+Te comparto la información que solicitas:
+
+**🎓 Curso de IA para Profesionales**  
+💰 **Precio**: Déjame consultar el precio actual para darte la información más exacta.
+
+Mientras tanto, te comento que es una inversión única que incluye:
+• Acceso completo online
+• Materiales interactivos  
+• Soporte especializado
+• Actualizaciones de por vida
+
+¿Te gustaría que te contacte con más detalles específicos?"""
+    
+    def _get_brief_roi_for_role(self, price_numeric: int, user_role: str, currency: str = "MXN") -> str:
+        """
+        Genera ROI breve para respuestas directas de precio.
+        """
+        if price_numeric <= 0:
+            return "**💡 Inversión que se recupera rápidamente** con la automatización de procesos."
+        
+        currency_symbol = "$" if currency in ["USD", "MXN"] else currency + " "
+        
+        # ROI breve por rol
+        if "operaciones" in user_role.lower():
+            monthly_savings = 8000 if currency == "MXN" else 500
+            months_to_break_even = max(1, round(price_numeric / monthly_savings, 1))
+            return f"**💡 Para {user_role}:** Ahorro típico de {currency_symbol}{monthly_savings:,}/mes → Recuperas inversión en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'}"
+        
+        elif "marketing" in user_role.lower():
+            monthly_savings = 4800 if currency == "MXN" else 300
+            months_to_break_even = max(1, round(price_numeric / (monthly_savings * 4), 1))
+            return f"**💡 Para {user_role}:** Ahorro típico de {currency_symbol}{monthly_savings:,}/mes → Recuperas inversión en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'}"
+        
+        elif "ceo" in user_role.lower() or "fundador" in user_role.lower():
+            monthly_savings = 8000 if currency == "MXN" else 500
+            months_to_break_even = max(1, round(price_numeric / monthly_savings, 1))
+            return f"**💡 Para {user_role}:** Ahorro vs contratar especialista → Recuperas inversión en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'}"
+        
+        else:
+            estimated_monthly_savings = max(3000 if currency == "MXN" else 200, price_numeric // 3)
+            months_to_break_even = max(1, round(price_numeric / estimated_monthly_savings, 1))
+            return f"**💡 Inversión inteligente:** Recuperas el costo en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'} con automatización de procesos"

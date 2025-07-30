@@ -164,27 +164,30 @@ Clasifica el mensaje del líder PyME en una de estas CATEGORÍAS ESPECÍFICAS pa
 2. EXPLORATION_ROI - Preguntando por retorno de inversión y casos de éxito
 3. EXPLORATION_COMPETITORS - Preocupado por ventaja competitiva vs competencia
 
+**CATEGORÍAS DE INFORMACIÓN DIRECTA:**
+4. PRICE_INQUIRY - Pregunta directa sobre precio, costo o inversión del curso (ej: "¿cuál es el precio?", "¿cuánto cuesta?", "precio exacto")
+
 **CATEGORÍAS DE OBJECIONES EMPRESARIALES:**
-4. OBJECTION_BUDGET_PYME - Preocupación por presupuesto limitado de PyME
-5. OBJECTION_TIME_EXECUTIVES - Falta de tiempo de líderes/directivos
-6. OBJECTION_TECHNICAL_TEAM - No tienen equipo técnico, temen complejidad
-7. OBJECTION_IMPLEMENTATION - Dudas sobre implementación en operaciones diarias
+5. OBJECTION_BUDGET_PYME - Preocupación por presupuesto limitado de PyME (ej: "está caro", "no tengo presupuesto")
+6. OBJECTION_TIME_EXECUTIVES - Falta de tiempo de líderes/directivos
+7. OBJECTION_TECHNICAL_TEAM - No tienen equipo técnico, temen complejidad
+8. OBJECTION_IMPLEMENTATION - Dudas sobre implementación en operaciones diarias
 
 **CATEGORÍAS DE NECESIDADES OPERATIVAS:**
-8. AUTOMATION_REPORTS - Necesita automatizar reportes y dashboards
-9. AUTOMATION_CONTENT - Busca acelerar creación de contenido/marketing
-10. AUTOMATION_PROCESSES - Quiere sistematizar procesos operativos
-11. AUTOMATION_ANALYSIS - Necesita análisis de datos más rápido
+9. AUTOMATION_REPORTS - Necesita automatizar reportes y dashboards
+10. AUTOMATION_CONTENT - Busca acelerar creación de contenido/marketing
+11. AUTOMATION_PROCESSES - Quiere sistematizar procesos operativos
+12. AUTOMATION_ANALYSIS - Necesita análisis de datos más rápido
 
 **CATEGORÍAS DE DECISIÓN EMPRESARIAL:**
-12. BUYING_SIGNALS_EXECUTIVE - Señales de decisión de compra corporativa
-13. PILOT_REQUEST - Solicita proyecto piloto o prueba
-14. TEAM_TRAINING - Interés en capacitación para su equipo
-15. STRATEGIC_CONSULTATION - Necesita asesoría estratégica de IA
+13. BUYING_SIGNALS_EXECUTIVE - Señales de decisión de compra corporativa
+14. PILOT_REQUEST - Solicita proyecto piloto or prueba
+15. TEAM_TRAINING - Interés en capacitación para su equipo
+16. STRATEGIC_CONSULTATION - Necesita asesoría estratégica de IA
 
 **CATEGORÍAS DE SOPORTE:**
-16. FREE_RESOURCES_BUSINESS - Solicita recursos específicos para PyMEs
-17. CONTACT_ADVISOR_EXECUTIVE - Solicita contacto con asesor empresarial
+17. FREE_RESOURCES_BUSINESS - Solicita recursos específicos para PyMEs
+18. CONTACT_ADVISOR_EXECUTIVE - Solicita contacto con asesor empresarial
 
 MENSAJE ACTUAL: {user_message}
 
@@ -378,7 +381,7 @@ Te los envío ahora mismo. Después de revisarlos, ¿te interesaría una mini-au
     @staticmethod
     def business_price_objection_response(course_price: Union[float, None] = None, role: str = "", sector: str = "") -> str:
         """Respuesta a objeciones de precio para líderes PyME."""
-        price_text = f"${course_price} USD" if course_price else "nuestra inversión"
+        price_text = f"${course_price:,} USD" if course_price and course_price > 0 else "nuestra inversión"
         
         # ROI examples específicos por buyer persona
         roi_example = ""
@@ -393,7 +396,7 @@ Te los envío ahora mismo. Después de revisarlos, ¿te interesaría una mini-au
 **💡 Ejemplo: Marcos Multitask (Operaciones PyME)**
 • Antes: 12 horas/semana en reportes manuales = $600/semana
 • Después: 2 horas automatizadas = $100/semana
-• **Ahorro mensual: $2,000** → ROI del 400% en primer mes"""
+• **Ahorro mensual: Calculado dinámicamente** → ROI personalizado según empresa"""
         elif "ceo" in role.lower() or "fundador" in role.lower():
             roi_example = """
 **💡 Ejemplo: Sofía Visionaria (CEO Consultoría)**
@@ -673,7 +676,7 @@ if __name__ == "__main__":
     print(f"\nMensaje de bienvenida empresarial:\n{welcome}")
     
     # Ejemplo de respuesta con ROI
-    price_response = WhatsAppBusinessTemplates.business_price_objection_response(497, "Director de Marketing", "agencia")
+    price_response = WhatsAppBusinessTemplates.business_price_objection_response(None, "Director de Marketing", "agencia")
     print(f"\nEjemplo respuesta ROI:\n{price_response}")
     
     print("\n✅ Prompts para líderes PyME en WhatsApp cargados correctamente")

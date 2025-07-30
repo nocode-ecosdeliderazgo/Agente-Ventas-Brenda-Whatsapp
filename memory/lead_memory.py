@@ -340,4 +340,89 @@ class MemoryManager:
         if data.get('stage') == 'initial':
             data['stage'] = 'first_contact'
         
-        return LeadMemory(**data) 
+        return LeadMemory(**data)
+    
+    def clear_user_memory(self, user_id: str) -> bool:
+        """
+        Limpia completamente la memoria de un usuario específico.
+        
+        Args:
+            user_id: ID del usuario cuya memoria se va a limpiar
+            
+        Returns:
+            bool: True si se limpió exitosamente, False en caso contrario
+        """
+        try:
+            # Remover del cache
+            if user_id in self.leads_cache:
+                del self.leads_cache[user_id]
+            
+            # Eliminar archivo de memoria
+            filename = f"memory_{user_id}.json"
+            filepath = os.path.join(self.memory_dir, filename)
+            
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                logging.info(f"✅ Memoria eliminada para usuario {user_id}")
+            
+            return True
+        except Exception as e:
+            logging.error(f"❌ Error clearing memory for {user_id}: {e}")
+            return False
+    
+    def reset_user_memory(self, user_id: str) -> bool:
+        """
+        Resetea la memoria de un usuario a estado inicial (nueva conversación).
+        
+        Args:
+            user_id: ID del usuario cuya memoria se va a resetear
+            
+        Returns:
+            bool: True si se reseteó exitosamente, False en caso contrario
+        """
+        try:
+            # Crear nueva memoria limpia
+            now = datetime.now()
+            new_memory = LeadMemory(
+                user_id=user_id,
+                created_at=now,
+                updated_at=now
+            )
+            
+            # Guardar nueva memoria
+            success = self.save_lead_memory(user_id, new_memory)
+            
+            if success:
+                logging.info(f"✅ Memoria reseteada para usuario {user_id}")
+                return True
+            else:
+                logging.error(f"❌ Error saving reset memory for {user_id}")
+                return False
+                
+        except Exception as e:
+            logging.error(f"❌ Error resetting memory for {user_id}: {e}")
+            return False
+    
+    def clear_all_memories(self) -> bool:
+        """
+        Limpia todas las memorias de usuarios (para testing).
+        
+        Returns:
+            bool: True si se limpiaron exitosamente, False en caso contrario
+        """
+        try:
+            # Limpiar cache
+            self.leads_cache.clear()
+            
+            # Eliminar todos los archivos de memoria
+            if os.path.exists(self.memory_dir):
+                for filename in os.listdir(self.memory_dir):
+                    if filename.startswith("memory_") and filename.endswith(".json"):
+                        filepath = os.path.join(self.memory_dir, filename)
+                        os.remove(filepath)
+            
+            logging.info(f"✅ Todas las memorias limpiadas")
+            return True
+        except Exception as e:
+            logging.error(f"❌ Error clearing all memories: {e}")
+            return False 

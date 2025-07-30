@@ -183,7 +183,7 @@ class CourseAnnouncementUseCase:
             "#CursoIA1": {
                 'name': "Introducción a la Inteligencia Artificial para PyMEs",
                 'short_description': "Aprende los fundamentos de IA aplicada a pequeñas y medianas empresas",
-                'price': 497,
+                'price': 0,  # Se obtendrá dinámicamente de BD
                 'currency': "USD",
                 'level': "Principiante",
                 'modality': "Online",
@@ -378,7 +378,7 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
             # Información básica del curso
             course_name = course_info.get('name', 'Curso de IA')
             description = course_info.get('short_description', '')
-            price = course_info.get('price', 497)
+            price = course_info.get('price', 0)
             currency = course_info.get('currency', 'USD')
             level = course_info.get('level', 'Todos los niveles')
             sessions = course_info.get('session_count', 8)
@@ -426,7 +426,7 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
             
         except Exception as e:
             logger.error(f"Error creando mensaje de resumen: {e}")
-            return f"📚 Información del curso disponible. Precio: ${course_info.get('price', 497)} USD"
+            return f"📚 Información del curso disponible. Precio: {course_info.get('price_formatted', 'Consultar precio')}"
     
     def _get_role_specific_roi_message(self, role: str, course_price: int) -> str:
         """
@@ -562,7 +562,7 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
         """
         try:
             course_name = course_info.get('name', 'este curso')
-            price = course_info.get('price', 497)
+            price = course_info.get('price', 0)
             
             follow_up_parts = [
                 f"🚀 **¿Listo para transformar tu PyME con IA?**",
