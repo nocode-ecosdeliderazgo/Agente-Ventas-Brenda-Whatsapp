@@ -79,9 +79,20 @@ async def startup_event():
         intent_analyzer = AnalyzeMessageIntentUseCase(openai_client, memory_use_case)
         debug_print("✅ Analizador de intención inicializado correctamente", "startup", "webhook.py")
         
-        # Sistema de cursos deshabilitado por ahora
-        debug_print("⚠️ Sistema de cursos PostgreSQL deshabilitado (no implementado)", "startup", "webhook.py")
-        course_query_use_case = None
+        # Inicializar sistema de cursos PostgreSQL
+        debug_print("📚 Inicializando sistema de cursos PostgreSQL...", "startup", "webhook.py")
+        from app.infrastructure.database.client import DatabaseClient
+        from app.infrastructure.database.repositories.course_repository import CourseRepository
+        
+        try:
+            db_client = DatabaseClient()
+            course_repo = CourseRepository(db_client)
+            course_query_use_case = QueryCourseInformationUseCase(course_repo)
+            debug_print("✅ Sistema de cursos PostgreSQL inicializado correctamente", "startup", "webhook.py")
+        except Exception as e:
+            debug_print(f"⚠️ Error inicializando PostgreSQL: {e}", "startup", "webhook.py")
+            debug_print("🔄 Continuando sin sistema de cursos...", "startup", "webhook.py")
+            course_query_use_case = None
         
         # Crear generador de respuestas inteligentes (sin sistema de cursos)
         debug_print("🧩 Creando generador de respuestas inteligentes...", "startup", "webhook.py")
