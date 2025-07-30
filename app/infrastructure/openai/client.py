@@ -23,6 +23,45 @@ def debug_print(message: str, function_name: str = "", file_name: str = "openai_
     print(f"🤖 [{file_name}::{function_name}] {message}")
 
 
+def clean_openai_json_response(content: str) -> str:
+    """
+    Limpia respuesta de OpenAI removiendo markdown wrapping.
+    
+    OpenAI puede devolver JSON envuelto en ```json``` que falla el parsing.
+    Esta función remueve ese wrapping para obtener JSON puro.
+    
+    Args:
+        content: Contenido recibido de OpenAI
+        
+    Returns:
+        JSON limpio sin markdown wrapping
+    """
+    if not content:
+        return content
+        
+    content = content.strip()
+    
+    # Remover wrapping de markdown JSON
+    if content.startswith('```json'):
+        content = content.replace('```json\n', '').replace('```json', '')
+    
+    if content.endswith('```'):
+        content = content.replace('\n```', '').replace('```', '')
+    
+    # Remover wrapping de markdown genérico
+    if content.startswith('```'):
+        lines = content.split('\n')
+        if len(lines) > 1:
+            content = '\n'.join(lines[1:])  # Remover primera línea
+    
+    if content.endswith('```'):
+        lines = content.split('\n')
+        if len(lines) > 1:
+            content = '\n'.join(lines[:-1])  # Remover última línea
+    
+    return content.strip()
+
+
 class OpenAIClient:
     """
     Cliente especializado para interacciones con OpenAI GPT-4o-mini.
@@ -89,14 +128,19 @@ class OpenAIClient:
                 content = ""
             debug_print(f"📥 RESPUESTA CRUDA DE OPENAI:\n{content}", "analyze_intent", "openai_client.py")
             
-            # Intentar parsear JSON
+            # Intentar parsear JSON con limpieza de markdown
             try:
                 debug_print("🔄 Parseando respuesta JSON...", "analyze_intent", "openai_client.py")
-                intent_data = json.loads(content)
+                
+                # Limpiar markdown wrapping antes de parsear
+                cleaned_content = clean_openai_json_response(content)
+                debug_print(f"🧹 CONTENIDO LIMPIO: {cleaned_content[:200]}{'...' if len(cleaned_content) > 200 else ''}", "analyze_intent", "openai_client.py")
+                
+                intent_data = json.loads(cleaned_content)
                 debug_print(f"✅ JSON PARSEADO EXITOSAMENTE!\n🎯 Categoría: {intent_data.get('category', 'UNKNOWN')}\n📊 Confianza: {intent_data.get('confidence', 'N/A')}", "analyze_intent", "openai_client.py")
                 return intent_data
             except json.JSONDecodeError as e:
-                debug_print(f"❌ ERROR PARSEANDO JSON: {e}\n📄 Respuesta recibida: {content}", "analyze_intent", "openai_client.py")
+                debug_print(f"❌ ERROR PARSEANDO JSON: {e}\n📄 Contenido original: {content}\n📄 Contenido limpio: {cleaned_content if 'cleaned_content' in locals() else 'N/A'}", "analyze_intent", "openai_client.py")
                 
                 # Fallback con intención genérica
                 debug_print("🔄 Usando respuesta FALLBACK genérica", "analyze_intent", "openai_client.py")
@@ -170,12 +214,17 @@ class OpenAIClient:
                 return {}
             
             try:
-                extracted_data = json.loads(content)
+                # Limpiar markdown wrapping antes de parsear
+                cleaned_content = clean_openai_json_response(content)
+                self.logger.info(f"🧹 Contenido limpio: {cleaned_content[:100]}{'...' if len(cleaned_content) > 100 else ''}")
+                
+                extracted_data = json.loads(cleaned_content)
                 self.logger.info(f"✅ Información extraída exitosamente")
                 return extracted_data
             except json.JSONDecodeError as e:
                 self.logger.error(f"❌ Error parseando JSON de extracción: {e}")
-                self.logger.error(f"📄 Contenido recibido: '{content}'")
+                self.logger.error(f"📄 Contenido original: '{content}'")
+                self.logger.error(f"📄 Contenido limpio: '{cleaned_content if 'cleaned_content' in locals() else 'N/A'}'")
                 return {}
                 
         except Exception as e:
@@ -381,11 +430,17 @@ Gracias por escribir. Estoy aquí para ayudarte con todo lo relacionado a nuestr
             debug_print(f"📥 RESPUESTA DE VALIDACIÓN:\n{content}", "validate_response", "openai_client.py")
             
             try:
-                validation_data = json.loads(content)
+                # Limpiar markdown wrapping antes de parsear
+                cleaned_content = clean_openai_json_response(content)
+                debug_print(f"🧹 CONTENIDO VALIDACIÓN LIMPIO: {cleaned_content[:100]}{'...' if len(cleaned_content) > 100 else ''}", "validate_response", "openai_client.py")
+                
+                validation_data = json.loads(cleaned_content)
                 debug_print(f"✅ Validación PARSEADA - Es válida: {validation_data.get('is_valid', True)}", "validate_response", "openai_client.py")
                 return validation_data
             except json.JSONDecodeError as e:
                 debug_print(f"❌ ERROR PARSEANDO JSON DE VALIDACIÓN: {e}", "validate_response", "openai_client.py")
+                debug_print(f"📄 Contenido original: {content}", "validate_response", "openai_client.py")
+                debug_print(f"📄 Contenido limpio: {cleaned_content if 'cleaned_content' in locals() else 'N/A'}", "validate_response", "openai_client.py")
                 # En caso de error de parseo, aprobar por defecto (filosofía permisiva)
                 return {
                     "is_valid": True,
