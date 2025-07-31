@@ -19,6 +19,8 @@ from app.application.usecases.course_announcement_use_case import CourseAnnounce
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
 from app.application.usecases.welcome_flow_use_case import WelcomeFlowUseCase
 from memory.lead_memory import MemoryManager
+from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
+from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +46,13 @@ privacy_flow_use_case = None
 tool_activation_use_case = None
 course_announcement_use_case = None
 welcome_flow_use_case = None
+detect_ad_hashtags_use_case = None
+process_ad_flow_use_case = None
 
 @app.on_event("startup")
 async def startup_event():
     """Evento de startup para inicializar todas las dependencias."""
-    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case
+    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case, detect_ad_hashtags_use_case, process_ad_flow_use_case
     
     debug_print("🚀 INICIANDO SISTEMA BOT BRENDA...", "startup", "webhook.py")
     
@@ -85,20 +89,43 @@ async def startup_event():
         from app.infrastructure.database.repositories.course_repository import CourseRepository
         
         try:
+            # Crear db_client y course_repository como en test_webhook_simulation.py
             db_client = DatabaseClient()
-            course_repo = CourseRepository(db_client)
-            course_query_use_case = QueryCourseInformationUseCase(course_repo)
-            debug_print("✅ Sistema de cursos PostgreSQL inicializado correctamente", "startup", "webhook.py")
+            course_repository = CourseRepository()
+            
+            # Conectar la instancia global de base de datos (COMO EN test_webhook_simulation.py)
+            from app.infrastructure.database.client import database_client
+            await database_client.connect()
+            
+            # QueryCourseInformationUseCase no necesita parámetros adicionales
+            course_query_use_case = QueryCourseInformationUseCase()
+            
+            # Inicializar el sistema de cursos (COMO EN test_webhook_simulation.py)
+            course_db_initialized = await course_query_use_case.initialize()
+            
+            if course_db_initialized:
+                debug_print("✅ Sistema de cursos PostgreSQL inicializado correctamente", "startup", "webhook.py")
+            else:
+                debug_print("⚠️ Sistema de cursos PostgreSQL no disponible, usando modo básico", "startup", "webhook.py")
+                course_query_use_case = None
+                
         except Exception as e:
             debug_print(f"⚠️ Error inicializando PostgreSQL: {e}", "startup", "webhook.py")
             debug_print("🔄 Continuando sin sistema de cursos...", "startup", "webhook.py")
             course_query_use_case = None
+            course_repository = None
+            db_client = None
         
         # Crear generador de respuestas inteligentes (sin sistema de cursos)
         debug_print("🧩 Creando generador de respuestas inteligentes...", "startup", "webhook.py")
         try:
             intelligent_response_use_case = GenerateIntelligentResponseUseCase(
-                intent_analyzer, twilio_client, openai_client, course_query_use_case
+                intent_analyzer, 
+                twilio_client, 
+                openai_client, 
+                db_client,
+                course_repository,
+                course_query_use_case
             )
             debug_print("✅ Generador de respuestas inteligentes creado", "startup", "webhook.py")
         except Exception as e:
@@ -116,14 +143,22 @@ async def startup_event():
         
         # Inicializar sistema de anuncios de cursos
         debug_print("📚 Inicializando sistema de anuncios de cursos...", "startup", "webhook.py")
-        try:
-            course_announcement_use_case = CourseAnnouncementUseCase(
-                course_query_use_case, memory_use_case, twilio_client
-            )
-            debug_print("✅ Sistema de anuncios de cursos inicializado correctamente", "startup", "webhook.py")
-        except Exception as e:
-            debug_print(f"⚠️ Error con anuncios: {e}", "startup", "webhook.py")
-            course_announcement_use_case = None
+        course_announcement_use_case = CourseAnnouncementUseCase(
+            course_query_use_case, 
+            memory_use_case, 
+            twilio_client
+        )
+        debug_print("✅ Sistema de anuncios de cursos inicializado correctamente", "startup", "webhook.py")
+        
+        # Inicializar sistema de flujo de anuncios
+        debug_print("📢 Inicializando sistema de flujo de anuncios...", "startup", "webhook.py")
+        detect_ad_hashtags_use_case = DetectAdHashtagsUseCase()
+        process_ad_flow_use_case = ProcessAdFlowUseCase(
+            memory_use_case, 
+            privacy_flow_use_case, 
+            course_query_use_case
+        )
+        debug_print("✅ Sistema de flujo de anuncios inicializado correctamente", "startup", "webhook.py")
         
         # Inicializar flujo de bienvenida genérico
         debug_print("🎯 Inicializando flujo de bienvenida genérico...", "startup", "webhook.py")
@@ -143,8 +178,9 @@ async def startup_event():
             memory_use_case, 
             intelligent_response_use_case, 
             privacy_flow_use_case, 
-            tool_activation_use_case, 
-            course_announcement_use_case, 
+            tool_activation_use_case,
+            detect_ad_hashtags_use_case=detect_ad_hashtags_use_case,
+            process_ad_flow_use_case=process_ad_flow_use_case,
             welcome_flow_use_case=welcome_flow_use_case
         )
         debug_print("✅ Procesador de mensajes principal creado", "startup", "webhook.py")
@@ -158,9 +194,7 @@ async def startup_event():
         # Crear sistema básico sin OpenAI
         try:
             # Intentar crear course_query_use_case básico
-            db_client = DatabaseClient()
-            course_repo = CourseRepository(db_client)
-            course_query_use_case = QueryCourseInformationUseCase(course_repo)
+            course_query_use_case = QueryCourseInformationUseCase()
             debug_print("✅ Sistema de cursos básico inicializado", "startup", "webhook.py")
         except Exception as db_error:
             debug_print(f"⚠️ Error con BD: {db_error}", "startup", "webhook.py")
@@ -234,9 +268,10 @@ async def whatsapp_webhook(request: Request):
         # Preparar datos del webhook
         debug_print(f"📦 Preparando datos del webhook...", "whatsapp_webhook", "webhook.py")
         webhook_data = {
-            "from": from_number,
-            "body": message_body,
-            "message_sid": message_sid
+            "MessageSid": message_sid,
+            "From": from_number,
+            "To": "whatsapp:+14155238886",  # Número de Twilio
+            "Body": message_body
         }
         debug_print(f"✅ Datos del webhook preparados correctamente", "whatsapp_webhook", "webhook.py")
         
