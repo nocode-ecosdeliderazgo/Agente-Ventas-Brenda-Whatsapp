@@ -203,30 +203,13 @@ async def health_check():
 
 
 @app.post("/")
-async def root_webhook(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    # Parámetros típicos del webhook de Twilio
-    MessageSid: str = Form(...),
-    From: str = Form(...),
-    To: str = Form(...),
-    Body: str = Form(...),
-    # Parámetros opcionales
-    AccountSid: str = Form(None),
-    MessagingServiceSid: str = Form(None),
-    NumMedia: str = Form("0"),
-    ProfileName: str = Form(None),
-    WaId: str = Form(None)
-):
+async def root_webhook(request: Request):
     """
     Webhook en la ruta raíz para manejar webhooks de Twilio.
     Redirige al mismo handler que /webhook.
     """
     # Usar el mismo handler que /webhook
-    return await whatsapp_webhook(
-        request, background_tasks, MessageSid, From, To, Body,
-        AccountSid, MessagingServiceSid, NumMedia, ProfileName, WaId
-    )
+    return await whatsapp_webhook(request)
 
 
 @app.post("/webhook")
