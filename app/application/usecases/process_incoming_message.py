@@ -226,7 +226,7 @@ class ProcessIncomingMessageUseCase:
                                     'message_sid': incoming_message.message_sid
                                 },
                                 'response_sent': True,
-                                'response_sid': None,
+                                'response_sid': ad_flow_result.get('response_sid'),
                                 'response_text': ad_flow_result.get('response_text', ''),
                                 'processing_type': 'ad_flow',
                                 'course_id': ad_flow_result.get('course_id'),

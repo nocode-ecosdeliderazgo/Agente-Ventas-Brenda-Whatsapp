@@ -156,7 +156,8 @@ async def startup_event():
         process_ad_flow_use_case = ProcessAdFlowUseCase(
             memory_use_case, 
             privacy_flow_use_case, 
-            course_query_use_case
+            course_query_use_case,
+            twilio_client
         )
         debug_print("✅ Sistema de flujo de anuncios inicializado correctamente", "startup", "webhook.py")
         

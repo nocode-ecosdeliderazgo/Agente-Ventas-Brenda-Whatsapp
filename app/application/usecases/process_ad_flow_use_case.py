@@ -14,10 +14,12 @@ class ProcessAdFlowUseCase:
     
     def __init__(self, memory_use_case: ManageUserMemoryUseCase, 
                  privacy_flow_use_case: PrivacyFlowUseCase,
-                 course_query_use_case: QueryCourseInformationUseCase):
+                 course_query_use_case: QueryCourseInformationUseCase,
+                 twilio_client=None):
         self.memory_use_case = memory_use_case
         self.privacy_flow_use_case = privacy_flow_use_case
         self.course_query_use_case = course_query_use_case
+        self.twilio_client = twilio_client
         self.templates = AdFlowTemplates()
     
     async def execute(self, message_data: Dict[str, Any], 
@@ -85,9 +87,22 @@ class ProcessAdFlowUseCase:
             # 9. REACTIVAR AGENTE - Combinar todas las respuestas
             combined_response = "\n\n".join(responses)
             
+            # 10. ENVIAR REALMENTE EL MENSAJE A TWILIO
+            response_sid = None
+            if self.twilio_client:
+                from app.domain.entities.message import OutgoingMessage, MessageType
+                outgoing_message = OutgoingMessage(
+                    to_number=user_id,
+                    body=combined_response,
+                    message_type=MessageType.TEXT
+                )
+                twilio_result = await self.twilio_client.send_message(outgoing_message)
+                response_sid = twilio_result.get('message_sid')
+            
             return {
                 'success': True,
                 'response_text': combined_response,
+                'response_sid': response_sid,
                 'processed': True,
                 'ad_flow_completed': True,
                 'course_id': course_id
