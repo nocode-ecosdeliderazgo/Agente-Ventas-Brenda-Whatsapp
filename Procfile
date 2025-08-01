@@ -1,1 +1,1 @@
-web: python run_webhook_server_debug.py 
+web: gunicorn app.presentation.api.webhook:app -w 1 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT 
