@@ -276,7 +276,7 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
                 f"Solicitó información detallada del curso {course_code}: {course_info.get('name', 'Curso IA')}"
             )
             
-            await self.memory_use_case.save_user_memory(user_memory)
+            self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
             logger.info(f"💾 Memoria actualizada para usuario {user_id} - curso {course_code}")
             
         except Exception as e:
