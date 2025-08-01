@@ -190,7 +190,43 @@ class ProcessIncomingMessageUseCase:
                     logger.error(f"❌ Error procesando flujo de privacidad: {e}")
                     # Continuar con procesamiento normal como fallback
             
-            # PRIORIDAD 1.5: Verificar si es un anuncio con hashtags específicos
+            # PRIORIDAD 1.5: Verificar si es un anuncio de curso específico (PRIORIDAD ALTA SOBRE AD FLOW)
+            if self.course_announcement_use_case:
+                try:
+                    if self.course_announcement_use_case.should_handle_course_announcement(incoming_message):
+                        logger.info(f"📚 Detectado código de curso en mensaje de {user_id} - PRIORIDAD SOBRE AD FLOW")
+                        
+                        course_announcement_result = await self.course_announcement_use_case.handle_course_announcement(
+                            user_id, incoming_message
+                        )
+                        
+                        if course_announcement_result['success']:
+                            logger.info(f"✅ Flujo de anuncio de curso procesado para {user_id}")
+                            return {
+                                'success': True,
+                                'processed': True,
+                                'incoming_message': {
+                                    'from': incoming_message.from_number,
+                                    'body': incoming_message.body,
+                                    'message_sid': incoming_message.message_sid
+                                },
+                                'response_sent': course_announcement_result.get('response_sent', False),
+                                'response_sid': course_announcement_result.get('response_sid'),
+                                'response_text': course_announcement_result.get('response_text', ''),
+                                'processing_type': 'course_announcement',
+                                'course_code': course_announcement_result.get('course_code'),
+                                'course_name': course_announcement_result.get('course_name'),
+                                'additional_resources_sent': course_announcement_result.get('additional_resources_sent', {})
+                            }
+                        else:
+                            logger.warning(f"⚠️ Error en flujo de anuncio: {course_announcement_result}")
+                            # Continuar con procesamiento normal si falla el anuncio
+                            
+                except Exception as e:
+                    logger.error(f"❌ Error procesando flujo de anuncio de curso: {e}")
+                    # Continuar con procesamiento normal como fallback
+
+            # PRIORIDAD 1.6: Verificar si es un anuncio con hashtags específicos
             # O si el usuario ya completó privacidad y tiene hashtags de anuncio
             if self.detect_ad_hashtags_use_case and self.process_ad_flow_use_case:
                 try:
@@ -244,41 +280,7 @@ class ProcessIncomingMessageUseCase:
                     logger.error(f"❌ Error procesando flujo de anuncios: {e}")
                     # Continuar con procesamiento normal como fallback
             
-            # PRIORIDAD 1.6: Verificar si es un anuncio de curso específico
-            if self.course_announcement_use_case:
-                try:
-                    if self.course_announcement_use_case.should_handle_course_announcement(incoming_message):
-                        logger.info(f"📚 Detectado código de curso en mensaje de {user_id}")
-                        
-                        course_announcement_result = await self.course_announcement_use_case.handle_course_announcement(
-                            user_id, incoming_message
-                        )
-                        
-                        if course_announcement_result['success']:
-                            logger.info(f"✅ Flujo de anuncio de curso procesado para {user_id}")
-                            return {
-                                'success': True,
-                                'processed': True,
-                                'incoming_message': {
-                                    'from': incoming_message.from_number,
-                                    'body': incoming_message.body,
-                                    'message_sid': incoming_message.message_sid
-                                },
-                                'response_sent': course_announcement_result.get('response_sent', False),
-                                'response_sid': course_announcement_result.get('response_sid'),
-                                'response_text': course_announcement_result.get('response_text', ''),
-                                'processing_type': 'course_announcement',
-                                'course_code': course_announcement_result.get('course_code'),
-                                'course_name': course_announcement_result.get('course_name'),
-                                'additional_resources_sent': course_announcement_result.get('additional_resources_sent', {})
-                            }
-                        else:
-                            logger.warning(f"⚠️ Error en flujo de anuncio: {course_announcement_result}")
-                            # Continuar con procesamiento normal si falla el anuncio
-                            
-                except Exception as e:
-                    logger.error(f"❌ Error procesando anuncio de curso: {e}")
-                    # Continuar con procesamiento normal como fallback
+            # PRIORIDAD 1.6: [Course Announcement ya procesado en PRIORIDAD 1.5 con mayor prioridad]
             
             # PRIORIDAD 1.7: Verificar si es un mensaje genérico que debe activar el flujo de bienvenida
             if self.welcome_flow_use_case:

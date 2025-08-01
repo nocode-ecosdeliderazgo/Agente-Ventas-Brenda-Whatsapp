@@ -4,7 +4,9 @@ Webhook handler para recibir mensajes de Twilio WhatsApp.
 import logging
 from typing import Dict, Any
 from fastapi import FastAPI, Request, Form, HTTPException, BackgroundTasks
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+import os
 
 from app.config import settings
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
@@ -35,6 +37,25 @@ app = FastAPI(
     description="Webhook para recibir mensajes de WhatsApp via Twilio",
     version="1.0.0"
 )
+
+# Configurar servir archivos estáticos desde la carpeta resources
+# Obtener path absoluto del proyecto
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+resources_path = os.path.join(project_root, "resources")
+
+print(f"🔍 Buscando resources en: {resources_path}")
+if os.path.exists(resources_path):
+    app.mount("/resources", StaticFiles(directory=resources_path), name="resources")
+    print(f"📁 ✅ Archivos estáticos montados desde: {resources_path}")
+    # Listar archivos para debug
+    course_materials_path = os.path.join(resources_path, "course_materials")
+    if os.path.exists(course_materials_path):
+        files = os.listdir(course_materials_path)
+        print(f"📂 Archivos disponibles: {files}")
+    else:
+        print(f"⚠️ Carpeta course_materials no encontrada")
+else:
+    print(f"❌ Carpeta resources no encontrada en: {resources_path}")
 
 # Variables globales para las dependencias
 twilio_client = None

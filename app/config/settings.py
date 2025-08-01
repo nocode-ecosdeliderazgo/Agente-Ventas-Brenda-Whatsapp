@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # === SECURITY ===
     allowed_webhook_ips: str = "*"  # En producción, especificar IPs de Twilio como lista JSON
     
+    # === NGROK CONFIGURATION ===
+    ngrok_url: Optional[str] = None
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
