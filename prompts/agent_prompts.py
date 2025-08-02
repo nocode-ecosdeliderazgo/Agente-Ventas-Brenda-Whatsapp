@@ -206,6 +206,9 @@ Clasifica el mensaje del líder PyME en una de estas CATEGORÍAS ESPECÍFICAS pa
 21. TEAM_READINESS - Pregunta sobre preparación del equipo para IA
 22. IMPLEMENTATION_TIMELINE - Solicita cronograma de implementación
 23. SUCCESS_METRICS - Pregunta sobre métricas de éxito o ROI específico
+24. PURCHASE_INTENT_DIRECT - Expresa intención directa de compra ("quiero comprarlo", "cómo pago", "me inscríbeme")
+25. PURCHASE_INTENT_PRICING - Pregunta específicamente por precios, formas de pago, descuentos
+26. PURCHASE_READY_SIGNALS - Señales de estar listo para comprar ("ya decidí", "convencido", "cuándo empiezo")
 
 MENSAJE ACTUAL: {user_message}
 
@@ -229,6 +232,9 @@ CONTEXTO DE BUYER PERSONAS (usar para clasificación):
 
 **NUEVO - SEÑALES DE COMPRA MEJORADAS:**
 - Palabras clave de urgencia: "pronto", "rápido", "inmediato", "ya", "ahora"
+- **Intención de compra directa**: "quiero comprarlo", "cómo pago", "me apunto", "inscríbeme", "lo quiero"
+- **Preguntas de precio**: "cuánto cuesta", "precio", "valor", "pago", "descuento", "promoción"
+- **Señales de decisión**: "ya decidí", "convencido", "me parece bien", "cuándo empiezo", "siguiente paso"
 - Preguntas específicas sobre implementación: "¿cómo empezar?", "¿cuándo puedo ver resultados?"
 - Menciones de competencia: "competencia", "diferenciación", "ventaja"
 - Preguntas sobre equipo: "¿mi equipo podrá?", "¿necesito técnicos?"

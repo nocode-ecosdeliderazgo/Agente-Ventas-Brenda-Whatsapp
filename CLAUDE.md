@@ -17,14 +17,16 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 
 **Business Focus**: 20-200 employee companies needing AI automation without technical teams.
 
-## ✅ CURRENT STATUS: SISTEMA 100% FUNCIONAL - MULTIMEDIA COURSE ANNOUNCEMENTS WORKING
+## ✅ CURRENT STATUS: SISTEMA 100% FUNCIONAL - PURCHASE BONUS SYSTEM WITH BANKING INFO
 
-### **🎉 ÚLTIMA ACTUALIZACIÓN (1 Agosto 2025)**: Sistema de anuncios con archivos multimedia completamente funcional
+### **🎉 ÚLTIMA ACTUALIZACIÓN (1 Agosto 2025)**: Sistema completo de bonos de compra con datos bancarios
 
 **✅ Componentes Completamente Implementados y Validados:**
 - **Privacy Flow System** ✅ **COMPLETAMENTE FUNCIONAL** - Flujo GDPR obligatorio
 - **Course Announcement System** ✅ **COMPLETAMENTE FUNCIONAL** - Con envío real de PDF e imágenes via ngrok
-- **Multimedia File Serving** ✅ **NUEVO - COMPLETAMENTE FUNCIONAL** - Archivos reales desde `resources/course_materials/`
+- **Multimedia File Serving** ✅ **COMPLETAMENTE FUNCIONAL** - Archivos reales desde `resources/course_materials/`
+- **🆕 Purchase Bonus System** ✅ **NUEVO - COMPLETAMENTE FUNCIONAL** - Bonos workbook por intención de compra
+- **🆕 Banking Integration** ✅ **NUEVO - COMPLETAMENTE FUNCIONAL** - Datos bancarios automáticos en mensajes de compra
 - **Anti-Inventos System** ✅ **COMPLETAMENTE FUNCIONAL** - Con fix JSON parser
 - **Advanced Personalization** ✅ **COMPLETAMENTE FUNCIONAL** - JSON parsing resuelto
 - **Ad Flow System** ✅ **COMPLETAMENTE FUNCIONAL** - Base de datos integrada
@@ -34,6 +36,9 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **Advisor Referral System** ✅ **COMPLETAMENTE FUNCIONAL** - Referencia automática a asesores
 
 ### **🔧 Últimas Mejoras Críticas Implementadas (1 Agosto 2025)**
+- **✅ Purchase Intent Detection**: IMPLEMENTADO - Detección automática de intención de compra
+- **✅ Workbook Bonus Activation**: IMPLEMENTADO - Bonos workbook desde base de datos por compra
+- **✅ Banking Information**: IMPLEMENTADO - Datos bancarios automáticos en respuestas de compra
 - **✅ Multimedia File Sending**: RESUELTO - Envío real de PDF e imágenes via ngrok
 - **✅ Course Information Fix**: RESUELTO - Muestra precio correcto $4500 MXN y información específica
 - **✅ Twilio Character Limit**: RESUELTO - Mensajes optimizados bajo 1600 caracteres
@@ -56,6 +61,7 @@ app/                           # CLEAN ARCHITECTURE
 │   ├── process_incoming_message.py # Priority-based message processing
 │   ├── privacy_flow_use_case.py # GDPR-compliant workflow
 │   ├── course_announcement_use_case.py # ✅ Multimedia course announcements
+│   ├── purchase_bonus_use_case.py # 🆕 Purchase intent & workbook bonuses
 │   ├── advisor_referral_use_case.py # Intelligent advisor referral
 │   └── [otros use cases]
 ├── templates/                 # WhatsApp-optimized templates
@@ -103,6 +109,23 @@ python test_webhook_simulation.py
 # ✅ Message under 1600 character limit
 ```
 
+### 🆕 Testing Purchase Bonus System
+```bash
+# Send purchase intent messages to test bonus activation:
+"Quiero comprarlo"
+"¿Cómo puedo pagar?"
+"Ya decidí, me apunto"
+"¿Cuánto cuesta?"
+
+# Expected results:
+# ✅ Purchase intent detected automatically
+# ✅ Workbook bonus activated from database
+# ✅ Banking details included in response
+# ✅ Personalized ROI message by buyer persona
+# ✅ Lead score increased significantly
+# ✅ High-priority purchase signal recorded
+```
+
 ## Environment Variables Required
 
 ```env
@@ -141,6 +164,8 @@ The system processes messages with the following priority:
 4. **PRIORIDAD 1.7**: Welcome Flow (generic messages)
 5. **PRIORIDAD 1.8**: Advisor Referral (contact requests)
 6. **PRIORIDAD 2**: Intelligent Responses (OpenAI-powered)
+   - **🆕 Purchase Intent Detection**: Automatic bonus activation on purchase signals
+   - **🆕 Workbook Bonus Activation**: Database-driven bonus offering
 7. **Fallback**: Basic context-aware responses
 
 ## Course Announcement System
@@ -199,6 +224,22 @@ Validates AI responses to prevent hallucinations using:
 - Professional handoff messages
 - Context preservation
 
+### 🆕 Purchase Bonus System
+**Automatic purchase intent detection** triggers workbook bonus activation:
+- **Intent Categories**: PURCHASE_INTENT_DIRECT, PURCHASE_INTENT_PRICING, PURCHASE_READY_SIGNALS
+- **Keywords**: "quiero comprarlo", "cómo pago", "me apunto", "ya decidí", "cuánto cuesta"
+- **Workbook Bonuses**: Database-driven Coda.io templates and guides
+- **Banking Information**: Automatic inclusion of company banking details
+- **Personalization**: ROI-focused messages by buyer persona
+- **Memory Update**: High-priority lead scoring and purchase signal tracking
+
+**Banking Details Included:**
+- Razón Social: Aprende y Aplica AI S.A. de C.V.
+- Banco: BBVA
+- Cuenta CLABE: 012345678901234567
+- RFC: AAI210307DEF
+- Uso de CFDI: GO3-Gastos en general
+
 ## Testing Scripts
 
 ### Core System Tests
@@ -211,6 +252,7 @@ Validates AI responses to prevent hallucinations using:
 - `test_anti_inventos_system.py` - Anti-hallucination validation
 - `test_personalization_system.py` - Buyer persona detection
 - `test_course_announcement_flow.py` - Course code processing
+- `test_purchase_bonus_system.py` - 🆕 Purchase intent & workbook bonus activation
 
 ## Production Readiness
 
@@ -221,6 +263,8 @@ Validates AI responses to prevent hallucinations using:
 - **Security**: GDPR compliance and input validation
 - **Performance**: Optimized message handling under Twilio limits
 - **Multimedia Support**: Real file sending with ngrok integration
+- **🆕 Purchase Flow**: Complete purchase intent detection with bonus activation
+- **🆕 Banking Integration**: Automatic banking details in purchase responses
 
 ### 🔄 Future Enhancements
 - Custom domain for multimedia (replace ngrok)
@@ -252,6 +296,6 @@ The `legacy/` folder contains the complete Telegram implementation with 35+ conv
 
 ---
 
-**Current Status**: ✅ **PRODUCTION READY** - Complete multimedia course announcement system functional
+**Current Status**: ✅ **PRODUCTION READY** - Complete purchase bonus system with banking integration
 **Last Updated**: August 1, 2025
-**Version**: 2.0 - Multimedia Course Announcements
+**Version**: 2.1 - Purchase Bonus System with Banking Information
