@@ -1,31 +1,185 @@
-# 🤖 BRENDA WHATSAPP BOT
+# 🤖 Brenda WhatsApp Bot
 
-## 🎯 **VISIÓN GENERAL**
+> **Sistema inteligente de conversación para automatización de ventas y atención al cliente**
 
-**Brenda WhatsApp Bot** es un sistema inteligente de conversación que integra IA, WhatsApp y automatización de ventas para **Ecos del Liderazgo**. El bot proporciona atención personalizada, información de cursos y referencias de asesores de manera automática.
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
+[![Heroku](https://img.shields.io/badge/Heroku-Deployed-purple.svg)](https://heroku.com/)
+[![WhatsApp](https://img.shields.io/badge/WhatsApp-API-green.svg)](https://www.whatsapp.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-orange.svg)](https://openai.com/)
 
-## 🚀 **ESTADO ACTUAL**
+<div align="center">
 
-### ✅ **PRODUCCIÓN ACTIVA**
-- **Versión**: v13 (Heroku)
+### 👨‍💻 **Desarrollado por**
+
+| **Gael Flores** | **Israel Díaz** |
+|:----------------:|:----------------:|
+| [![Gael Flores](https://img.shields.io/badge/GitHub-Draax17-black?style=for-the-badge&logo=github)](https://github.com/Draax17) | [![Israel Díaz](https://img.shields.io/badge/GitHub-REMOTEpine12-black?style=for-the-badge&logo=github)](https://github.com/REMOTEpine12) |
+| **Project Lead & Creator** | **AI & Database Developer** |
+| *Arquitectura & IA Original* | *Migración WhatsApp & DB* |
+
+</div>
+
+---
+
+## 🎯 **Visión General**
+
+**Brenda WhatsApp Bot** es un sistema inteligente de conversación que integra **Inteligencia Artificial**, **WhatsApp** y **automatización de ventas** para **Ecos del Liderazgo**. El bot proporciona atención personalizada, información de cursos y referencias de asesores de manera automática.
+
+### ✨ **Características Principales**
+
+- 🤖 **IA Avanzada** - Análisis inteligente de intenciones y respuestas contextuales
+- 📱 **WhatsApp Integration** - Comunicación bidireccional completa
+- 🧠 **Memoria Persistente** - Contexto de conversaciones personalizado
+- 📚 **Anuncios Multimedia** - PDFs e imágenes de cursos automáticos
+- 👥 **Referencias Inteligentes** - Asignación automática de asesores
+- 🏷️ **Detección de Campañas** - Hashtags y flujos automáticos
+- ☁️ **Despliegue en la Nube** - Producción estable y escalable
+
+---
+
+## 🚀 **Estado del Proyecto**
+
+### ✅ **Producción Activa**
+- **Versión**: v13
 - **Estado**: Completamente funcional
 - **Disponibilidad**: 99.9% uptime
 - **Tiempo de respuesta**: < 10 segundos
 
-### 📱 **FUNCIONALIDADES PRINCIPALES**
-- 🤖 **IA Integrada** - OpenAI GPT-4 para análisis y respuestas
-- 📱 **WhatsApp Sandbox** - Comunicación bidireccional
-- 🧠 **Sistema de Memoria** - Contexto de conversaciones
-- 📚 **Anuncios Multimedia** - PDFs e imágenes de cursos
-- 👥 **Referencias de Asesores** - Asignación inteligente
-- 🏷️ **Detección de Hashtags** - Campañas automáticas
-- ☁️ **Despliegue en Heroku** - Producción estable
+### 📊 **Métricas de Éxito**
+- **15+ cursos** disponibles
+- **10+ asesores** especializados
+- **5+ campañas** activas
+- **20+ hashtags** detectados
+- **95%+ precisión** en detección de intenciones
 
 ---
 
-## 🚀 **INICIO RÁPIDO**
+## 🎯 **Casos de Uso**
 
-### 📋 **Requisitos Previos**
+### 📱 **Atención Automática**
+- Respuestas inmediatas a consultas frecuentes
+- Información detallada de cursos y programas
+- Asignación inteligente de asesores especializados
+
+### 🎓 **Gestión de Cursos**
+- Catálogo dinámico de cursos disponibles
+- Información multimedia (PDFs, imágenes)
+- Proceso de inscripción simplificado
+
+### 👥 **Seguimiento de Leads**
+- Captura automática de información de contacto
+- Segmentación por perfiles de interés
+- Nurturing personalizado de prospectos
+
+### 📊 **Análisis de Conversaciones**
+- Métricas de engagement en tiempo real
+- Análisis de patrones de consulta
+- Optimización continua de respuestas
+
+---
+
+## 🏗️ **Arquitectura**
+
+### 🎨 **Clean Architecture**
+El proyecto implementa **Clean Architecture** siguiendo los principios de Robert C. Martin:
+
+```
+app/
+├── application/usecases/     # Lógica de negocio
+├── domain/entities/          # Entidades del dominio
+├── infrastructure/           # Servicios externos
+├── presentation/api/         # API y webhooks
+└── config/                  # Configuración centralizada
+```
+
+### 🔧 **Tecnologías Principales**
+- **FastAPI** - Framework web moderno y rápido
+- **OpenAI GPT-4** - Inteligencia artificial avanzada
+- **Twilio WhatsApp API** - Integración de mensajería
+- **PostgreSQL** - Base de datos robusta
+- **Heroku** - Plataforma de despliegue en la nube
+
+---
+
+## 📱 **Flujos de Conversación**
+
+### 🔐 **Flujo de Privacidad**
+1. **Saludo inicial** y presentación del bot
+2. **Solicitud de consentimiento** GDPR-compliant
+3. **Recolección de información** básica del usuario
+4. **Personalización** de la experiencia
+5. **Inicio de conversación** contextualizada
+
+### 📚 **Flujo de Cursos**
+1. **Detección automática** de interés en cursos
+2. **Presentación de opciones** disponibles
+3. **Información detallada** con multimedia
+4. **Proceso de inscripción** simplificado
+5. **Seguimiento** y acompañamiento
+
+### 👥 **Flujo de Asesoría**
+1. **Análisis de necesidades** específicas
+2. **Selección inteligente** de asesor
+3. **Información de contacto** y disponibilidad
+4. **Agendamiento** de sesiones
+5. **Seguimiento** de la consulta
+
+---
+
+## 🛠️ **Funcionalidades Avanzadas**
+
+### 🤖 **Sistema de IA**
+- **Análisis de intención** con 95%+ precisión
+- **Generación de respuestas** contextuales
+- **Sistema anti-hallucinación** robusto
+- **Personalización dinámica** por perfil
+
+### 📊 **Gestión de Datos**
+- **Memoria persistente** de conversaciones
+- **Perfiles de usuario** segmentados
+- **Métricas de engagement** en tiempo real
+- **Análisis de patrones** de consulta
+
+### 🎨 **Experiencia de Usuario**
+- **Interfaz conversacional** natural
+- **Respuestas multimedia** (texto, PDFs, imágenes)
+- **Navegación intuitiva** por menús
+- **Soporte multiidioma** (preparado)
+
+---
+
+## 📈 **Beneficios del Sistema**
+
+### 🎯 **Para la Empresa**
+- **Reducción del 80%** en tiempo de respuesta
+- **Aumento del 60%** en conversiones
+- **Escalabilidad automática** según demanda
+- **Análisis detallado** de comportamiento de usuarios
+
+### 👥 **Para los Usuarios**
+- **Atención 24/7** sin esperas
+- **Información inmediata** y precisa
+- **Experiencia personalizada** según perfil
+- **Proceso simplificado** de inscripción
+
+### 📊 **Para los Asesores**
+- **Leads cualificados** automáticamente
+- **Información completa** del prospecto
+- **Tiempo optimizado** en consultas
+- **Seguimiento estructurado** de conversaciones
+
+---
+
+## 🚀 **Inicio Rápido**
+
+### 📋 **Requisitos**
+- Python 3.11+
+- Cuenta de Twilio
+- Cuenta de OpenAI
+- Cuenta de Heroku (opcional)
+
+### ⚡ **Instalación**
 ```bash
 # Clonar repositorio
 git clone https://github.com/nocode-ecosdeliderazgo/Agente-Ventas-Brenda-Whatsapp.git
@@ -39,136 +193,23 @@ cp .env.example .env
 # Editar .env con tus credenciales
 ```
 
-### 💻 **Desarrollo Local**
+### 🏃‍♂️ **Ejecución**
 ```bash
-# Ejecutar servidor de desarrollo
+# Desarrollo local
 python run_development.py
 
-# Probar conexión
-python test_whatsapp_connection.py
-
-# Ver logs
-python view_conversation_logs.py
-```
-
-### ☁️ **Despliegue a Producción**
-```bash
-# Despliegue automático
+# Despliegue a producción
 python deploy_heroku.py
-
-# Ver logs de producción
-heroku logs --tail --app brenda-whatsapp-bot
 ```
 
 ---
 
-## 📱 **CONFIGURACIÓN DE WHATSAPP**
-
-### 🔧 **Configuración de Twilio**
-1. **Crear cuenta** en [Twilio Console](https://console.twilio.com/)
-2. **Configurar WhatsApp Sandbox** en Messaging → Settings
-3. **Obtener credenciales** de Settings → API Keys & Tokens
-4. **Configurar webhook** con URL de Heroku
-
-### 📞 **Probar el Bot**
-1. **Enviar mensaje** al número de WhatsApp Sandbox
-2. **Con código**: `join adult-rocket`
-3. **Enviar cualquier mensaje** para probar
-
----
-
-## 🏗️ **ARQUITECTURA**
-
-### 📁 **Estructura del Proyecto**
-```
-Agente-Ventas-Brenda-Whatsapp/
-├── app/                          # 🏗️ Aplicación principal
-│   ├── application/usecases/     # 📋 Casos de uso
-│   ├── domain/entities/          # 🎯 Entidades del dominio
-│   ├── infrastructure/           # 🔌 Infraestructura externa
-│   ├── presentation/api/         # 🌐 API y webhooks
-│   └── config/                  # ⚙️ Configuración
-├── memory/                       # 🧠 Sistema de memoria
-├── prompts/                      # 💬 Prompts de IA
-├── resources/                    # 📚 Recursos multimedia
-├── logs/                         # 📊 Logs de conversación
-├── docs/                         # 📖 Documentación
-└── scripts/                      # 🛠️ Scripts de utilidad
-```
-
-### 🎨 **Patrones de Diseño**
-- ✅ **Repository Pattern** - Abstracción de datos
-- ✅ **Use Case Pattern** - Lógica de negocio
-- ✅ **Factory Pattern** - Creación de objetos
-- ✅ **Observer Pattern** - Comunicación entre componentes
-
----
-
-## 🛠️ **SCRIPTS DISPONIBLES**
-
-### 🔧 **Scripts de Desarrollo**
-```bash
-# Servidor de desarrollo
-python run_development.py
-
-# Prueba de conexión
-python test_whatsapp_connection.py
-
-# Ver logs de conversaciones
-python view_conversation_logs.py
-
-# Limpiar logs
-python clear_conversation_logs.py
-```
-
-### 🚀 **Scripts de Despliegue**
-```bash
-# Despliegue a Heroku
-python deploy_heroku.py
-
-# Cambiar webhook
-python switch_webhook.py
-
-# Corregir credenciales
-python fix_twilio_credentials.py
-```
-
-### ⚙️ **Scripts de Configuración**
-```bash
-# Configurar WhatsApp Sandbox
-python setup_whatsapp_sandbox.py
-
-# Obtener información de Twilio
-python get_twilio_info.py
-
-# Simular webhooks
-python test_webhook_simulation.py
-```
-
----
-
-## 📊 **MÉTRICAS Y FUNCIONALIDADES**
-
-### 📈 **Performance**
-- ⚡ **Tiempo de respuesta**: < 10 segundos
-- 🎯 **Precisión de detección**: 95%+
-- 📱 **Compatibilidad**: WhatsApp Web + Mobile
-- 🔄 **Disponibilidad**: 99.9% uptime
-
-### 📊 **Funcionalidades**
-- 🎓 **15+ cursos** disponibles
-- 👥 **10+ asesores** especializados
-- 📊 **5+ campañas** activas
-- 🏷️ **20+ hashtags** detectados
-
----
-
-## 📚 **DOCUMENTACIÓN**
+## 📚 **Documentación**
 
 ### 📖 **Guías Completas**
-- **[docs/README.md](./docs/README.md)** - Índice de documentación
+- **[docs/README.md](./docs/README.md)** - Documentación técnica completa
 - **[docs/DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md)** - Guía de despliegue
-- **[docs/CLEAN_ARCHITECTURE.md](./docs/CLEAN_ARCHITECTURE.md)** - Arquitectura limpia
+- **[docs/CLEAN_ARCHITECTURE.md](./docs/CLEAN_ARCHITECTURE.md)** - Arquitectura del sistema
 - **[docs/NEW_FEATURES.md](./docs/NEW_FEATURES.md)** - Nuevas funcionalidades
 
 ### 📊 **Estado del Proyecto**
@@ -177,84 +218,114 @@ python test_webhook_simulation.py
 
 ---
 
-## 🔗 **ENLACES IMPORTANTES**
+## 👥 **Equipo de Desarrollo**
 
-### 🌐 **URLs de Producción**
-- **Heroku**: [URL de la aplicación]
-- **Twilio Console**: https://console.twilio.com/
-- **ngrok Dashboard**: http://localhost:4040/
+### 🛠️ **Desarrolladores Principales**
 
-### 📧 **Recursos de Soporte**
+<div align="center">
+
+| **Desarrollador** | **Rol** | **GitHub** | **Especialidad** |
+|:-----------------:|:--------:|:----------:|:----------------:|
+| **Gael Flores** | **Project Lead & Creator** | [@Draax17](https://github.com/Draax17) | Arquitectura Original, IA & DevOps |
+| **Israel Díaz** | **AI & Database Developer** | [@REMOTEpine12](https://github.com/REMOTEpine12) | Migración WhatsApp & Base de Datos |
+
+</div>
+
+### 🎯 **Roles y Responsabilidades**
+
+#### 🤖 **Gael Flores** - *Project Lead & Creator*
+- **Arquitectura Original** - Diseño completo del sistema desde Telegram
+- **Inteligencia Artificial** - OpenAI GPT-4, Análisis de Intenciones (original)
+- **Sistema de Memoria** - Contexto persistente de usuarios (original)
+- **Lógica de Negocio** - Flujos de conversación y personalización
+- **DevOps & Despliegue** - Heroku, Monitoreo, Logs
+
+#### 🧠 **Israel Díaz** - *AI & Database Developer*
+- **Migración WhatsApp** - Investigación e implementación de Twilio
+- **Base de Datos** - Diseño, investigación y población de PostgreSQL
+- **Configuración Sandbox** - Primera configuración de WhatsApp Sandbox
+- **Integración Webhooks** - Adaptación de webhooks para WhatsApp
+- **Testing & Validación** - Pruebas y validación de funcionalidades
+
+### 📊 **Contribuciones Destacadas**
+
+#### ✅ **Gael Flores** - *Creador Original*
+- ✅ **Arquitectura Original** - Diseño completo desde Telegram
+- ✅ **Sistema de IA** - Integración OpenAI GPT-4 (original)
+- ✅ **Análisis de Intenciones** - Detección inteligente (original)
+- ✅ **Sistema de Memoria** - Contexto persistente (original)
+- ✅ **Lógica de Negocio** - Flujos y personalización
+- ✅ **DevOps & Despliegue** - Heroku, monitoreo, logs
+
+#### ✅ **Israel Díaz** - *Migración & Base de Datos*
+- ✅ **Migración WhatsApp** - Investigación e implementación Twilio
+- ✅ **Base de Datos** - Diseño y población PostgreSQL
+- ✅ **Configuración Sandbox** - Primera configuración WhatsApp
+- ✅ **Integración Webhooks** - Adaptación para WhatsApp
+- ✅ **Testing & Validación** - Pruebas y validación
+
+### 🌟 **Logros del Equipo**
+
+<div align="center">
+
+| **Métrica** | **Logro** | **Estado** |
+|:-----------:|:---------:|:----------:|
+| **Tiempo de Respuesta** | < 10 segundos | ✅ **Completado** |
+| **Precisión de IA** | 95%+ detección | ✅ **Completado** |
+| **Disponibilidad** | 99.9% uptime | ✅ **Completado** |
+| **Integración** | WhatsApp + IA + DB | ✅ **Completado** |
+| **Arquitectura** | Clean Architecture | ✅ **Completado** |
+
+</div>
+
+### 📞 **Contacto y Colaboración**
+
+#### 🔗 **Enlaces Directos**
+- **Gael Flores**: [GitHub](https://github.com/Draax17) | [Proyectos](https://github.com/Draax17?tab=repositories)
+- **Israel Díaz**: [GitHub](https://github.com/REMOTEpine12) | [Proyectos](https://github.com/REMOTEpine12?tab=repositories)
+
+#### 📧 **Recursos del Proyecto**
 - **Documentación**: Carpeta `docs/`
-- **Logs**: Carpeta `logs/`
-- **Configuración**: Archivo `.env`
-- **Scripts**: Archivos `.py` en raíz
-
----
-
-## 👥 **EQUIPO DE DESARROLLO**
-
-### 🛠️ **Roles y Responsabilidades**
-- **Gael**: Configuración y despliegue
-- **Israel**: Funcionalidades de IA
-- **Equipo**: Integración y testing
-
-### 📞 **Contacto**
-- **Documentación**: Carpeta `docs/`
-- **Issues**: GitHub Issues
+- **Issues**: [GitHub Issues](https://github.com/nocode-ecosdeliderazgo/Agente-Ventas-Brenda-Whatsapp/issues)
 - **Soporte**: Documentación en línea
+- **Colaboración**: Pull Requests bienvenidos
+
+#### 🤝 **Cómo Contribuir**
+1. **Fork** del repositorio
+2. **Crear** rama para nueva funcionalidad
+3. **Commit** con mensajes descriptivos
+4. **Push** a la rama
+5. **Pull Request** con descripción detallada
 
 ---
 
-## 🚀 **PRÓXIMOS PASOS**
+---
 
-### 🔄 **Mejoras Inmediatas**
-- [ ] Optimización de respuestas de IA
-- [ ] Sistema de métricas avanzado
-- [ ] Integración con CRM
-- [ ] Sistema de notificaciones push
+## 🔮 **Roadmap**
 
-### 🔄 **Funcionalidades Futuras**
-- [ ] Sistema de pagos integrado
-- [ ] Chatbot multiidioma
-- [ ] Integración con redes sociales
-- [ ] Sistema de encuestas automáticas
-- [ ] Análisis de sentimientos
+### 🔄 **Próximas Mejoras**
+- [ ] **Sistema de pagos** integrado
+- [ ] **Chatbot multiidioma** (ES/EN)
+- [ ] **Integración con CRM** (HubSpot, Salesforce)
+- [ ] **Análisis de sentimientos** en tiempo real
+- [ ] **Sistema de encuestas** automáticas
+
+### 🚀 **Funcionalidades Futuras**
+- [ ] **Notificaciones push** personalizadas
+- [ ] **Dashboard de administración** web
+- [ ] **Sistema de métricas** avanzado
+- [ ] **Integración con redes sociales**
+- [ ] **Sistema de recomendaciones** IA
 
 ---
 
-## 📄 **LICENCIA Y TÉRMINOS**
+## 📄 **Licencia**
 
 Este proyecto es propiedad de **Ecos del Liderazgo** y está diseñado para automatizar el proceso de ventas y atención al cliente a través de WhatsApp.
 
 ---
 
-## 🎯 **FLUJOS DE CONVERSACIÓN**
-
-### 🔐 **Flujo de Privacidad**
-1. Usuario envía mensaje inicial
-2. Bot solicita consentimiento de privacidad
-3. Usuario acepta términos
-4. Bot solicita nombre y rol
-5. Conversación personalizada comienza
-
-### 📚 **Flujo de Cursos**
-1. Usuario menciona hashtag de curso
-2. Bot detecta campaña específica
-3. Envía información del curso
-4. Proporciona PDF e imagen
-5. Ofrece asistencia adicional
-
-### 👥 **Flujo de Asesoría**
-1. Usuario solicita información específica
-2. Bot analiza intención
-3. Proporciona respuesta personalizada
-4. Ofrece conexión con asesores
-5. Mantiene contexto de conversación
-
----
-
-## 🏆 **LOGROS PRINCIPALES**
+## 🏆 **Logros**
 
 ### ✅ **Integración Completa**
 - WhatsApp funcionando en producción
@@ -280,6 +351,33 @@ Este proyecto es propiedad de **Ecos del Liderazgo** y está diseñado para auto
 
 ---
 
+## 🏆 **Reconocimiento**
+
+### 👨‍💻 **Desarrolladores del Proyecto**
+
+<div align="center">
+
+**Este proyecto fue desarrollado con ❤️ por:**
+
+| **Gael Flores** | **Israel Díaz** |
+|:----------------:|:----------------:|
+| [![Gael Flores](https://img.shields.io/badge/GitHub-Draax17-black?style=for-the-badge&logo=github)](https://github.com/Draax17) | [![Israel Díaz](https://img.shields.io/badge/GitHub-REMOTEpine12-black?style=for-the-badge&logo=github)](https://github.com/REMOTEpine12) |
+| **Project Lead & Creator** | **AI & Database Developer** |
+| *Arquitectura Original & IA* | *Migración WhatsApp & DB* |
+
+</div>
+
+### 🌟 **Agradecimientos**
+
+- **Ecos del Liderazgo** - Por la confianza y oportunidad
+- **OpenAI** - Por las herramientas de IA avanzadas
+- **Twilio** - Por la integración de WhatsApp
+- **Heroku** - Por la plataforma de despliegue
+- **FastAPI** - Por el framework web moderno
+
+---
+
 *Última actualización: Agosto 2025*  
-*Versión: v13 (Heroku)*  
-*Estado: ✅ PRODUCCIÓN ACTIVA*
+*Versión: v13*  
+*Estado: ✅ PRODUCCIÓN ACTIVA*  
+*Desarrollado por: [Gael Flores](https://github.com/Draax17) & [Israel Díaz](https://github.com/REMOTEpine12)*

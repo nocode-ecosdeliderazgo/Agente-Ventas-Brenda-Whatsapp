@@ -1,17 +1,15 @@
-# Python
-.venv/
-venv_new/
-venv/
-venv_new/
-venv_new/
-memorias/
-*.json
-venv_linux/
-.claude/
+# === ENVIRONMENT VARIABLES ===
+.env
+.env.local
+.env.production
+.env.staging
+.env.development
+
+# === PYTHON ===
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
+*.so
 .Python
 build/
 develop-eggs/
@@ -28,32 +26,467 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Environment variables
-.env
-.env.local
-.env.production
-.env.staging
+# === VIRTUAL ENVIRONMENTS ===
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
 
-# IDE
+# === IDE ===
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# OS
+# === LOGS ===
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === DATABASE ===
+*.db
+*.sqlite
+*.sqlite3
+
+# === TEMPORARY FILES ===
+*.tmp
+*.temp
 .DS_Store
 Thumbs.db
 
-# Logs
+# === SENSITIVE FILES ===
+credentials.json
+secrets.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# === TWILIO ===
+twilio_credentials.txt
+twilio_config.json
+
+# === OPENAI ===
+openai_config.json
+openai_credentials.txt
+
+# === HEROKU ===
+.heroku/
+heroku_config.json
+
+# === NGROK ===
+ngrok.yml
+ngrok_config.json
+
+# === TESTING ===
+.coverage
+.pytest_cache/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# === DOCUMENTATION ===
+docs/_build/
+docs/.doctrees/
+
+# === SCRIPTS ===
+*.sh
+*.bat
+*.cmd
+
+# === CONFIGURATION ===
+config.json
+settings.json
+app_config.json
+
+# === MEMORY FILES ===
+memory/
+*.memory
+*.mem
+
+# === BACKUP FILES ===
+*.bak
+*.backup
+*.old
+
+# === COMPRESSED FILES ===
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# === MEDIA FILES ===
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+
+# === AUDIO FILES ===
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+
+# === IMAGE FILES ===
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.svg
+
+# === DOCUMENT FILES ===
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+
+# === ARCHIVE FILES ===
+*.tar
+*.gz
+*.bz2
+*.xz
+
+# === SYSTEM FILES ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# === DEVELOPMENT ===
+node_modules/
+.npm
+.eslintcache
+
+# === PRODUCTION ===
+production/
+staging/
+deployment/
+
+# === MONITORING ===
+monitoring/
+metrics/
+analytics/
+
+# === SECURITY ===
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+*.jks
+
+# === DATABASE BACKUPS ===
+*.sql
+*.dump
+*.backup
+
+# === CACHE ===
+.cache/
+cache/
+tmp/
+
+# === LOCAL DEVELOPMENT ===
+local/
+dev/
+development/
+
+# === TESTING ===
+test_results/
+test_reports/
+test_coverage/
+
+# === DEPLOYMENT ===
+deploy/
+deployment/
+build/
+dist/
+
+# === CONFIGURATION FILES ===
+config/
+settings/
+.env*
+
+# === LOG FILES ===
 *.log
 logs/
+log/
 
-# Database
+# === TEMPORARY FILES ===
+temp/
+tmp/
+.tmp/
+
+# === BACKUP FILES ===
+backup/
+backups/
+*.bak
+*.backup
+
+# === SENSITIVE DATA ===
+data/
+datasets/
+*.csv
+*.json
+*.xml
+*.yaml
+*.yml
+
+# === CREDENTIALS ===
+credentials/
+secrets/
+*.secret
+*.credential
+
+# === CERTIFICATES ===
+certificates/
+certs/
+*.crt
+*.cert
+*.pem
+*.key
+
+# === DATABASE FILES ===
 *.db
+*.sqlite
 *.sqlite3
-app\infrastructure\database\estructura_db.sql
+database/
+databases/
 
-# Temporary files
-*.tmp
-*.temp
+# === MEDIA FILES ===
+media/
+uploads/
+files/
+assets/
+
+# === DOCUMENTATION BUILD ===
+docs/build/
+docs/_build/
+site/
+
+# === TESTING ===
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+
+# === IDE SPECIFIC ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === OS SPECIFIC ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === VERSION CONTROL ===
+.git/
+.gitignore
+.gitattributes
+
+# === PACKAGE MANAGERS ===
+node_modules/
+.npm
+.yarn
+package-lock.json
+yarn.lock
+
+# === BUILD TOOLS ===
+build/
+dist/
+*.egg-info/
+*.egg
+
+# === VIRTUAL ENVIRONMENTS ===
+venv/
+env/
+.venv/
+.ENV/
+
+# === PYTHON SPECIFIC ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# === JUPYTER NOTEBOOKS ===
+.ipynb_checkpoints/
+*.ipynb
+
+# === SPYDER ===
+.spyderproject
+.spyproject
+
+# === ROPE ===
+.ropeproject/
+
+# === MKDOCS ===
+site/
+
+# === MYPY ===
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# === PYRE ===
+.pyre/
+
+# === PYRIGHT ===
+pyrightconfig.json
+
+# === COVERAGE ===
+.coverage
+coverage.xml
+*.cover
+.hypothesis/
+
+# === PROFILING ===
+*.prof
+
+# === JUPYTER ===
+.ipynb_checkpoints
+
+# === IPYTHON ===
+profile_default/
+ipython_config.py
+
+# === PYTHON ENVIRONMENT ===
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# === PYTHON PACKAGING ===
+*.manifest
+*.spec
+
+# === PYTHON INSTALLATION ===
+pip-log.txt
+pip-delete-this-directory.txt
+
+# === PYTHON TESTING ===
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# === PYTHON DOCUMENTATION ===
+docs/_build/
+
+# === PYTHON DEVELOPMENT ===
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# === PYTHON VIRTUAL ENVIRONMENTS ===
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# === PYTHON PACKAGING ===
+*.egg-info/
+.installed.cfg
+*.egg
+
+# === PYTHON TESTING ===
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# === PYTHON PROFILING ===
+*.prof
+
+# === PYTHON DEBUGGING ===
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# === PYTHON DEVELOPMENT ===
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# === PYTHON VIRTUAL ENVIRONMENTS ===
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# === PYTHON PACKAGING ===
+*.egg-info/
+.installed.cfg
+*.egg
+
+# === PYTHON TESTING ===
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# === PYTHON PROFILING ===
+*.prof
+
+# === PYTHON DEBUGGING ===
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
