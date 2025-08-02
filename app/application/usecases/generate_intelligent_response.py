@@ -14,6 +14,7 @@ from app.application.usecases.extract_user_info_use_case import ExtractUserInfoU
 from app.application.usecases.personalize_response_use_case import PersonalizeResponseUseCase
 from app.application.usecases.dynamic_course_info_provider import DynamicCourseInfoProvider
 from app.application.usecases.bonus_activation_use_case import BonusActivationUseCase
+from app.application.usecases.purchase_bonus_use_case import PurchaseBonusUseCase
 from uuid import UUID
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.infrastructure.openai.client import OpenAIClient
@@ -80,6 +81,11 @@ class GenerateIntelligentResponseUseCase:
         
         # Inicializar proveedor dinámico de información de cursos (MEJORA BD)
         self.dynamic_course_provider = DynamicCourseInfoProvider(course_repository)
+        
+        # Inicializar sistema de bonos por intención de compra (NUEVO)
+        self.purchase_bonus_use_case = PurchaseBonusUseCase(
+            course_query_use_case, None, twilio_client  # memory_use_case se pasará en execute
+        )
         
         self.logger = logging.getLogger(__name__)
     
@@ -197,6 +203,30 @@ class GenerateIntelligentResponseUseCase:
             user_memory = analysis_result.get('updated_memory')
             
             debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
+            
+            # 🎁 NUEVA PRIORIDAD: Verificar intención de compra para activar bonos workbook
+            if self.purchase_bonus_use_case.should_activate_purchase_bonus(intent_analysis):
+                debug_print("🎁 Intención de compra detectada - Activando bonos workbook", "_generate_contextual_response")
+                
+                # Configurar memory_use_case temporalmente
+                from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+                from memory.lead_memory import MemoryManager
+                memory_manager = MemoryManager()
+                memory_use_case = ManageUserMemoryUseCase(memory_manager)
+                self.purchase_bonus_use_case.memory_use_case = memory_use_case
+                
+                # Generar mensaje de bono
+                purchase_bonus_message = await self.purchase_bonus_use_case.generate_purchase_bonus_message(
+                    user_memory, intent_analysis, course_info=None
+                )
+                
+                # Actualizar memoria con intención de compra
+                await self.purchase_bonus_use_case.update_user_memory_with_purchase_intent(
+                    user_id, intent_analysis
+                )
+                
+                debug_print("✅ Bono de compra activado y mensaje generado", "_generate_contextual_response")
+                return purchase_bonus_message
             
             # 🆕 PRIORIDAD ESPECIAL: Preguntas directas de precio usan método específico
             if category == 'PRICE_INQUIRY':
