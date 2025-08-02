@@ -35,48 +35,69 @@ def update_twilio_webhook(webhook_url, environment):
     """Actualiza el webhook de Twilio"""
     account_sid = os.getenv("TWILIO_ACCOUNT_SID")
     auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+    whatsapp_number = os.getenv("TWILIO_PHONE_NUMBER")
     
     if not account_sid or not auth_token:
         print("❌ Error: TWILIO_ACCOUNT_SID o TWILIO_AUTH_TOKEN no configurados")
         return False
     
-    # URL para actualizar webhook de WhatsApp Sandbox
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/IncomingPhoneNumbers.json"
+    if not whatsapp_number:
+        print("❌ Error: TWILIO_PHONE_NUMBER no configurado en .env")
+        return False
     
-    # Buscar el número de WhatsApp Sandbox
+    print(f"🔍 Configurando webhook para WhatsApp Sandbox")
+    print(f"📱 Número: {whatsapp_number}")
+    
+    # Para WhatsApp Sandbox, usamos la API de Messaging Services
+    # Primero, obtener los servicios de mensajería
+    url = f"https://messaging.twilio.com/v1/Services"
     response = requests.get(url, auth=(account_sid, auth_token))
     
-    if response.status_code != 200:
-        print(f"❌ Error obteniendo números: {response.status_code}")
-        return False
-    
-    numbers = response.json()["incoming_phone_numbers"]
-    whatsapp_number = None
-    
-    for number in numbers:
-        if "+14155238886" in number.get("phone_number", ""):
-            whatsapp_number = number
-            break
-    
-    if not whatsapp_number:
-        print("❌ No se encontró el número de WhatsApp Sandbox")
-        return False
-    
-    # Actualizar webhook
-    update_url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/IncomingPhoneNumbers/{whatsapp_number['sid']}.json"
-    
-    data = {
-        "SmsUrl": webhook_url,
-        "SmsMethod": "POST"
-    }
-    
-    response = requests.post(update_url, auth=(account_sid, auth_token), data=data)
-    
     if response.status_code == 200:
-        print(f"✅ Webhook actualizado a {environment}: {webhook_url}")
-        return True
+        response_data = response.json()
+        services = response_data.get("data", [])
+        print(f"📋 Servicios de mensajería encontrados: {len(services)}")
+        
+        # Mostrar todos los servicios para debug
+        for i, service in enumerate(services):
+            print(f"   {i+1}. {service.get('friendly_name', 'N/A')} (SID: {service.get('sid', 'N/A')})")
+        
+        # Buscar el servicio de WhatsApp Sandbox
+        whatsapp_service = None
+        for service in services:
+            service_name = service.get("friendly_name", "").lower()
+            if "whatsapp" in service_name or "sandbox" in service_name:
+                whatsapp_service = service
+                print(f"✅ Servicio WhatsApp encontrado: {service.get('friendly_name')}")
+                break
+        
+        if not whatsapp_service:
+            print("❌ No se encontró servicio de WhatsApp Sandbox")
+            print("💡 Asegúrate de haber configurado el WhatsApp Sandbox en Twilio Console")
+            print("💡 Alternativa: Configura manualmente el webhook en Twilio Console")
+            return False
+        
+        # Actualizar el webhook del servicio
+        service_sid = whatsapp_service["sid"]
+        update_url = f"https://messaging.twilio.com/v1/Services/{service_sid}"
+        
+        data = {
+            "InboundRequestUrl": webhook_url,
+            "InboundMethod": "POST"
+        }
+        
+        response = requests.post(update_url, auth=(account_sid, auth_token), data=data)
+        
+        if response.status_code == 200:
+            print(f"✅ Webhook actualizado a {environment}: {webhook_url}")
+            return True
+        else:
+            print(f"❌ Error actualizando webhook: {response.status_code}")
+            print(f"📋 Respuesta: {response.text}")
+            return False
     else:
-        print(f"❌ Error actualizando webhook: {response.status_code}")
+        print(f"❌ Error obteniendo servicios: {response.status_code}")
+        print(f"📋 Respuesta: {response.text}")
         return False
 
 def main():
