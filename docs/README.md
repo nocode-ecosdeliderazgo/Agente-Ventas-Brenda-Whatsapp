@@ -1,18 +1,32 @@
-# 🤖 BRENDA WHATSAPP BOT
+# 📚 DOCUMENTACIÓN - BRENDA WHATSAPP BOT
 
 ## 🎯 **VISIÓN GENERAL**
 
-**Brenda WhatsApp Bot** es un sistema inteligente de conversación que integra IA, WhatsApp y automatización de ventas para **Ecos del Liderazgo**. El bot proporciona atención personalizada, información de cursos y referencias de asesores de manera automática.
+Bienvenido a la documentación completa del **Brenda WhatsApp Bot**, un sistema inteligente de conversación que integra IA, WhatsApp y automatización de ventas.
 
-## 🚀 **ESTADO ACTUAL**
+## 📋 **ÍNDICE DE DOCUMENTACIÓN**
 
-### ✅ **PRODUCCIÓN ACTIVA**
-- **Versión**: v13 (Heroku)
-- **Estado**: Completamente funcional
-- **Disponibilidad**: 99.9% uptime
-- **Tiempo de respuesta**: < 10 segundos
+### 🚀 **Guías de Despliegue**
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Guía completa de despliegue y configuración
+- **[HEROKU_DEPLOYMENT_GUIDE.md](../HEROKU_DEPLOYMENT_GUIDE.md)** - Despliegue específico en Heroku
 
-### 📱 **FUNCIONALIDADES PRINCIPALES**
+### 🏗️ **Arquitectura y Diseño**
+- **[CLEAN_ARCHITECTURE.md](./CLEAN_ARCHITECTURE.md)** - Arquitectura limpia implementada
+- **[DATABASE_INTEGRATION.md](./DATABASE_INTEGRATION.md)** - Integración con base de datos
+
+### 📊 **Progreso y Estado**
+- **[DEVELOPMENT_PROGRESS.md](./DEVELOPMENT_PROGRESS.md)** - Estado actual del desarrollo
+- **[ROADMAP.md](./ROADMAP.md)** - Plan de desarrollo futuro
+- **[WHATSAPP_MIGRATION.md](./WHATSAPP_MIGRATION.md)** - Migración de Telegram a WhatsApp
+
+### 🆕 **Nuevas Funcionalidades**
+- **[NEW_FEATURES.md](./NEW_FEATURES.md)** - Funcionalidades recientemente implementadas
+
+---
+
+## 🎯 **ESTADO ACTUAL DEL PROYECTO**
+
+### ✅ **Funcionalidades Completadas**
 - 🤖 **IA Integrada** - OpenAI GPT-4 para análisis y respuestas
 - 📱 **WhatsApp Sandbox** - Comunicación bidireccional
 - 🧠 **Sistema de Memoria** - Contexto de conversaciones
@@ -21,16 +35,18 @@
 - 🏷️ **Detección de Hashtags** - Campañas automáticas
 - ☁️ **Despliegue en Heroku** - Producción estable
 
+### 🔄 **En Desarrollo**
+- 💳 **Sistema de Pagos** - Integración con pasarelas
+- 🌍 **Multiidioma** - Soporte para ES/EN
+- 📊 **Dashboard Admin** - Panel de administración
+- 🔗 **Integración CRM** - HubSpot, Salesforce
+
 ---
 
 ## 🚀 **INICIO RÁPIDO**
 
 ### 📋 **Requisitos Previos**
 ```bash
-# Clonar repositorio
-git clone https://github.com/nocode-ecosdeliderazgo/Agente-Ventas-Brenda-Whatsapp.git
-cd Agente-Ventas-Brenda-Whatsapp
-
 # Instalar dependencias
 pip install -r requirements.txt
 
@@ -71,36 +87,9 @@ heroku logs --tail --app brenda-whatsapp-bot
 4. **Configurar webhook** con URL de Heroku
 
 ### 📞 **Probar el Bot**
-1. **Enviar mensaje** al número de WhatsApp Sandbox
+1. **Enviar mensaje** al `+1 415 523 8886`
 2. **Con código**: `join adult-rocket`
 3. **Enviar cualquier mensaje** para probar
-
----
-
-## 🏗️ **ARQUITECTURA**
-
-### 📁 **Estructura del Proyecto**
-```
-Agente-Ventas-Brenda-Whatsapp/
-├── app/                          # 🏗️ Aplicación principal
-│   ├── application/usecases/     # 📋 Casos de uso
-│   ├── domain/entities/          # 🎯 Entidades del dominio
-│   ├── infrastructure/           # 🔌 Infraestructura externa
-│   ├── presentation/api/         # 🌐 API y webhooks
-│   └── config/                  # ⚙️ Configuración
-├── memory/                       # 🧠 Sistema de memoria
-├── prompts/                      # 💬 Prompts de IA
-├── resources/                    # 📚 Recursos multimedia
-├── logs/                         # 📊 Logs de conversación
-├── docs/                         # 📖 Documentación
-└── scripts/                      # 🛠️ Scripts de utilidad
-```
-
-### 🎨 **Patrones de Diseño**
-- ✅ **Repository Pattern** - Abstracción de datos
-- ✅ **Use Case Pattern** - Lógica de negocio
-- ✅ **Factory Pattern** - Creación de objetos
-- ✅ **Observer Pattern** - Comunicación entre componentes
 
 ---
 
@@ -147,7 +136,7 @@ python test_webhook_simulation.py
 
 ---
 
-## 📊 **MÉTRICAS Y FUNCIONALIDADES**
+## 📊 **MÉTRICAS Y MONITOREO**
 
 ### 📈 **Performance**
 - ⚡ **Tiempo de respuesta**: < 10 segundos
@@ -163,24 +152,36 @@ python test_webhook_simulation.py
 
 ---
 
-## 📚 **DOCUMENTACIÓN**
+## 🏗️ **ARQUITECTURA**
 
-### 📖 **Guías Completas**
-- **[docs/README.md](./docs/README.md)** - Índice de documentación
-- **[docs/DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md)** - Guía de despliegue
-- **[docs/CLEAN_ARCHITECTURE.md](./docs/CLEAN_ARCHITECTURE.md)** - Arquitectura limpia
-- **[docs/NEW_FEATURES.md](./docs/NEW_FEATURES.md)** - Nuevas funcionalidades
+### 📁 **Estructura del Proyecto**
+```
+Agente-Ventas-Brenda-Whatsapp/
+├── app/                          # 🏗️ Aplicación principal
+│   ├── application/usecases/     # 📋 Casos de uso
+│   ├── domain/entities/          # 🎯 Entidades del dominio
+│   ├── infrastructure/           # 🔌 Infraestructura externa
+│   ├── presentation/api/         # 🌐 API y webhooks
+│   └── config/                  # ⚙️ Configuración
+├── memory/                       # 🧠 Sistema de memoria
+├── prompts/                      # 💬 Prompts de IA
+├── resources/                    # 📚 Recursos multimedia
+├── logs/                         # 📊 Logs de conversación
+└── docs/                         # 📖 Documentación
+```
 
-### 📊 **Estado del Proyecto**
-- **[docs/DEVELOPMENT_PROGRESS.md](./docs/DEVELOPMENT_PROGRESS.md)** - Progreso de desarrollo
-- **[docs/ROADMAP.md](./docs/ROADMAP.md)** - Plan de desarrollo futuro
+### 🎨 **Patrones de Diseño**
+- ✅ **Repository Pattern** - Abstracción de datos
+- ✅ **Use Case Pattern** - Lógica de negocio
+- ✅ **Factory Pattern** - Creación de objetos
+- ✅ **Observer Pattern** - Comunicación entre componentes
 
 ---
 
 ## 🔗 **ENLACES IMPORTANTES**
 
 ### 🌐 **URLs de Producción**
-- **Heroku**: [URL de la aplicación]
+- **Heroku**: 
 - **Twilio Console**: https://console.twilio.com/
 - **ngrok Dashboard**: http://localhost:4040/
 
@@ -229,57 +230,10 @@ Este proyecto es propiedad de **Ecos del Liderazgo** y está diseñado para auto
 
 ---
 
-## 🎯 **FLUJOS DE CONVERSACIÓN**
-
-### 🔐 **Flujo de Privacidad**
-1. Usuario envía mensaje inicial
-2. Bot solicita consentimiento de privacidad
-3. Usuario acepta términos
-4. Bot solicita nombre y rol
-5. Conversación personalizada comienza
-
-### 📚 **Flujo de Cursos**
-1. Usuario menciona hashtag de curso
-2. Bot detecta campaña específica
-3. Envía información del curso
-4. Proporciona PDF e imagen
-5. Ofrece asistencia adicional
-
-### 👥 **Flujo de Asesoría**
-1. Usuario solicita información específica
-2. Bot analiza intención
-3. Proporciona respuesta personalizada
-4. Ofrece conexión con asesores
-5. Mantiene contexto de conversación
-
----
-
-## 🏆 **LOGROS PRINCIPALES**
-
-### ✅ **Integración Completa**
-- WhatsApp funcionando en producción
-- IA integrada y funcionando
-- Base de datos configurada
-- Logs y monitoreo activos
-
-### ✅ **Arquitectura Sólida**
-- Clean Architecture implementada
-- Patrones de diseño aplicados
-- Código mantenible y escalable
-- Testing y debugging implementado
-
-### ✅ **Despliegue Automatizado**
-- Heroku configurado y funcionando
-- CI/CD básico implementado
-- Variables de entorno configuradas
-- Monitoreo en tiempo real
-
----
-
 **🎉 ¡BRENDA WHATSAPP BOT ESTÁ COMPLETAMENTE FUNCIONAL Y EN PRODUCCIÓN!**
 
 ---
 
 *Última actualización: Agosto 2025*  
 *Versión: v13 (Heroku)*  
-*Estado: ✅ PRODUCCIÓN ACTIVA*
+*Estado: ✅ PRODUCCIÓN ACTIVA* 
