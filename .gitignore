@@ -52,6 +52,7 @@ logs/
 # Database
 *.db
 *.sqlite3
+app\infrastructure\database\estructura_db.sql
 
 # Temporary files
 *.tmp
