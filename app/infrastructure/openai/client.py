@@ -4,7 +4,7 @@ Maneja análisis de intención, extracción de información y generación de res
 """
 import logging
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from openai import AsyncOpenAI
 
 from app.config import settings
@@ -459,4 +459,38 @@ Gracias por escribir. Estoy aquí para ayudarte con todo lo relacionado a nuestr
                 "issues": [],
                 "corrected_response": None,
                 "explanation": f"Error en validación, aprobado por defecto: {str(e)}"
+            }
+
+    async def chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
+        """
+        Realiza una conversación con OpenAI usando el modelo especificado.
+        
+        Args:
+            messages: Lista de mensajes en formato OpenAI
+            **kwargs: Parámetros adicionales para la API
+            
+        Returns:
+            Respuesta de OpenAI
+        """
+        try:
+            response = await self.client.chat.completions.create(
+                model=kwargs.get('model', 'gpt-4o-mini'),
+                messages=messages,
+                temperature=kwargs.get('temperature', 0.7),
+                max_tokens=kwargs.get('max_tokens', 500),
+                **{k: v for k, v in kwargs.items() if k not in ['model', 'temperature', 'max_tokens']}
+            )
+            
+            return {
+                'content': response.choices[0].message.content,
+                'usage': response.usage.dict() if response.usage else {},
+                'model': response.model
+            }
+            
+        except Exception as e:
+            logger.error(f"Error en chat_completion: {e}")
+            return {
+                'content': "Lo siento, estoy teniendo problemas técnicos. ¿Podrías reformular tu pregunta?",
+                'usage': {},
+                'model': kwargs.get('model', 'gpt-4o-mini')
             }

@@ -14,6 +14,7 @@ from app.application.usecases.course_announcement_use_case import CourseAnnounce
 from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
 from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
 from app.application.usecases.welcome_flow_use_case import WelcomeFlowUseCase
+from app.application.usecases.advisor_referral_use_case import AdvisorReferralUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,8 @@ class ProcessIncomingMessageUseCase:
         course_announcement_use_case: CourseAnnouncementUseCase = None,
         detect_ad_hashtags_use_case: DetectAdHashtagsUseCase = None,
         process_ad_flow_use_case: ProcessAdFlowUseCase = None,
-        welcome_flow_use_case: WelcomeFlowUseCase = None
+        welcome_flow_use_case: WelcomeFlowUseCase = None,
+        advisor_referral_use_case: AdvisorReferralUseCase = None
     ):
         """
         Inicializa el caso de uso.
@@ -53,6 +55,7 @@ class ProcessIncomingMessageUseCase:
         self.detect_ad_hashtags_use_case = detect_ad_hashtags_use_case
         self.process_ad_flow_use_case = process_ad_flow_use_case
         self.welcome_flow_use_case = welcome_flow_use_case
+        self.advisor_referral_use_case = advisor_referral_use_case
     
     async def execute(self, webhook_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -187,7 +190,43 @@ class ProcessIncomingMessageUseCase:
                     logger.error(f"❌ Error procesando flujo de privacidad: {e}")
                     # Continuar con procesamiento normal como fallback
             
-            # PRIORIDAD 1.5: Verificar si es un anuncio con hashtags específicos
+            # PRIORIDAD 1.5: Verificar si es un anuncio de curso específico (PRIORIDAD ALTA SOBRE AD FLOW)
+            if self.course_announcement_use_case:
+                try:
+                    if self.course_announcement_use_case.should_handle_course_announcement(incoming_message):
+                        logger.info(f"📚 Detectado código de curso en mensaje de {user_id} - PRIORIDAD SOBRE AD FLOW")
+                        
+                        course_announcement_result = await self.course_announcement_use_case.handle_course_announcement(
+                            user_id, incoming_message
+                        )
+                        
+                        if course_announcement_result['success']:
+                            logger.info(f"✅ Flujo de anuncio de curso procesado para {user_id}")
+                            return {
+                                'success': True,
+                                'processed': True,
+                                'incoming_message': {
+                                    'from': incoming_message.from_number,
+                                    'body': incoming_message.body,
+                                    'message_sid': incoming_message.message_sid
+                                },
+                                'response_sent': course_announcement_result.get('response_sent', False),
+                                'response_sid': course_announcement_result.get('response_sid'),
+                                'response_text': course_announcement_result.get('response_text', ''),
+                                'processing_type': 'course_announcement',
+                                'course_code': course_announcement_result.get('course_code'),
+                                'course_name': course_announcement_result.get('course_name'),
+                                'additional_resources_sent': course_announcement_result.get('additional_resources_sent', {})
+                            }
+                        else:
+                            logger.warning(f"⚠️ Error en flujo de anuncio: {course_announcement_result}")
+                            # Continuar con procesamiento normal si falla el anuncio
+                            
+                except Exception as e:
+                    logger.error(f"❌ Error procesando flujo de anuncio de curso: {e}")
+                    # Continuar con procesamiento normal como fallback
+
+            # PRIORIDAD 1.6: Verificar si es un anuncio con hashtags específicos
             # O si el usuario ya completó privacidad y tiene hashtags de anuncio
             if self.detect_ad_hashtags_use_case and self.process_ad_flow_use_case:
                 try:
@@ -226,7 +265,7 @@ class ProcessIncomingMessageUseCase:
                                     'message_sid': incoming_message.message_sid
                                 },
                                 'response_sent': True,
-                                'response_sid': None,
+                                'response_sid': ad_flow_result.get('response_sid'),
                                 'response_text': ad_flow_result.get('response_text', ''),
                                 'processing_type': 'ad_flow',
                                 'course_id': ad_flow_result.get('course_id'),
@@ -241,41 +280,7 @@ class ProcessIncomingMessageUseCase:
                     logger.error(f"❌ Error procesando flujo de anuncios: {e}")
                     # Continuar con procesamiento normal como fallback
             
-            # PRIORIDAD 1.6: Verificar si es un anuncio de curso específico
-            if self.course_announcement_use_case:
-                try:
-                    if self.course_announcement_use_case.should_handle_course_announcement(incoming_message):
-                        logger.info(f"📚 Detectado código de curso en mensaje de {user_id}")
-                        
-                        course_announcement_result = await self.course_announcement_use_case.handle_course_announcement(
-                            user_id, incoming_message
-                        )
-                        
-                        if course_announcement_result['success']:
-                            logger.info(f"✅ Flujo de anuncio de curso procesado para {user_id}")
-                            return {
-                                'success': True,
-                                'processed': True,
-                                'incoming_message': {
-                                    'from': incoming_message.from_number,
-                                    'body': incoming_message.body,
-                                    'message_sid': incoming_message.message_sid
-                                },
-                                'response_sent': course_announcement_result.get('response_sent', False),
-                                'response_sid': course_announcement_result.get('response_sid'),
-                                'response_text': course_announcement_result.get('response_text', ''),
-                                'processing_type': 'course_announcement',
-                                'course_code': course_announcement_result.get('course_code'),
-                                'course_name': course_announcement_result.get('course_name'),
-                                'additional_resources_sent': course_announcement_result.get('additional_resources_sent', {})
-                            }
-                        else:
-                            logger.warning(f"⚠️ Error en flujo de anuncio: {course_announcement_result}")
-                            # Continuar con procesamiento normal si falla el anuncio
-                            
-                except Exception as e:
-                    logger.error(f"❌ Error procesando anuncio de curso: {e}")
-                    # Continuar con procesamiento normal como fallback
+            # PRIORIDAD 1.6: [Course Announcement ya procesado en PRIORIDAD 1.5 con mayor prioridad]
             
             # PRIORIDAD 1.7: Verificar si es un mensaje genérico que debe activar el flujo de bienvenida
             if self.welcome_flow_use_case:
@@ -319,6 +324,53 @@ class ProcessIncomingMessageUseCase:
                 except Exception as e:
                     logger.error(f"❌ Error procesando flujo de bienvenida: {e}")
                     # Continuar con procesamiento normal
+            
+            # PRIORIDAD 1.8: Verificar si el usuario solicita contacto con un asesor
+            if self.advisor_referral_use_case:
+                try:
+                    user_memory = self.memory_use_case.get_user_memory(user_id)
+                    
+                    advisor_result = await self.advisor_referral_use_case.handle_advisor_request(
+                        incoming_message, user_memory
+                    )
+                    
+                    if advisor_result.should_refer:
+                        logger.info(f"👨‍💼 Referencia al asesor activada para {user_id} - Tipo: {advisor_result.referral_type}, Urgencia: {advisor_result.urgency_level}")
+                        
+                        # Enviar mensaje de referencia al asesor
+                        outgoing_message = OutgoingMessage(
+                            to_number=incoming_message.from_number,
+                            body=advisor_result.referral_message,
+                            message_type=MessageType.TEXT
+                        )
+                        
+                        response_sid = await self.twilio_client.send_message(outgoing_message)
+                        
+                        # Guardar memoria actualizada usando el memory_manager
+                        self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+                        
+                        logger.info(f"✅ Referencia al asesor enviada para {user_id}")
+                        
+                        return {
+                            'success': True,
+                            'processed': True,
+                            'incoming_message': {
+                                'from': incoming_message.from_number,
+                                'body': incoming_message.body,
+                                'message_sid': incoming_message.message_sid
+                            },
+                            'response_sent': True,
+                            'response_sid': response_sid,
+                            'response_text': advisor_result.referral_message,
+                            'processing_type': 'advisor_referral',
+                            'referral_type': advisor_result.referral_type,
+                            'urgency_level': advisor_result.urgency_level,
+                            'advisor_contact_provided': True
+                        }
+                    
+                except Exception as e:
+                    logger.error(f"❌ Error procesando referencia al asesor: {e}")
+                    # Continuar con procesamiento normal como fallback
             
             # PRIORIDAD 2: Usar respuesta inteligente si está disponible
             if self.intelligent_response_use_case:

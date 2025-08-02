@@ -1,5 +1,5 @@
 # prompts/ - Documentación de Prompts del Bot Brenda
-
+prueba
 Esta carpeta centraliza todos los prompts y plantillas de mensajes utilizados por el bot Brenda para WhatsApp.
 
 ## Estructura de Prompts

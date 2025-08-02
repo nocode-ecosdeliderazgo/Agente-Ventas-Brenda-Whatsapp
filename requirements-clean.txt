@@ -26,6 +26,7 @@ httpx>=0.24.0
 
 # Utilidades de fecha y tiempo
 python-dateutil>=2.8.0
+pytz>=2023.3
 
 # Cliente PostgreSQL asíncrono
 asyncpg>=0.28.0
