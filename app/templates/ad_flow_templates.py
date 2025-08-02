@@ -51,7 +51,7 @@ Me alegra verte de nuevo. Veo que te interesa nuestro curso desde el anuncio. Te
             price = course_data.get('price', 'Dato no encontrado en la base de datos')
             currency = course_data.get('currency', 'USD')
         
-        # La duración ya está en horas (aunque la columna se llame total_duration_min)
+        # total_duration_min contiene horas (aunque el nombre sugiera minutos)
         hours = duration if isinstance(duration, int) else 'Dato no encontrado'
         
         return f"""🎓 **{name}**

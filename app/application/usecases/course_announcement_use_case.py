@@ -150,29 +150,72 @@ class CourseAnnouncementUseCase:
                 logger.warning(f"Código de curso no mapeado: {course_code}")
                 return None
             
-            # PRIMERO: Usar información mock específica para códigos especiales
-            if course_code in ["#Experto_IA_GPT_Gemini", "#ADSIM_05"]:
-                logger.info(f"📚 Usando información específica para código: {course_code}")
-                return self._get_mock_course_information(course_code)
-            
-            # Si tenemos conexión a base de datos, obtener información real
+            # PRIMERO: Intentar obtener datos reales de la base de datos
             if self.course_query_use_case:
                 try:
-                    # Buscar por nombre o descripción (simulando búsqueda por ID)
-                    courses = await self.course_query_use_case.search_courses_by_keyword("IA", 1)
-                    if courses:
-                        course = courses[0]
-                        detailed_content = await self.course_query_use_case.get_course_detailed_content(course.id_course)
-                        return {
-                            'course': course,
-                            'detailed_content': detailed_content,
-                            'found_in_database': True
-                        }
+                    # Para códigos específicos, buscar por nombre exacto en la BD
+                    if course_code in ["#Experto_IA_GPT_Gemini", "#ADSIM_05"]:
+                        # Buscar curso específico por nombre en BD
+                        courses = await self.course_query_use_case.search_courses_by_keyword("Experto", 5)
+                        logger.info(f"🔍 Búsqueda en BD para {course_code}: encontrados {len(courses) if courses else 0} cursos")
+                        
+                        if courses:
+                            # Buscar el curso que mejor coincida
+                            target_course = None
+                            for course in courses:
+                                course_name_lower = getattr(course, 'name', '').lower()
+                                if 'experto' in course_name_lower and ('gpt' in course_name_lower or 'gemini' in course_name_lower or 'profesional' in course_name_lower):
+                                    target_course = course
+                                    break
+                            
+                            if not target_course and courses:
+                                # Si no encontramos coincidencia exacta, usar el primero
+                                target_course = courses[0]
+                            
+                            if target_course:
+                                logger.info(f"✅ Curso encontrado en BD: {getattr(target_course, 'name', 'Sin nombre')}")
+                                detailed_content = await self.course_query_use_case.get_course_detailed_content(target_course.id_course)
+                                
+                                # Obtener bonos desde la tabla bond
+                                bonuses = []
+                                try:
+                                    from app.infrastructure.database.repositories.course_repository import CourseRepository
+                                    repo = CourseRepository()
+                                    bonuses_data = await repo.get_course_bonuses(target_course.id_course)
+                                    bonuses = [bonus.content for bonus in bonuses_data] if bonuses_data else []
+                                    logger.info(f"📦 Bonos encontrados en BD: {len(bonuses)}")
+                                except Exception as e:
+                                    logger.warning(f"Error obteniendo bonos: {e}")
+                                
+                                return {
+                                    'course': target_course,
+                                    'detailed_content': detailed_content,
+                                    'bonuses': bonuses,
+                                    'found_in_database': True,
+                                    'course_code': course_code
+                                }
+                    else:
+                        # Para otros códigos, buscar genérico
+                        courses = await self.course_query_use_case.search_courses_by_keyword("IA", 1)
+                        if courses:
+                            course = courses[0]
+                            detailed_content = await self.course_query_use_case.get_course_detailed_content(course.id_course)
+                            return {
+                                'course': course,
+                                'detailed_content': detailed_content,
+                                'found_in_database': True,
+                                'course_code': course_code
+                            }
+                            
                 except Exception as e:
-                    logger.warning(f"Error accediendo a base de datos: {e}")
+                    logger.error(f"Error accediendo a base de datos para {course_code}: {e}")
             
-            # Fallback: Información predefinida para testing
-            return self._get_mock_course_information(course_code)
+            # Fallback: Información predefinida solo si falla la BD
+            logger.warning(f"⚠️ Usando datos mock para {course_code} - BD no disponible")
+            mock_data = self._get_mock_course_information(course_code)
+            mock_data['found_in_database'] = False
+            mock_data['course_code'] = course_code
+            return mock_data
             
         except Exception as e:
             logger.error(f"Error obteniendo información del curso {course_code}: {e}")
@@ -479,11 +522,17 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 db_course = course_info['course']
                 course_name = getattr(db_course, 'name', 'Curso de IA')
                 description = getattr(db_course, 'short_description', '')
-                price = getattr(db_course, 'price', 0)
+                price = getattr(db_course, 'price', '0')
                 currency = getattr(db_course, 'currency', 'USD')
                 level = getattr(db_course, 'level', 'Todos los niveles')
                 sessions = getattr(db_course, 'session_count', 8)
-                duration = getattr(db_course, 'duration_hours', 12)
+                # total_duration_min contiene horas (no minutos, solo el nombre es confuso)
+                duration = getattr(db_course, 'total_duration_min', 12) or 12
+                modality = getattr(db_course, 'modality', 'Online')
+                
+                # Obtener bonos de la BD
+                bonuses_from_db = course_info.get('bonuses', [])
+                logger.info(f"📦 Bonos desde BD: {len(bonuses_from_db)} bonos encontrados")
             else:
                 # Mock data - acceso directo
                 course_name = course_info.get('name', 'Curso de IA')
@@ -493,6 +542,8 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 level = course_info.get('level', 'Todos los niveles')
                 sessions = course_info.get('session_count', 8)
                 duration = course_info.get('duration_hours', 12)
+                modality = course_info.get('modality', 'Online')
+                bonuses_from_db = []
             
             # Crear mensaje principal (VERSIÓN CORTA para evitar límite de 1600 caracteres)
             message_parts = [
@@ -501,6 +552,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 f"📚 **{course_name}**",
                 f"💰 **Inversión:** ${price} {currency}",
                 f"📊 **Nivel:** {level} | 🗓️ {sessions} sesiones ({duration}h)",
+                f"💻 **Modalidad:** {modality}",
                 ""
             ]
             
@@ -511,14 +563,15 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                     ""
                 ])
             
-            # Agregar solo los primeros 3 bonos más importantes
-            bonuses = course_info.get('bonuses', [])
+            # Usar bonos de la BD primero, fallback a mock data si no hay
+            bonuses = bonuses_from_db if bonuses_from_db else course_info.get('bonuses', [])
+            
             if bonuses:
                 message_parts.extend([
                     f"🎁 **BONOS INCLUIDOS:**"
                 ])
                 # Mostrar solo los primeros 3 bonos para ahorrar caracteres
-                for bonus in bonuses[:3]:
+                for i, bonus in enumerate(bonuses[:3]):
                     message_parts.append(f"• {bonus}")
                 if len(bonuses) > 3:
                     message_parts.append(f"• ...y {len(bonuses) - 3} bonos más")

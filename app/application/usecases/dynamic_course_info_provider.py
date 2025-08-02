@@ -67,9 +67,8 @@ class DynamicCourseInfoProvider:
         sessions = course_info.sessions
         bonds = course_info.bonds
         
-        # Calcular duración real
-        total_minutes = course.total_duration_min or 0
-        total_hours = round(total_minutes / 60, 1) if total_minutes > 0 else 0
+        # total_duration_min contiene horas (no minutos, solo el nombre es confuso)
+        total_hours = course.total_duration_min or 0
         
         # Extraer precio limpio
         price_str = str(course.price or "0")
