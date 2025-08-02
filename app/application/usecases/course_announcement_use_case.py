@@ -4,6 +4,7 @@ Ejemplo: #CursoIA1 -> Muestra resumen del curso, PDF y imagen
 """
 import logging
 import re
+import asyncio
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 
@@ -348,6 +349,14 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
         try:
             user_memory = self.memory_use_case.get_user_memory(user_id)
             
+            # Inicializar listas si no existen
+            if user_memory.interests is None:
+                user_memory.interests = []
+            if user_memory.buying_signals is None:
+                user_memory.buying_signals = []
+            if user_memory.message_history is None:
+                user_memory.message_history = []
+            
             # Registrar interés en el curso
             if course_info.get('name'):
                 course_name = course_info['name']
@@ -362,10 +371,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Incrementar score por interés específico en curso
             user_memory.lead_score += 15
             
-            # Actualizar contexto - agregar a message_history en lugar de add_context_entry
-            if user_memory.message_history is None:
-                user_memory.message_history = []
-            
+            # Actualizar contexto - agregar a message_history
             user_memory.message_history.append({
                 'timestamp': datetime.now().isoformat(),
                 'action': 'course_request',
@@ -423,6 +429,10 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Enviar imagen (simulado por ahora)
             image_result = await self._send_course_image(user_id, course_info)
             
+            # Esperar 13 segundos para que los archivos se carguen antes de enviar los mensajes de texto
+            logger.info("⏳ Esperando 13 segundos para que los archivos se carguen...")
+            await asyncio.sleep(13)
+            
             # Enviar mensaje de seguimiento
             follow_up_message = self._create_follow_up_message(course_info, user_memory)
             
@@ -433,6 +443,17 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             )
             
             follow_up_result = await self.twilio_client.send_message(follow_up_outgoing)
+            
+            # Enviar mensaje adicional con pregunta sobre qué le parece más interesante
+            engagement_message = "¿Qué te parece más interesante del curso?"
+            
+            engagement_outgoing = OutgoingMessage(
+                to_number=user_id,
+                body=engagement_message,
+                message_type=MessageType.TEXT
+            )
+            
+            engagement_result = await self.twilio_client.send_message(engagement_outgoing)
             
             return {
                 'success': True,
@@ -445,7 +466,8 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 'additional_resources_sent': {
                     'pdf_sent': pdf_result.get('success', False),
                     'image_sent': image_result.get('success', False),
-                    'follow_up_sent': follow_up_result.get('success', False)
+                    'follow_up_sent': follow_up_result.get('success', False),
+                    'engagement_sent': engagement_result.get('success', False)
                 }
             }
             
@@ -717,17 +739,8 @@ Te enviaremos el documento por correo electrónico o puedes solicitarlo directam
                 image_url = None  # Forzar fallback si no hay ngrok
                 logger.info(f"⚠️ NGROK_URL no configurado, usando fallback para imagen")
             
-            # Mensaje acompañando a la imagen
-            image_message = f"""🎯 **ESTRUCTURA VISUAL DEL CURSO**
-
-Esta imagen te muestra de un vistazo:
-
-🧠 **Módulos de aprendizaje** organizados progresivamente
-⚡ **Herramientas prácticas** que dominarás
-📊 **Resultados medibles** que obtendrás
-🚀 **Plan de implementación** semana a semana
-
-*¡La transformación de tu empresa empieza aquí!* ✨"""
+            # Mensaje acompañando a la imagen - solo título en negritas
+            image_message = f"""🎯 **ESTRUCTURA VISUAL DEL CURSO**"""
 
             # Si tenemos URL válida, enviar archivo; si no, usar fallback
             if image_url and image_url.startswith('http'):
@@ -800,9 +813,7 @@ Te enviaremos las imágenes por correo electrónico o las puedes ver directament
                 "• Analiza cómo aplicarías esto en tu empresa específica",
                 "• Si tienes preguntas específicas, escríbeme aquí mismo",
                 "",
-                f"🎯 **Oferta especial:** Reserva tu lugar ahora con solo $97 (resto antes de iniciar)",
-                "",
-                "¿Qué te parece más interesante del curso? ¿Tienes alguna pregunta específica sobre la implementación en tu sector?"
+                f"🎯 **Oferta especial:** Reserva tu lugar ahora con solo $97 (resto antes de iniciar)"
             ]
             
             return "\n".join(follow_up_parts)
