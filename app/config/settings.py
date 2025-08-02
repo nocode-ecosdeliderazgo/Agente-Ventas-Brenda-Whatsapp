@@ -26,8 +26,16 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     webhook_verify_signature: bool = False
     
+    # === ADVISOR CONFIGURATION ===
+    advisor_phone_number: str = "+52 1 56 1468 6075"
+    advisor_name: str = "Especialista en IA"
+    advisor_title: str = "Asesor Comercial"
+    
     # === SECURITY ===
     allowed_webhook_ips: str = "*"  # En producción, especificar IPs de Twilio como lista JSON
+    
+    # === NGROK CONFIGURATION ===
+    ngrok_url: Optional[str] = None
     
     class Config:
         env_file = ".env"

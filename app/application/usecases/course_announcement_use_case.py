@@ -4,6 +4,7 @@ Ejemplo: #CursoIA1 -> Muestra resumen del curso, PDF y imagen
 """
 import logging
 import re
+from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
@@ -32,7 +33,10 @@ class CourseAnnouncementUseCase:
         self.course_code_mapping = {
             "#CursoIA1": "curso-ia-basico-001",  # ID del curso en la base de datos
             "#CursoIA2": "curso-ia-intermedio-001",
-            "#CursoIA3": "curso-ia-avanzado-001"
+            "#CursoIA3": "curso-ia-avanzado-001",
+            # Nuevos códigos para curso específico con archivos reales
+            "#Experto_IA_GPT_Gemini": "experto-ia-profesionales-001",
+            "#ADSIM_05": "experto-ia-profesionales-001"  # Mismo curso, diferente código de campaña
         }
     
     def should_handle_course_announcement(self, incoming_message: IncomingMessage) -> bool:
@@ -146,6 +150,11 @@ class CourseAnnouncementUseCase:
                 logger.warning(f"Código de curso no mapeado: {course_code}")
                 return None
             
+            # PRIMERO: Usar información mock específica para códigos especiales
+            if course_code in ["#Experto_IA_GPT_Gemini", "#ADSIM_05"]:
+                logger.info(f"📚 Usando información específica para código: {course_code}")
+                return self._get_mock_course_information(course_code)
+            
             # Si tenemos conexión a base de datos, obtener información real
             if self.course_query_use_case:
                 try:
@@ -235,6 +244,88 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
                 'session_count': 16,
                 'duration_hours': 24,
                 'found_in_database': False
+            },
+            # Curso específico con archivos reales
+            "#Experto_IA_GPT_Gemini": {
+                'name': "Experto en IA para Profesionales: Dominando ChatGPT y Gemini",
+                'short_description': "Domina las herramientas de IA más poderosas para maximizar tu productividad profesional",
+                'price': 4500,
+                'currency': "MXN",
+                'level': "Intermedio-Avanzado",
+                'modality': "Online en Vivo + Grabaciones",
+                'session_count': 10,
+                'duration_hours': 20,
+                'description': """
+🚀 **¿Listo para ser el experto en IA que tu empresa necesita?**
+
+Este curso intensivo está diseñado para profesionales ambiciosos que quieren dominar ChatGPT, Gemini y las mejores herramientas de IA para multiplicar su productividad y convertirse en referentes en su campo.
+
+**🎯 Lo que dominarás:**
+• Técnicas avanzadas de prompt engineering para resultados profesionales
+• Automatización de tareas complejas con ChatGPT y Gemini
+• Integración de IA en flujos de trabajo empresariales
+• Herramientas complementarias para análisis, creación y optimización
+• Estrategias para liderar la transformación digital en tu organización
+
+**👥 Perfecto para:**
+Gerentes, Directores, Consultores, Freelancers y Emprendedores que buscan ventaja competitiva real con IA.
+
+**🏆 Resultados garantizados:**
+Al finalizar serás capaz de implementar soluciones de IA que generen ROI medible en tu trabajo diario.
+                """.strip(),
+                'bonuses': [
+                    "🎯 Plantillas de prompts profesionales (30+ casos de uso)",
+                    "🤖 Acceso premium a herramientas de IA por 3 meses",
+                    "📊 Dashboard personal de productividad con IA",
+                    "💼 Sesión de consultoría 1-on-1 para tu caso específico",
+                    "🚀 Certificado de finalización avalado",
+                    "👥 Acceso a comunidad privada de expertos en IA",
+                    "📚 Biblioteca de recursos actualizada mensualmente"
+                ],
+                'pdf_resource': "experto_ia_profesionales.pdf",  # Archivo real
+                'image_resource': "experto_ia_profesionales.jpg",  # Archivo real
+                'found_in_database': False
+            },
+            "#ADSIM_05": {
+                # Mismo curso, diferente código de campaña publicitaria
+                'name': "Experto en IA para Profesionales: Dominando ChatGPT y Gemini",
+                'short_description': "Domina las herramientas de IA más poderosas para maximizar tu productividad profesional",
+                'price': 4500,
+                'currency': "MXN",
+                'level': "Intermedio-Avanzado",
+                'modality': "Online en Vivo + Grabaciones",
+                'session_count': 10,
+                'duration_hours': 20,
+                'description': """
+🚀 **¿Listo para ser el experto en IA que tu empresa necesita?**
+
+Este curso intensivo está diseñado para profesionales ambiciosos que quieren dominar ChatGPT, Gemini y las mejores herramientas de IA para multiplicar su productividad y convertirse en referentes en su campo.
+
+**🎯 Lo que dominarás:**
+• Técnicas avanzadas de prompt engineering para resultados profesionales
+• Automatización de tareas complejas con ChatGPT y Gemini
+• Integración de IA en flujos de trabajo empresariales
+• Herramientas complementarias para análisis, creación y optimización
+• Estrategias para liderar la transformación digital en tu organización
+
+**👥 Perfecto para:**
+Gerentes, Directores, Consultores, Freelancers y Emprendedores que buscan ventaja competitiva real con IA.
+
+**🏆 Resultados garantizados:**
+Al finalizar serás capaz de implementar soluciones de IA que generen ROI medible en tu trabajo diario.
+                """.strip(),
+                'bonuses': [
+                    "🎯 Plantillas de prompts profesionales (30+ casos de uso)",
+                    "🤖 Acceso premium a herramientas de IA por 3 meses",
+                    "📊 Dashboard personal de productividad con IA",
+                    "💼 Sesión de consultoría 1-on-1 para tu caso específico",
+                    "🚀 Certificado de finalización avalado",
+                    "👥 Acceso a comunidad privada de expertos en IA",
+                    "📚 Biblioteca de recursos actualizada mensualmente"
+                ],
+                'pdf_resource': "experto_ia_profesionales.pdf",  # Archivo real
+                'image_resource': "experto_ia_profesionales.jpg",  # Archivo real
+                'found_in_database': False
             }
         }
         
@@ -255,7 +346,7 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
             course_info: Información del curso
         """
         try:
-            user_memory = await self.memory_use_case.get_user_memory(user_id)
+            user_memory = self.memory_use_case.get_user_memory(user_id)
             
             # Registrar interés en el curso
             if course_info.get('name'):
@@ -271,12 +362,19 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
             # Incrementar score por interés específico en curso
             user_memory.lead_score += 15
             
-            # Actualizar contexto
-            user_memory.add_context_entry(
-                f"Solicitó información detallada del curso {course_code}: {course_info.get('name', 'Curso IA')}"
-            )
+            # Actualizar contexto - agregar a message_history en lugar de add_context_entry
+            if user_memory.message_history is None:
+                user_memory.message_history = []
             
-            await self.memory_use_case.save_user_memory(user_memory)
+            user_memory.message_history.append({
+                'timestamp': datetime.now().isoformat(),
+                'action': 'course_request',
+                'course_code': course_code,
+                'course_name': course_info.get('name', 'Curso IA'),
+                'description': f"Solicitó información detallada del curso {course_code}: {course_info.get('name', 'Curso IA')}"
+            })
+            
+            self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
             logger.info(f"💾 Memoria actualizada para usuario {user_id} - curso {course_code}")
             
         except Exception as e:
@@ -301,14 +399,14 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
         """
         try:
             # Obtener memoria del usuario para personalización
-            user_memory = await self.memory_use_case.get_user_memory(user_id)
+            user_memory = self.memory_use_case.get_user_memory(user_id)
             
             # Crear mensaje principal con resumen del curso
             main_message = self._create_course_summary_message(course_info, user_memory)
             
             # Enviar mensaje principal
             outgoing_message = OutgoingMessage(
-                to_number=f"whatsapp:+{user_id}",
+                to_number=user_id,
                 body=main_message,
                 message_type=MessageType.TEXT
             )
@@ -329,7 +427,7 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
             follow_up_message = self._create_follow_up_message(course_info, user_memory)
             
             follow_up_outgoing = OutgoingMessage(
-                to_number=f"whatsapp:+{user_id}",
+                to_number=user_id,
                 body=follow_up_message,
                 message_type=MessageType.TEXT
             )
@@ -376,51 +474,70 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
             name_greeting = f"{user_name}, " if user_name else ""
             
             # Información básica del curso
-            course_name = course_info.get('name', 'Curso de IA')
-            description = course_info.get('short_description', '')
-            price = course_info.get('price', 0)
-            currency = course_info.get('currency', 'USD')
-            level = course_info.get('level', 'Todos los niveles')
-            sessions = course_info.get('session_count', 8)
-            duration = course_info.get('duration_hours', 12)
+            # Si viene de BD, extraer de la estructura anidada
+            if course_info.get('found_in_database') and course_info.get('course'):
+                db_course = course_info['course']
+                course_name = getattr(db_course, 'name', 'Curso de IA')
+                description = getattr(db_course, 'short_description', '')
+                price = getattr(db_course, 'price', 0)
+                currency = getattr(db_course, 'currency', 'USD')
+                level = getattr(db_course, 'level', 'Todos los niveles')
+                sessions = getattr(db_course, 'session_count', 8)
+                duration = getattr(db_course, 'duration_hours', 12)
+            else:
+                # Mock data - acceso directo
+                course_name = course_info.get('name', 'Curso de IA')
+                description = course_info.get('short_description', '')
+                price = course_info.get('price', 0)
+                currency = course_info.get('currency', 'USD')
+                level = course_info.get('level', 'Todos los niveles')
+                sessions = course_info.get('session_count', 8)
+                duration = course_info.get('duration_hours', 12)
             
-            # Crear mensaje principal
+            # Crear mensaje principal (VERSIÓN CORTA para evitar límite de 1600 caracteres)
             message_parts = [
-                f"🎯 ¡Perfecto {name_greeting}aquí tienes toda la información que necesitas!",
+                f"🎯 ¡Perfecto {name_greeting}aquí tienes la información!",
                 "",
                 f"📚 **{course_name}**",
-                f"📝 {description}",
-                "",
                 f"💰 **Inversión:** ${price} {currency}",
-                f"📊 **Nivel:** {level}",
-                f"🗓️ **Duración:** {sessions} sesiones ({duration} horas)",
-                f"💻 **Modalidad:** Online con acceso 24/7"
+                f"📊 **Nivel:** {level} | 🗓️ {sessions} sesiones ({duration}h)",
+                ""
             ]
             
-            # Agregar descripción detallada si existe
-            if course_info.get('description'):
+            # Agregar solo descripción corta si existe
+            if description:
                 message_parts.extend([
-                    "",
-                    "**📋 DETALLES DEL CURSO:**",
-                    course_info['description']
+                    f"📝 {description}",
+                    ""
                 ])
             
-            # Agregar bonos si existen
+            # Agregar solo los primeros 3 bonos más importantes
             bonuses = course_info.get('bonuses', [])
             if bonuses:
                 message_parts.extend([
-                    "",
-                    f"🎁 **BONOS INCLUIDOS ({len(bonuses)}):**"
+                    f"🎁 **BONOS INCLUIDOS:**"
                 ])
-                for bonus in bonuses:
+                # Mostrar solo los primeros 3 bonos para ahorrar caracteres
+                for bonus in bonuses[:3]:
                     message_parts.append(f"• {bonus}")
+                if len(bonuses) > 3:
+                    message_parts.append(f"• ...y {len(bonuses) - 3} bonos más")
+                message_parts.append("")
             
-            # Agregar ROI personalizado según el rol del usuario
+            # Agregar ROI personalizado según el rol del usuario (versión corta)
             role = user_memory.role if user_memory.role != "No disponible" else ""
             if role:
-                roi_message = self._get_role_specific_roi_message(role, price)
+                roi_message = self._get_role_specific_roi_message_short(role, price)
                 if roi_message:
-                    message_parts.extend(["", roi_message])
+                    message_parts.extend([roi_message, ""])
+            
+            # Agregar llamada a la acción
+            message_parts.extend([
+                "📄 Te envío el PDF completo con todos los detalles.",
+                "🖼️ También recibirás la imagen con la estructura del curso.",
+                "",
+                "¿Tienes alguna pregunta específica?"
+            ])
             
             return "\n".join(message_parts)
             
@@ -461,9 +578,42 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
             logger.error(f"Error generando ROI específico: {e}")
             return ""
     
+    def _get_role_specific_roi_message_short(self, role: str, course_price: int) -> str:
+        """
+        Genera mensaje de ROI específico CORTO según el rol del usuario.
+
+        Args:
+            role: Rol/cargo del usuario
+            course_price: Precio del curso
+            
+        Returns:
+            Mensaje de ROI personalizado corto
+        """
+        try:
+            role_lower = role.lower()
+            
+            if any(keyword in role_lower for keyword in ['marketing', 'digital', 'comercial']):
+                return f"💡 **ROI Marketing:** Ahorra $300/campaña → ROI 200% primer mes"
+            
+            elif any(keyword in role_lower for keyword in ['operaciones', 'operations', 'gerente', 'director']):
+                return f"💡 **ROI Operaciones:** Ahorra $2,000/mes → ROI 400% primer mes"
+            
+            elif any(keyword in role_lower for keyword in ['ceo', 'founder', 'fundador', 'director general']):
+                return f"💡 **ROI Ejecutivo:** Ahorra $27,600/año → ROI 1,380% anual"
+            
+            elif any(keyword in role_lower for keyword in ['rh', 'recursos humanos', 'hr', 'talent']):
+                return f"💡 **ROI RH:** Ahorra $1,500/mes → ROI 300% primer trimestre"
+            
+            else:
+                return f"💡 **ROI PyME:** Ahorra $1,000/mes → ROI 250% primeros 3 meses"
+                
+        except Exception as e:
+            logger.error(f"Error generando ROI corto: {e}")
+            return ""
+    
     async def _send_course_pdf(self, user_id: str, course_info: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Envía el PDF del curso (simulado por ahora).
+        Envía el PDF del curso real desde la carpeta resources.
         
         Args:
             user_id: ID del usuario
@@ -473,39 +623,76 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
             Resultado del envío
         """
         try:
-            pdf_name = course_info.get('pdf_resource', 'guia-curso-ia.pdf')
+            pdf_filename = course_info.get('pdf_resource', 'experto_ia_profesionales.pdf')
             
-            # Por ahora enviamos un mensaje simulando el PDF
-            pdf_message = f"""📄 **DOCUMENTO INCLUIDO:**
+            # Intentar usar ngrok si está disponible, sino fallback
+            from app.config import settings
+            ngrok_url = settings.ngrok_url
+            
+            if ngrok_url:
+                # Asegurar que no haya doble barra en la URL
+                base_url = ngrok_url.rstrip('/')
+                pdf_url = f"{base_url}/resources/course_materials/{pdf_filename}"
+                logger.info(f"📄 Usando URL ngrok para PDF: {pdf_url}")
+            else:
+                pdf_url = None  # Forzar fallback si no hay ngrok
+                logger.info(f"⚠️ NGROK_URL no configurado, usando fallback para PDF")
+            
+            # Mensaje acompañando al PDF
+            pdf_message = f"""📄 **GUÍA COMPLETA DEL CURSO**
 
-{pdf_name}
+Te envío la guía detallada con toda la información que necesitas:
 
-*[En producción se enviaría el archivo PDF real]*
+📝 **Incluye:**
+• Estructura completa del programa
+• Objetivos de aprendizaje por módulo  
+• Herramientas y recursos incluidos
+• Plan de implementación paso a paso
+• Casos de éxito con ROI comprobado
 
-📝 Este documento contiene:
-• Guía de implementación paso a paso
-• Plantillas y herramientas descargables
-• Casos de estudio con ROI real
-• Checklist de implementación por semanas"""
+*¡Revísala y me cuentas qué te parece!* 👀"""
 
-            outgoing_message = OutgoingMessage(
-                to_number=f"whatsapp:+{user_id}",
-                body=pdf_message,
+            # Si tenemos URL válida, enviar archivo; si no, usar fallback
+            if pdf_url and pdf_url.startswith('http'):
+                # Crear mensaje con archivo adjunto
+                outgoing_message = OutgoingMessage(
+                    to_number=user_id,
+                    body=pdf_message,
+                    message_type=MessageType.DOCUMENT,
+                    media_url=pdf_url
+                )
+                
+                result = await self.twilio_client.send_message(outgoing_message)
+                logger.info(f"📄 PDF real enviado: {pdf_filename} desde {pdf_url}")
+                
+                return result
+            else:
+                # Fallback: enviar solo mensaje de texto informativo
+                raise Exception("URL no disponible - usar fallback")
+            
+        except Exception as e:
+            logger.error(f"Error enviando PDF real: {e}")
+            # Fallback: enviar mensaje de texto si falla el archivo
+            fallback_message = f"""📄 **DOCUMENTO DEL CURSO**
+
+Hubo un problema técnico enviando el PDF. 
+
+📧 **Solución alternativa:**
+Te enviaremos el documento por correo electrónico o puedes solicitarlo directamente a nuestro asesor.
+
+🔗 También está disponible en nuestro sitio web."""
+            
+            fallback_outgoing = OutgoingMessage(
+                to_number=user_id,
+                body=fallback_message,
                 message_type=MessageType.TEXT
             )
             
-            result = await self.twilio_client.send_message(outgoing_message)
-            logger.info(f"📄 PDF simulado enviado: {pdf_name}")
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error enviando PDF: {e}")
-            return {'success': False, 'error': str(e)}
+            return await self.twilio_client.send_message(fallback_outgoing)
     
     async def _send_course_image(self, user_id: str, course_info: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Envía la imagen del curso (simulado por ahora).
+        Envía la imagen del curso real desde la carpeta resources.
         
         Args:
             user_id: ID del usuario
@@ -515,35 +702,74 @@ Este curso está diseñado específicamente para líderes de empresas de 20-200 
             Resultado del envío
         """
         try:
-            image_name = course_info.get('image_resource', 'curso-ia-banner.png')
+            image_filename = course_info.get('image_resource', 'experto_ia_profesionales.jpg')
             
-            # Por ahora enviamos un mensaje simulando la imagen
-            image_message = f"""🖼️ **IMAGEN DEL CURSO:**
+            # Intentar usar ngrok si está disponible, sino fallback
+            from app.config import settings
+            ngrok_url = settings.ngrok_url
+            
+            if ngrok_url:
+                # Asegurar que no haya doble barra en la URL
+                base_url = ngrok_url.rstrip('/')
+                image_url = f"{base_url}/resources/course_materials/{image_filename}"
+                logger.info(f"🖼️ Usando URL ngrok para imagen: {image_url}")
+            else:
+                image_url = None  # Forzar fallback si no hay ngrok
+                logger.info(f"⚠️ NGROK_URL no configurado, usando fallback para imagen")
+            
+            # Mensaje acompañando a la imagen
+            image_message = f"""🎯 **ESTRUCTURA VISUAL DEL CURSO**
 
-{image_name}
+Esta imagen te muestra de un vistazo:
 
-*[En producción se enviaría la imagen real]*
+🧠 **Módulos de aprendizaje** organizados progresivamente
+⚡ **Herramientas prácticas** que dominarás
+📊 **Resultados medibles** que obtendrás
+🚀 **Plan de implementación** semana a semana
 
-🎨 Esta imagen muestra:
-• Estructura visual del curso
-• Herramientas que vas a dominar
+*¡La transformación de tu empresa empieza aquí!* ✨"""
+
+            # Si tenemos URL válida, enviar archivo; si no, usar fallback
+            if image_url and image_url.startswith('http'):
+                # Crear mensaje con imagen adjunta
+                outgoing_message = OutgoingMessage(
+                    to_number=user_id,
+                    body=image_message,
+                    message_type=MessageType.IMAGE,
+                    media_url=image_url
+                )
+                
+                result = await self.twilio_client.send_message(outgoing_message)
+                logger.info(f"🖼️ Imagen real enviada: {image_filename} desde {image_url}")
+                
+                return result
+            else:
+                # Fallback: enviar solo mensaje de texto informativo
+                raise Exception("URL no disponible - usar fallback")
+            
+        except Exception as e:
+            logger.error(f"Error enviando imagen real: {e}")
+            # Fallback: enviar mensaje de texto si falla la imagen
+            fallback_message = f"""🖼️ **IMAGEN DEL CURSO**
+
+Hubo un problema técnico enviando la imagen. 
+
+🎨 **Esta imagen muestra:**
+• Estructura visual del curso completo
+• Herramientas prácticas que dominarás
+• Cronograma de implementación
 • Resultados esperados por módulo
-• Timeline de implementación"""
 
-            outgoing_message = OutgoingMessage(
-                to_number=f"whatsapp:+{user_id}",
-                body=image_message,
+📧 **Solución alternativa:**
+Te enviaremos las imágenes por correo electrónico o las puedes ver directamente con nuestro asesor."""
+            
+            fallback_outgoing = OutgoingMessage(
+                to_number=user_id,
+                body=fallback_message,
                 message_type=MessageType.TEXT
             )
             
-            result = await self.twilio_client.send_message(outgoing_message)
-            logger.info(f"🖼️ Imagen simulada enviada: {image_name}")
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error enviando imagen: {e}")
-            return {'success': False, 'error': str(e)}
+            return await self.twilio_client.send_message(fallback_outgoing)
     
     def _create_follow_up_message(
         self, 
@@ -613,7 +839,7 @@ Lo siento, no pude encontrar información para el código **{course_code}**.
 ¿Te interesa información de alguno de estos cursos? Solo escribe el código que te interese."""
 
             outgoing_message = OutgoingMessage(
-                to_number=f"whatsapp:+{user_id}",
+                to_number=user_id,
                 body=message,
                 message_type=MessageType.TEXT
             )
