@@ -35,7 +35,7 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **Intelligent Bonus System** ✅ **COMPLETAMENTE FUNCIONAL** - Bonos contextuales activados
 - **Advisor Referral System** ✅ **COMPLETAMENTE FUNCIONAL** - Referencia automática a asesores
 
-### **🔧 Últimas Mejoras Críticas Implementadas (1 Agosto 2025)**
+### **🔧 Últimas Mejoras Críticas Implementadas (3 Agosto 2025)**
 - **✅ Purchase Intent Detection**: IMPLEMENTADO - Detección automática de intención de compra
 - **✅ Workbook Bonus Activation**: IMPLEMENTADO - Bonos workbook desde base de datos por compra
 - **✅ Banking Information**: IMPLEMENTADO - Datos bancarios automáticos en respuestas de compra
@@ -44,6 +44,7 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **✅ Twilio Character Limit**: RESUELTO - Mensajes optimizados bajo 1600 caracteres
 - **✅ Processing Priority**: RESUELTO - Course Announcement tiene prioridad sobre Ad Flow
 - **✅ Ngrok Integration**: IMPLEMENTADO - URLs públicas para multimedia con fallback automático
+- **🆕 Concise Specific Responses**: IMPLEMENTADO - Respuestas concisas para consultas específicas con datos de BD
 
 ## Current Architecture
 
@@ -141,6 +142,43 @@ python run_development.py         # Development mode with auto-reload
 # ✅ Personalized ROI message by buyer persona
 # ✅ Lead score increased significantly
 # ✅ High-priority purchase signal recorded
+```
+
+### 🆕 Testing Concise Specific Response System
+```bash
+# Test specific inquiry responses with database integration:
+
+# Price inquiries
+"¿Cuál es el precio del curso?"
+"¿Cuánto cuesta?"
+"¿Qué precio tiene?"
+
+# Session inquiries
+"¿Cuántas sesiones tiene el curso?"
+"¿Cuántas clases son?"
+"¿Qué sesiones incluye?"
+
+# Duration inquiries
+"¿Cuánto dura el curso?"
+"¿Cuántas horas son?"
+"¿Qué duración tiene?"
+
+# Content inquiries
+"¿Qué temario tiene?"
+"¿Qué voy a aprender?"
+"¿Cuál es el contenido?"
+
+# Modality inquiries
+"¿Es presencial u online?"
+"¿Qué modalidad tiene?"
+"¿Cómo es el formato?"
+
+# Expected results:
+# ✅ Concise response with only requested info
+# ✅ Real data from PostgreSQL database
+# ✅ Course name + specific info + follow-up question
+# ✅ No hardcoded or invented information
+# ✅ Proper categorization: SESSION_INQUIRY, PRICE_INQUIRY, etc.
 ```
 
 ## Environment Variables Required
@@ -256,6 +294,42 @@ Validates AI responses to prevent hallucinations using:
 - RFC: AAI210307DEF
 - Uso de CFDI: GO3-Gastos en general
 
+### 🆕 Concise Specific Response System
+**Intelligent detection of specific inquiries** triggers concise, database-driven responses:
+
+#### Supported Inquiry Types
+- **PRICE_INQUIRY**: Direct price questions → Shows course name + price + follow-up question
+- **SESSION_INQUIRY**: Session count questions → Shows course name + session info + follow-up question  
+- **DURATION_INQUIRY**: Duration questions → Shows course name + time duration + follow-up question
+- **CONTENT_INQUIRY**: Content/curriculum questions → Shows course name + content overview + follow-up question
+- **MODALITY_INQUIRY**: Format questions → Shows course name + modality info + follow-up question
+
+#### Detection Methods
+1. **OpenAI Categorization**: Automatically categorizes specific inquiry types
+2. **Keyword Detection**: Fallback detection using Spanish keywords
+3. **Smart Mapping**: Maps categories to specific response types
+
+#### Example Responses
+```
+# Price Inquiry: "¿cuál es el precio del curso?"
+🎓 **Experto en IA para Profesionales**
+💰 **Precio**: $4,500 MXN
+
+¿Te gustaría conocer más detalles del curso?
+
+# Session Inquiry: "¿cuántas sesiones tiene?"
+🎓 **Experto en IA para Profesionales**  
+📅 **Sesiones**: 8 sesiones (12 horas)
+
+¿Te gustaría conocer el contenido de las sesiones?
+```
+
+#### Key Benefits
+- **Always Database-Driven**: Real data from PostgreSQL, never hardcoded
+- **Concise Format**: Only shows requested information + course name + follow-up
+- **Maintains Context**: Preserves conversation flow and buyer persona detection
+- **No Information Invention**: Prevents AI hallucination with specific data
+
 ## Testing Scripts
 
 ### Core System Tests
@@ -336,6 +410,6 @@ The `legacy/` folder contains the complete Telegram implementation with 35+ conv
 
 ---
 
-**Current Status**: ✅ **PRODUCTION READY** - Complete purchase bonus system with banking integration
-**Last Updated**: August 1, 2025
-**Version**: 2.1 - Purchase Bonus System with Banking Information
+**Current Status**: ✅ **PRODUCTION READY** - Complete purchase bonus system with banking integration + Concise specific responses
+**Last Updated**: August 3, 2025
+**Version**: 2.2 - Concise Specific Response System with Database Integration
