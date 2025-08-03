@@ -255,11 +255,37 @@ class GenerateIntelligentResponseUseCase:
                 debug_print("✅ Bono de compra activado y mensaje generado", "_generate_contextual_response")
                 return purchase_bonus_message
             
-            # 🆕 PRIORIDAD ESPECIAL: Preguntas directas de precio usan método específico
-            if category == 'PRICE_INQUIRY':
-                debug_print("💰 Usando método directo para pregunta de precio", "_generate_contextual_response")
+            # 🆕 PRIORIDAD ESPECIAL: Consultas específicas (precio, sesiones, duración, etc.)
+            specific_inquiry_categories = ['PRICE_INQUIRY', 'SESSION_INQUIRY', 'DURATION_INQUIRY', 'CONTENT_INQUIRY', 'MODALITY_INQUIRY']
+            
+            if category in specific_inquiry_categories or self._should_use_concise_response(category, incoming_message.body):
                 user_name = user_memory.name if user_memory and user_memory.name != "Usuario" else ""
                 user_role = user_memory.role if user_memory and user_memory.role != "No disponible" else ""
+                
+                # Determinar tipo de consulta específica
+                if category in specific_inquiry_categories:
+                    # Mapear categoría a tipo de consulta
+                    category_to_type = {
+                        'PRICE_INQUIRY': 'price',
+                        'SESSION_INQUIRY': 'sessions', 
+                        'DURATION_INQUIRY': 'duration',
+                        'CONTENT_INQUIRY': 'content',
+                        'MODALITY_INQUIRY': 'modality'
+                    }
+                    inquiry_type = category_to_type[category]
+                else:
+                    # Detectar por keywords para otras categorías
+                    inquiry_type = self._detect_specific_inquiry_type(incoming_message.body)
+                
+                if inquiry_type:
+                    debug_print(f"🎯 Usando respuesta concisa para consulta específica: {inquiry_type} (categoría: {category})", "_generate_contextual_response")
+                    return await self._get_concise_specific_response(inquiry_type, user_name, user_role, user_memory)
+            
+            # Fallback para PRICE_INQUIRY que no sea específica
+            if category == 'PRICE_INQUIRY':
+                user_name = user_memory.name if user_memory and user_memory.name != "Usuario" else ""
+                user_role = user_memory.role if user_memory and user_memory.role != "No disponible" else ""
+                debug_print("💰 Usando método directo completo para pregunta de precio", "_generate_contextual_response")
                 return await self._get_direct_price_response(user_name, user_role, user_memory)
             
             # 1. Verificar si OpenAI ya generó una respuesta de buena calidad
@@ -1802,6 +1828,122 @@ Mientras tanto, te comento que es una inversión única que incluye:
             estimated_monthly_savings = max(3000 if currency == "MXN" else 200, price_numeric // 3)
             months_to_break_even = max(1, round(price_numeric / estimated_monthly_savings, 1))
             return f"**💡 Inversión inteligente:** Recuperas el costo en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'} con automatización de procesos"
+    
+    async def _get_concise_specific_response(self, inquiry_type: str, user_name: str, user_role: str, user_memory) -> str:
+        """
+        Genera respuestas concisas para consultas específicas (precio, sesiones, duración, etc.).
+        Solo muestra: título del curso + información específica + pregunta final.
+        """
+        try:
+            # Obtener información dinámica del curso desde BD
+            course_data = await self.dynamic_course_provider.get_primary_course_info()
+            course_name = course_data['name']
+            
+            if inquiry_type == 'price':
+                price_formatted = course_data['price_formatted']
+                return f"""🎓 **{course_name}**
+💰 **Precio**: {price_formatted}
+
+¿Te gustaría conocer más detalles del curso?"""
+            
+            elif inquiry_type == 'sessions':
+                session_count = course_data['session_count']
+                duration_formatted = course_data['total_duration_formatted']
+                return f"""🎓 **{course_name}**
+📅 **Sesiones**: {session_count} sesiones ({duration_formatted})
+
+¿Te gustaría conocer el contenido de las sesiones?"""
+            
+            elif inquiry_type == 'duration':
+                duration_formatted = course_data['total_duration_formatted']
+                session_count = course_data['session_count']
+                return f"""🎓 **{course_name}**
+⏱️ **Duración**: {duration_formatted} ({session_count} sesiones)
+
+¿Te gustaría saber más sobre el programa?"""
+            
+            elif inquiry_type == 'content':
+                session_count = course_data['session_count']
+                return f"""🎓 **{course_name}**
+📚 **Contenido**: {session_count} sesiones prácticas de IA aplicada
+
+¿Te gustaría conocer el temario detallado?"""
+            
+            elif inquiry_type == 'modality':
+                modality = course_data['modality']
+                return f"""🎓 **{course_name}**
+📊 **Modalidad**: {modality}
+
+¿Te gustaría conocer más detalles del formato del curso?"""
+            
+            else:
+                # Fallback genérico
+                return f"""🎓 **{course_name}**
+
+¿Te gustaría conocer más información específica del curso?"""
+                
+        except Exception as e:
+            self.logger.error(f"Error generando respuesta concisa específica: {e}")
+            return """🎓 **Curso de IA para Profesionales**
+
+¿Te gustaría conocer más información del curso?"""
+    
+    def _detect_specific_inquiry_type(self, message_body: str) -> str:
+        """
+        Detecta el tipo específico de consulta para usar respuesta concisa.
+        
+        Returns:
+            Tipo de consulta: 'price', 'sessions', 'duration', 'content', 'modality' o None
+        """
+        message_lower = message_body.lower()
+        
+        # Detectar consultas de precio
+        price_keywords = ['precio', 'costo', 'cuánto cuesta', 'cuanto cuesta', 'valor', 'inversión']
+        if any(keyword in message_lower for keyword in price_keywords):
+            return 'price'
+        
+        # Detectar consultas de sesiones
+        sessions_keywords = ['sesiones', 'sesión', 'clases', 'clase', 'cuántas sesiones', 'cuantas sesiones']
+        if any(keyword in message_lower for keyword in sessions_keywords):
+            return 'sessions'
+        
+        # Detectar consultas de duración
+        duration_keywords = ['duración', 'duracion', 'tiempo', 'horas', 'cuánto dura', 'cuanto dura']
+        if any(keyword in message_lower for keyword in duration_keywords):
+            return 'duration'
+        
+        # Detectar consultas de contenido
+        content_keywords = ['contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas']
+        if any(keyword in message_lower for keyword in content_keywords):
+            return 'content'
+        
+        # Detectar consultas de modalidad
+        modality_keywords = ['modalidad', 'formato', 'presencial', 'online', 'virtual', 'cómo es', 'como es']
+        if any(keyword in message_lower for keyword in modality_keywords):
+            return 'modality'
+        
+        return None
+    
+    def _should_use_concise_response(self, category: str, message_body: str) -> bool:
+        """
+        Determina si debe usar respuesta concisa basado en la categoría y contenido del mensaje.
+        """
+        # Lista de categorías que siempre usan respuesta concisa
+        specific_inquiry_categories = [
+            'PRICE_INQUIRY', 
+            'SESSION_INQUIRY', 
+            'DURATION_INQUIRY', 
+            'CONTENT_INQUIRY', 
+            'MODALITY_INQUIRY'
+        ]
+        
+        # Usar respuesta concisa para categorías específicas
+        if category in specific_inquiry_categories:
+            return True
+        
+        # Para otras categorías, detectar si es consulta específica por keywords
+        inquiry_type = self._detect_specific_inquiry_type(message_body)
+        return inquiry_type is not None
     
     async def _generate_intelligent_faq_response(
         self,

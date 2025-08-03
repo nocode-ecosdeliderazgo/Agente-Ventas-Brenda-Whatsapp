@@ -69,6 +69,7 @@ class DynamicCourseInfoProvider:
         
         # total_duration_min contiene horas (no minutos, solo el nombre es confuso)
         total_hours = course.total_duration_min or 0
+        total_minutes = total_hours * 60  # Convertir horas a minutos para cálculos
         
         # Extraer precio limpio
         price_str = str(course.price or "0")

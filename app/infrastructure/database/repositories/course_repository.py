@@ -398,10 +398,13 @@ class CourseRepository:
                     "resources": resources
                 })
             
+            # Convert bonds to dict for return, but keep objects for structure building
+            bonds_dict = [bond.__dict__ for bond in bonds]
+            
             return {
                 "course": course.__dict__,
                 "sessions": detailed_sessions,
-                "bonds": [bond.__dict__ for bond in bonds],
+                "bonds": bonds_dict,
                 "total_sessions": len(sessions),
                 "total_bonds": len(bonds),
                 "course_structure": self._build_course_structure_text(detailed_sessions, bonds)
@@ -411,7 +414,7 @@ class CourseRepository:
             logger.error(f"Error obteniendo contenido detallado del curso {course_id}: {e}")
             return {}
     
-    def _build_course_structure_text(self, detailed_sessions: List[Dict], bonds: List[Dict]) -> str:
+    def _build_course_structure_text(self, detailed_sessions: List[Dict], bonds: List[Bond]) -> str:
         """Construye texto estructurado del curso para usar en prompts."""
         structure = []
         
@@ -433,7 +436,9 @@ Actividades:""")
         if bonds:
             structure.append("\n**🎁 BONOS INCLUIDOS:**")
             for i, bond in enumerate(bonds, 1):
-                structure.append(f"{i}. {bond.get('content', 'Bono disponible')}")
+                # bond es un objeto Bond, no dict
+                bond_content = bond.content if hasattr(bond, 'content') else 'Bono disponible'
+                structure.append(f"{i}. {bond_content}")
         
         return "\n".join(structure)
     

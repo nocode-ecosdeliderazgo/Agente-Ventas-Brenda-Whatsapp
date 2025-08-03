@@ -177,38 +177,42 @@ Clasifica el mensaje del líder PyME en una de estas CATEGORÍAS ESPECÍFICAS pa
 
 **CATEGORÍAS DE INFORMACIÓN DIRECTA:**
 4. PRICE_INQUIRY - Pregunta directa sobre precio, costo o inversión del curso (ej: "¿cuál es el precio?", "¿cuánto cuesta?", "precio exacto")
+5. SESSION_INQUIRY - Pregunta específica sobre sesiones del curso (ej: "¿cuántas sesiones tiene?", "¿cuántas clases son?")
+6. DURATION_INQUIRY - Pregunta específica sobre duración del curso (ej: "¿cuánto dura?", "¿cuántas horas?")
+7. CONTENT_INQUIRY - Pregunta específica sobre contenido del curso (ej: "¿qué temario tiene?", "¿qué voy a aprender?")
+8. MODALITY_INQUIRY - Pregunta específica sobre modalidad del curso (ej: "¿es presencial?", "¿es online?")
 
 **CATEGORÍAS DE OBJECIONES EMPRESARIALES:**
-5. OBJECTION_BUDGET_PYME - Preocupación por presupuesto limitado de PyME (ej: "está caro", "no tengo presupuesto")
-6. OBJECTION_TIME_EXECUTIVES - Falta de tiempo de líderes/directivos
-7. OBJECTION_TECHNICAL_TEAM - No tienen equipo técnico, temen complejidad
-8. OBJECTION_IMPLEMENTATION - Dudas sobre implementación en operaciones diarias
+9. OBJECTION_BUDGET_PYME - Preocupación por presupuesto limitado de PyME (ej: "está caro", "no tengo presupuesto")
+10. OBJECTION_TIME_EXECUTIVES - Falta de tiempo de líderes/directivos
+11. OBJECTION_TECHNICAL_TEAM - No tienen equipo técnico, temen complejidad
+12. OBJECTION_IMPLEMENTATION - Dudas sobre implementación en operaciones diarias
 
 **CATEGORÍAS DE NECESIDADES OPERATIVAS:**
-9. AUTOMATION_REPORTS - Necesita automatizar reportes y dashboards
-10. AUTOMATION_CONTENT - Busca acelerar creación de contenido/marketing
-11. AUTOMATION_PROCESSES - Quiere sistematizar procesos operativos
-12. AUTOMATION_ANALYSIS - Necesita análisis de datos más rápido
+13. AUTOMATION_REPORTS - Necesita automatizar reportes y dashboards
+14. AUTOMATION_CONTENT - Busca acelerar creación de contenido/marketing
+15. AUTOMATION_PROCESSES - Quiere sistematizar procesos operativos
+16. AUTOMATION_ANALYSIS - Necesita análisis de datos más rápido
 
 **CATEGORÍAS DE DECISIÓN EMPRESARIAL:**
-13. BUYING_SIGNALS_EXECUTIVE - Señales de decisión de compra corporativa
-14. PILOT_REQUEST - Solicita proyecto piloto or prueba
-15. TEAM_TRAINING - Interés en capacitación para su equipo
-16. STRATEGIC_CONSULTATION - Necesita asesoría estratégica de IA
+17. BUYING_SIGNALS_EXECUTIVE - Señales de decisión de compra corporativa
+18. PILOT_REQUEST - Solicita proyecto piloto or prueba
+19. TEAM_TRAINING - Interés en capacitación para su equipo
+20. STRATEGIC_CONSULTATION - Necesita asesoría estratégica de IA
 
 **CATEGORÍAS DE SOPORTE:**
-17. FREE_RESOURCES_BUSINESS - Solicita recursos específicos para PyMEs
-18. CONTACT_ADVISOR_EXECUTIVE - Solicita contacto con asesor empresarial
+21. FREE_RESOURCES_BUSINESS - Solicita recursos específicos para PyMEs
+22. CONTACT_ADVISOR_EXECUTIVE - Solicita contacto con asesor empresarial
 
 **NUEVAS CATEGORÍAS MEJORADAS:**
-19. URGENCY_DETECTED - Usuario muestra urgencia o presión temporal
-20. COMPETITIVE_PRESSURE - Menciona competencia o necesidad de diferenciación
-21. TEAM_READINESS - Pregunta sobre preparación del equipo para IA
-22. IMPLEMENTATION_TIMELINE - Solicita cronograma de implementación
-23. SUCCESS_METRICS - Pregunta sobre métricas de éxito o ROI específico
-24. PURCHASE_INTENT_DIRECT - Expresa intención directa de compra ("quiero comprarlo", "cómo pago", "me inscríbeme")
-25. PURCHASE_INTENT_PRICING - Pregunta específicamente por precios, formas de pago, descuentos
-26. PURCHASE_READY_SIGNALS - Señales de estar listo para comprar ("ya decidí", "convencido", "cuándo empiezo")
+23. URGENCY_DETECTED - Usuario muestra urgencia o presión temporal
+24. COMPETITIVE_PRESSURE - Menciona competencia o necesidad de diferenciación
+25. TEAM_READINESS - Pregunta sobre preparación del equipo para IA
+26. IMPLEMENTATION_TIMELINE - Solicita cronograma de implementación
+27. SUCCESS_METRICS - Pregunta sobre métricas de éxito o ROI específico
+28. PURCHASE_INTENT_DIRECT - Expresa intención directa de compra ("quiero comprarlo", "cómo pago", "me inscríbeme")
+29. PURCHASE_INTENT_PRICING - Pregunta específicamente por precios, formas de pago, descuentos
+30. PURCHASE_READY_SIGNALS - Señales de estar listo para comprar ("ya decidí", "convencido", "cuándo empiezo")
 
 MENSAJE ACTUAL: {user_message}
 
