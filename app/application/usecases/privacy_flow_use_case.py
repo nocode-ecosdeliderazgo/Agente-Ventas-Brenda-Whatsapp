@@ -10,6 +10,11 @@ from app.domain.entities.message import IncomingMessage, OutgoingMessage, Messag
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.templates.privacy_flow_templates import PrivacyFlowTemplates
+from app.config.campaign_config import (
+    COURSE_HASHTAG_MAPPING, 
+    get_course_id_from_hashtag, 
+    is_course_hashtag
+)
 from memory.lead_memory import LeadMemory
 
 logger = logging.getLogger(__name__)
@@ -142,6 +147,12 @@ class PrivacyFlowUseCase:
             # Almacenar mensaje original en memoria para verificar hashtags después
             user_memory.original_message_body = incoming_message.body
             user_memory.original_message_sid = incoming_message.message_sid
+            
+            # 🆕 EXTRAER Y MAPEAR HASHTAGS INMEDIATAMENTE desde el primer mensaje
+            hashtags_detected = self._extract_and_map_hashtags(incoming_message.body, user_memory)
+            if hashtags_detected:
+                debug_print(f"📋 Hashtags detectados y mapeados: {hashtags_detected}", "_initiate_privacy_flow")
+            
             self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
             
             # Iniciar flujo de privacidad
@@ -608,44 +619,33 @@ class PrivacyFlowUseCase:
         self.memory_use_case.start_sales_agent_flow(user_id)
         debug_print("🤖 Flujo de agente de ventas iniciado", "_complete_role_collection")
         
-        # Verificar si el mensaje original tenía hashtags de anuncio
-        ad_flow_activated = False
+        # Verificar si el mensaje original tenía códigos de curso específicos
+        course_announcement_activated = False
         if original_message:
             try:
-                from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
-                from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
+                from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
                 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
                 
-                # Crear instancias temporales para verificar hashtags
-                detect_hashtags = DetectAdHashtagsUseCase()
-                hashtags_info = await detect_hashtags.execute(original_message.body)
+                # Crear instancia temporal para verificar códigos de curso
+                course_query_use_case = QueryCourseInformationUseCase()
+                course_announcement = CourseAnnouncementUseCase(
+                    course_query_use_case=course_query_use_case,
+                    memory_use_case=self.memory_use_case,
+                    twilio_client=self.twilio_client
+                )
                 
-                if hashtags_info.get('has_course_hashtag'):
-                    debug_print(f"🎯 Detectados hashtags de anuncio en mensaje original: {hashtags_info}", "_complete_role_collection")
+                # Verificar si el mensaje original contiene códigos de curso
+                if course_announcement.should_handle_course_announcement(original_message):
+                    debug_print(f"🎯 Detectado código de curso en mensaje original: {original_message.body}", "_complete_role_collection")
                     
-                    # Procesar flujo de anuncios automáticamente
-                    course_query_use_case = QueryCourseInformationUseCase()
-                    process_ad = ProcessAdFlowUseCase(
-                        self.memory_use_case,
-                        self.twilio_client,
-                        course_query_use_case
+                    # Procesar flujo de anuncio de curso automáticamente
+                    course_announcement_result = await course_announcement.handle_course_announcement(
+                        user_id, original_message
                     )
                     
-                    webhook_data = {
-                        'From': original_message.from_number,
-                        'Body': original_message.body,
-                        'MessageSid': original_message.message_sid
-                    }
-                    
-                    ad_flow_result = await process_ad.execute(
-                        webhook_data,
-                        {'id': user_id, 'first_name': updated_memory.name},
-                        hashtags_info
-                    )
-                    
-                    if ad_flow_result['success'] and ad_flow_result['ad_flow_completed']:
-                        debug_print("✅ Flujo de anuncios activado automáticamente después de privacidad", "_complete_role_collection")
-                        ad_flow_activated = True
+                    if course_announcement_result['success']:
+                        debug_print("✅ Flujo de anuncio de curso activado automáticamente después de privacidad", "_complete_role_collection")
+                        course_announcement_activated = True
                         return {
                             'success': True,
                             'in_privacy_flow': False,
@@ -655,17 +655,18 @@ class PrivacyFlowUseCase:
                             'ready_for_sales_agent': True,
                             'message_sent': True,
                             'flow_completed': True,
-                            'ad_flow_activated': True,
-                            'ad_flow_result': ad_flow_result
+                            'course_announcement_activated': True,
+                            'course_announcement_result': course_announcement_result,
+                            'should_continue_normal_flow': False  # NO continuar con procesamiento normal
                         }
                     else:
-                        debug_print(f"⚠️ Error activando flujo de anuncios: {ad_flow_result}", "_complete_role_collection")
+                        debug_print(f"⚠️ Error activando flujo de anuncio de curso: {course_announcement_result}", "_complete_role_collection")
                         
             except Exception as e:
-                debug_print(f"❌ Error verificando hashtags de anuncio: {e}", "_complete_role_collection")
+                debug_print(f"❌ Error verificando códigos de curso: {e}", "_complete_role_collection")
         
-        # Si no se activó el flujo de anuncios, activar automáticamente el flujo de bienvenida
-        if not ad_flow_activated:
+        # Si no se activó el flujo de anuncio de curso, activar automáticamente el flujo de bienvenida
+        if not course_announcement_activated:
             debug_print("✅ Flujo de privacidad completado, activando automáticamente flujo de bienvenida", "_complete_role_collection")
             return {
                 'success': True,
@@ -676,7 +677,7 @@ class PrivacyFlowUseCase:
                 'ready_for_sales_agent': True,
                 'message_sent': False,  # NO enviar mensaje aquí
                 'flow_completed': True,
-                'should_continue_normal_flow': True,  # Indicar que debe continuar con las siguientes prioridades
+                'should_continue_normal_flow': True,  # Continuar con procesamiento normal
                 'trigger_welcome_flow': True  # TRIGGER para activar flujo de bienvenida automáticamente
             }
         
@@ -786,3 +787,98 @@ Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector esp
         return (
             user_memory.is_first_interaction() and user_memory.needs_privacy_flow()
         ) or user_memory.waiting_for_response in ["privacy_acceptance", "user_name", "user_role"]
+    
+    def _extract_and_map_hashtags(self, message_body: str, user_memory: LeadMemory) -> Dict[str, Any]:
+        """
+        Extrae hashtags del mensaje y los mapea a course_ids usando el sistema centralizado.
+        Guarda la información en la memoria del usuario inmediatamente.
+        
+        Args:
+            message_body: Cuerpo del mensaje a analizar
+            user_memory: Memoria del usuario para actualizar
+            
+        Returns:
+            Dict con información de hashtags detectados y mapeados
+        """
+        try:
+            debug_print(f"🔍 Analizando mensaje para hashtags: '{message_body}'", "_extract_and_map_hashtags")
+            
+            # Inicializar listas en memoria si no existen
+            if user_memory.interests is None:
+                user_memory.interests = []
+            if user_memory.buying_signals is None:
+                user_memory.buying_signals = []
+            
+            hashtags_found = []
+            course_ids_mapped = []
+            message_lower = message_body.lower()
+            
+            # Buscar en el mapeo centralizado de cursos
+            for hashtag in COURSE_HASHTAG_MAPPING.keys():
+                # Buscar tanto con # como sin #
+                for pattern in [f"#{hashtag}", hashtag]:
+                    if pattern.lower() in message_lower:
+                        debug_print(f"📋 Hashtag detectado: {hashtag}", "_extract_and_map_hashtags")
+                        
+                        # Evitar duplicados
+                        if hashtag not in hashtags_found:
+                            hashtags_found.append(hashtag)
+                        
+                        # Mapear a course_id
+                        course_id = get_course_id_from_hashtag(hashtag)
+                        if course_id and course_id not in course_ids_mapped:
+                            course_ids_mapped.append(course_id)
+                        
+                        # 🎯 GUARDAR COURSE_ID EN EL CAMPO CORRECTO: selected_course
+                        if course_id and not user_memory.selected_course:
+                            user_memory.selected_course = course_id
+                            debug_print(f"🎯 Course ID guardado en selected_course: {course_id}", "_extract_and_map_hashtags")
+                        
+                        # Guardar en memoria del usuario (intereses adicionales)
+                        hashtag_interest = f"hashtag:{hashtag}"
+                        if hashtag_interest not in user_memory.interests:
+                            user_memory.interests.append(hashtag_interest)
+                            debug_print(f"💾 Guardado en intereses: {hashtag_interest}", "_extract_and_map_hashtags")
+                        
+                        if course_id:
+                            course_id_interest = f"course_id:{course_id}"
+                            if course_id_interest not in user_memory.interests:
+                                user_memory.interests.append(course_id_interest)
+                                debug_print(f"💾 Guardado course_id en intereses: {course_id_interest}", "_extract_and_map_hashtags")
+                        
+                        # Agregar señal de compra temprana
+                        buying_signal = f"Mensaje inicial con hashtag: {hashtag}"
+                        if buying_signal not in user_memory.buying_signals:
+                            user_memory.buying_signals.append(buying_signal)
+                        
+                        # Solo procesar el primer hashtag encontrado (para evitar sobrecargar)
+                        break
+                
+                # Solo procesar el primer hashtag de curso válido
+                if hashtags_found:
+                    break
+            
+            # Incrementar lead score si se encontraron hashtags
+            if hashtags_found:
+                user_memory.lead_score += 10
+                debug_print(f"📈 Lead score incrementado a {user_memory.lead_score}", "_extract_and_map_hashtags")
+            
+            result = {
+                'hashtags_found': hashtags_found,
+                'course_ids_mapped': course_ids_mapped,
+                'interests_updated': len(hashtags_found) > 0,
+                'buying_signals_added': len(hashtags_found) > 0
+            }
+            
+            debug_print(f"✅ Resultado extracción: {result}", "_extract_and_map_hashtags")
+            return result
+            
+        except Exception as e:
+            debug_print(f"💥 Error extrayendo hashtags: {e}", "_extract_and_map_hashtags")
+            return {
+                'hashtags_found': [],
+                'course_ids_mapped': [],
+                'interests_updated': False,
+                'buying_signals_added': False,
+                'error': str(e)
+            }

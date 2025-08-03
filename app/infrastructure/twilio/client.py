@@ -42,12 +42,17 @@ class TwilioWhatsAppClient:
             debug_print(f"📤 ENVIANDO MENSAJE WHATSAPP\n👤 A: {message.to_number}\n💬 Texto: '{message.body[:100]}{'...' if len(message.body) > 100 else ''}'", "send_message", "twilio_client.py")
             
             # Preparar datos para Twilio
+            # Verificar si el número ya tiene el prefijo whatsapp:
+            to_number = message.to_number
+            if not to_number.startswith('whatsapp:'):
+                to_number = f'whatsapp:{to_number}'
+            
             twilio_data = {
                 'body': message.body,
                 'from_': self.from_number,
-                'to': f'whatsapp:{message.to_number}'
+                'to': to_number
             }
-            debug_print(f"⚙️ Datos preparados para Twilio:\n📞 From: {self.from_number}\n📞 To: whatsapp:{message.to_number}", "send_message", "twilio_client.py")
+            debug_print(f"⚙️ Datos preparados para Twilio:\n📞 From: {self.from_number}\n📞 To: {to_number}", "send_message", "twilio_client.py")
             
             # Agregar multimedia si existe
             if message.media_url:

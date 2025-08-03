@@ -270,7 +270,10 @@ class GenerateIntelligentResponseUseCase:
                 # ⚠️ PROBLEMA: Esta respuesta no tiene información específica del curso
                 # TODO: En el futuro, mejorar el análisis de intención para incluir info de curso
                 debug_print("⚠️ NOTA: Respuesta OpenAI previa puede no tener nombre específico del curso", "_generate_contextual_response")
-                return openai_response.strip()
+                
+                # Limpiar la respuesta de OpenAI para evitar saludos duplicados y ofertas de consulta
+                cleaned_response = self._clean_openai_response(openai_response, user_memory)
+                return cleaned_response
             
             # 2. Obtener información de curso si es relevante
             course_info = None
@@ -336,6 +339,133 @@ class GenerateIntelligentResponseUseCase:
         except Exception as e:
             self.logger.error(f"❌ Error en generación contextual: {e}")
             return WhatsAppMessageTemplates.business_error_fallback()
+    
+    def _clean_openai_response(self, response_text: str, user_memory) -> str:
+        """
+        Limpia la respuesta de OpenAI para evitar saludos duplicados y ofertas de consulta.
+        
+        Args:
+            response_text: Respuesta original de OpenAI
+            user_memory: Memoria del usuario
+            
+        Returns:
+            Respuesta limpia
+        """
+        try:
+            # Obtener el nombre del usuario
+            user_name = user_memory.name if user_memory and user_memory.name else ""
+            
+            # Patrones de saludo a eliminar
+            greeting_patterns = [
+                f"¡Hola, {user_name}!",
+                f"Hola {user_name},",
+                f"¡Hola {user_name}!",
+                f"Hola, {user_name},",
+                f"¡Hola {user_name},",
+                f"Hola {user_name}!",
+                "¡Hola!",
+                "Hola,",
+                "Hola!"
+            ]
+            
+            # Patrones de oferta de consulta a eliminar
+            consultation_patterns = [
+                "Si te parece bien, podríamos explorar cómo empezar a implementar estas soluciones en tu empresa.",
+                "¿Te gustaría programar una consulta para discutir más sobre esto?",
+                "¿Te gustaría programar una consulta para discutir más sobre esto y ver qué pasos podríamos tomar juntos?",
+                "Te invito a agendar una consulta para explorar cómo podemos implementar esta tecnología en tu empresa.",
+                "¿Te gustaría tener una consulta donde podamos identificar oportunidades específicas para tu equipo?",
+                "Te invito a explorar cómo podemos aplicar estas soluciones en tu empresa.",
+                "¿Te gustaría programar una consulta?",
+                "¿Te gustaría agendar una consulta?",
+                "¿Te gustaría tener una consulta?",
+                "Te invito a que exploremos juntos cómo podrías empezar a implementar IA en tu estrategia.",
+                "¿Te gustaría agendar una consulta para analizar tus necesidades específicas?",
+                "¿Te gustaría agendar una consulta para analizar tus necesidades específicas y ver cómo podemos avanzar en esto?",
+                "Te invito a explorar juntos cómo podrías empezar a implementar IA en tu estrategia.",
+                "¿Te gustaría agendar una consulta para analizar tus necesidades?",
+                "¿Te gustaría agendar una consulta para analizar tus necesidades específicas?",
+                "¿Te gustaría agendar una consulta para analizar tus necesidades específicas y ver cómo podemos avanzar?",
+                "Te invito a que exploremos juntos",
+                "¿Te gustaría agendar una consulta",
+                "¿Te gustaría programar una consulta",
+                "¿Te gustaría tener una consulta",
+                "Te invito a agendar",
+                "Te invito a programar",
+                "Te invito a explorar",
+                "¿Te gustaría explorar",
+                "¿Te gustaría analizar",
+                "¿Te gustaría discutir"
+            ]
+            
+            cleaned_response = response_text
+            
+            # Eliminar saludos duplicados
+            for pattern in greeting_patterns:
+                if pattern in cleaned_response:
+                    debug_print(f"🧹 Eliminando saludo: {pattern}", "_clean_openai_response")
+                    cleaned_response = cleaned_response.replace(pattern, "").strip()
+            
+            # Eliminar ofertas de consulta
+            for pattern in consultation_patterns:
+                if pattern in cleaned_response:
+                    debug_print(f"🧹 Eliminando oferta de consulta: {pattern}", "_clean_openai_response")
+                    cleaned_response = cleaned_response.replace(pattern, "").strip()
+            
+            # Limpiar espacios extra y saltos de línea
+            cleaned_response = "\n".join([line.strip() for line in cleaned_response.split("\n") if line.strip()])
+            
+            # Mejorar el formato del mensaje
+            cleaned_response = self._format_message_beautifully(cleaned_response)
+            
+            debug_print(f"✅ Respuesta limpia generada ({len(cleaned_response)} caracteres)", "_clean_openai_response")
+            return cleaned_response
+            
+        except Exception as e:
+            debug_print(f"❌ Error limpiando respuesta OpenAI: {e}", "_clean_openai_response")
+            return response_text
+    
+    def _format_message_beautifully(self, message_text: str) -> str:
+        """
+        Formatea el mensaje para que se vea más bonito y legible.
+        
+        Args:
+            message_text: Mensaje original
+            
+        Returns:
+            Mensaje formateado
+        """
+        try:
+            # Dividir el mensaje en oraciones
+            sentences = message_text.split('. ')
+            
+            # Formatear cada oración
+            formatted_sentences = []
+            for i, sentence in enumerate(sentences):
+                sentence = sentence.strip()
+                if sentence:
+                    # Agregar punto si no lo tiene
+                    if not sentence.endswith('.') and not sentence.endswith('!') and not sentence.endswith('?'):
+                        sentence += '.'
+                    
+                    # Agregar espacios entre oraciones
+                    if i > 0:
+                        formatted_sentences.append(f"\n\n{sentence}")
+                    else:
+                        formatted_sentences.append(sentence)
+            
+            # Unir las oraciones
+            formatted_message = ''.join(formatted_sentences)
+            
+            # Limpiar espacios extra
+            formatted_message = '\n'.join([line.strip() for line in formatted_message.split('\n') if line.strip()])
+            
+            debug_print(f"🎨 Mensaje formateado con {len(formatted_sentences)} oraciones", "_format_message_beautifully")
+            return formatted_message
+            
+        except Exception as e:
+            debug_print(f"❌ Error formateando mensaje: {e}", "_format_message_beautifully")
+            return message_text
 
     def _should_use_ai_generation(self, category: str, message_text: str) -> bool:
         """

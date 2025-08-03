@@ -160,10 +160,11 @@ class ProcessIncomingMessageUseCase:
                             # NO retornar aquí, dejar que continúe con PRIORIDAD 1.7 (welcome flow)
                         elif not privacy_result['in_privacy_flow'] and privacy_result.get('should_continue_normal_flow'):
                             logger.info(f"🔄 Usuario {user_id} no está en flujo privacidad, continuando procesamiento normal")
-                            # Verificar si el flujo de privacidad activó automáticamente el flujo de anuncios
-                            if privacy_result.get('ad_flow_activated') and privacy_result.get('ad_flow_result'):
-                                logger.info(f"🎯 Flujo de anuncios ya activado automáticamente por flujo de privacidad")
-                                ad_result = privacy_result['ad_flow_result']
+                            logger.info(f"🔍 Privacy result: {privacy_result}")
+                            # Verificar si el flujo de privacidad activó automáticamente el flujo de anuncio de curso
+                            if privacy_result.get('course_announcement_activated') and privacy_result.get('course_announcement_result'):
+                                logger.info(f"🎯 Flujo de anuncio de curso ya activado automáticamente por flujo de privacidad")
+                                course_result = privacy_result['course_announcement_result']
                                 return {
                                     'success': True,
                                     'processed': True,
@@ -173,15 +174,16 @@ class ProcessIncomingMessageUseCase:
                                         'message_sid': incoming_message.message_sid
                                     },
                                     'response_sent': True,
-                                    'response_sid': None,
-                                    'response_text': ad_result.get('response_text', ''),
-                                    'processing_type': 'privacy_flow_to_ad_flow',
-                                    'course_id': ad_result.get('course_id'),
-                                    'campaign_name': ad_result.get('campaign_name'),
-                                    'ad_flow_completed': True,
+                                    'response_sid': course_result.get('response_sid'),
+                                    'response_text': course_result.get('response_text', ''),
+                                    'processing_type': 'privacy_flow_to_course_announcement',
+                                    'course_code': course_result.get('course_code'),
+                                    'course_name': course_result.get('course_name'),
+                                    'additional_resources_sent': course_result.get('additional_resources_sent', {}),
                                     'privacy_flow_completed': True
                                 }
-                            # Continuar con procesamiento normal
+                            # Si no se activó el flujo de anuncio de curso, continuar con procesamiento normal
+                            logger.info(f"🔄 Flujo de privacidad completado, continuando con procesamiento normal")
                         else:
                             logger.error(f"❌ Error en flujo de privacidad para {user_id}: {privacy_result}")
                             # Continuar con procesamiento normal como fallback

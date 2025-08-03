@@ -4,12 +4,18 @@ Ejemplo: #CursoIA1 -> Muestra resumen del curso, PDF y imagen
 """
 import logging
 import re
+import asyncio
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+from app.config.campaign_config import (
+    COURSE_HASHTAG_MAPPING, 
+    get_course_id_from_hashtag, 
+    is_course_hashtag
+)
 from memory.lead_memory import LeadMemory
 
 logger = logging.getLogger(__name__)
@@ -28,16 +34,27 @@ class CourseAnnouncementUseCase:
         self.memory_use_case = memory_use_case
         self.twilio_client = twilio_client
         
-        # Mapeo de códigos de curso a IDs de base de datos
-        # TODO: Esto debería venir de la base de datos o configuración
-        self.course_code_mapping = {
+        # Usar mapeo centralizado desde campaign_config.py
+        # Extender con códigos adicionales si es necesario
+        additional_mappings = {
             "#CursoIA1": "curso-ia-basico-001",  # ID del curso en la base de datos
             "#CursoIA2": "curso-ia-intermedio-001",
             "#CursoIA3": "curso-ia-avanzado-001",
-            # Nuevos códigos para curso específico con archivos reales
-            "#Experto_IA_GPT_Gemini": "experto-ia-profesionales-001",
-            "#ADSIM_05": "experto-ia-profesionales-001"  # Mismo curso, diferente código de campaña
         }
+        
+        # Combinar mapeo centralizado con códigos adicionales
+        self.course_code_mapping = {}
+        
+        # Agregar mapeos desde campaign_config.py (con # para compatibilidad)
+        for hashtag, course_id in COURSE_HASHTAG_MAPPING.items():
+            # Agregar tanto con # como sin # para flexibilidad
+            self.course_code_mapping[f"#{hashtag}"] = course_id
+            self.course_code_mapping[hashtag] = course_id
+        
+        # Agregar mapeos adicionales
+        self.course_code_mapping.update(additional_mappings)
+        
+        logger.info(f"📋 Mapeo de códigos de curso cargado: {list(self.course_code_mapping.keys())}")
     
     def should_handle_course_announcement(self, incoming_message: IncomingMessage) -> bool:
         """
@@ -56,6 +73,12 @@ class CourseAnnouncementUseCase:
             for code in self.course_code_mapping.keys():
                 if code.lower() in message_text.lower():
                     logger.info(f"📚 Código de curso detectado: {code}")
+                    return True
+            
+            # También buscar usando el sistema centralizado (sin #)
+            for hashtag in COURSE_HASHTAG_MAPPING.keys():
+                if hashtag.lower() in message_text.lower():
+                    logger.info(f"📚 Hashtag de curso centralizado detectado: {hashtag}")
                     return True
             
             return False
@@ -77,9 +100,15 @@ class CourseAnnouncementUseCase:
         try:
             message_lower = message_text.lower()
             
+            # Buscar en mapeo local primero
             for code in self.course_code_mapping.keys():
                 if code.lower() in message_lower:
                     return code
+            
+            # Buscar en mapeo centralizado (sin #)
+            for hashtag in COURSE_HASHTAG_MAPPING.keys():
+                if hashtag.lower() in message_lower:
+                    return f"#{hashtag}"  # Retornar con # para compatibilidad
             
             return None
             
@@ -391,11 +420,39 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
         try:
             user_memory = self.memory_use_case.get_user_memory(user_id)
             
+            # Inicializar listas si no existen
+            if user_memory.interests is None:
+                user_memory.interests = []
+            if user_memory.buying_signals is None:
+                user_memory.buying_signals = []
+            if user_memory.message_history is None:
+                user_memory.message_history = []
+            
             # Registrar interés en el curso
             if course_info.get('name'):
                 course_name = course_info['name']
                 if course_name not in user_memory.interests:
                     user_memory.interests.append(course_name)
+            
+            # 🆕 GUARDAR HASHTAG ORIGINAL EN LA MEMORIA
+            # Extraer hashtag limpio (sin #) para guardar en memoria
+            hashtag_clean = course_code.replace('#', '')
+            
+            # Guardar el hashtag en el campo original_message_body para rastreo
+            user_memory.original_message_body = course_code
+            
+            # También agregarlo a los intereses como hashtag
+            hashtag_interest = f"hashtag:{hashtag_clean}"
+            if hashtag_interest not in user_memory.interests:
+                user_memory.interests.append(hashtag_interest)
+            
+            # Mapear hashtag a course_id usando sistema centralizado
+            course_id = get_course_id_from_hashtag(hashtag_clean)
+            if course_id:
+                course_id_interest = f"course_id:{course_id}"
+                if course_id_interest not in user_memory.interests:
+                    user_memory.interests.append(course_id_interest)
+                logger.info(f"💾 Hashtag {hashtag_clean} mapeado a course_id {course_id} y guardado en memoria")
             
             # Agregar señal de compra
             buying_signal = f"Solicitó información de {course_code}"
@@ -405,14 +462,13 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Incrementar score por interés específico en curso
             user_memory.lead_score += 15
             
-            # Actualizar contexto - agregar a message_history en lugar de add_context_entry
-            if user_memory.message_history is None:
-                user_memory.message_history = []
-            
+            # Actualizar contexto - agregar a message_history
             user_memory.message_history.append({
                 'timestamp': datetime.now().isoformat(),
                 'action': 'course_request',
                 'course_code': course_code,
+                'hashtag_clean': hashtag_clean,
+                'course_id': course_id,
                 'course_name': course_info.get('name', 'Curso IA'),
                 'description': f"Solicitó información detallada del curso {course_code}: {course_info.get('name', 'Curso IA')}"
             })
@@ -466,6 +522,10 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Enviar imagen (simulado por ahora)
             image_result = await self._send_course_image(user_id, course_info)
             
+            # Esperar 13 segundos para que los archivos se carguen antes de enviar los mensajes de texto
+            logger.info("⏳ Esperando 13 segundos para que los archivos se carguen...")
+            await asyncio.sleep(13)
+            
             # Enviar mensaje de seguimiento
             follow_up_message = self._create_follow_up_message(course_info, user_memory)
             
@@ -476,6 +536,17 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             )
             
             follow_up_result = await self.twilio_client.send_message(follow_up_outgoing)
+            
+            # Enviar mensaje adicional con pregunta sobre qué le parece más interesante
+            engagement_message = "¿Qué te parece más interesante del curso?"
+            
+            engagement_outgoing = OutgoingMessage(
+                to_number=user_id,
+                body=engagement_message,
+                message_type=MessageType.TEXT
+            )
+            
+            engagement_result = await self.twilio_client.send_message(engagement_outgoing)
             
             return {
                 'success': True,
@@ -488,7 +559,8 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 'additional_resources_sent': {
                     'pdf_sent': pdf_result.get('success', False),
                     'image_sent': image_result.get('success', False),
-                    'follow_up_sent': follow_up_result.get('success', False)
+                    'follow_up_sent': follow_up_result.get('success', False),
+                    'engagement_sent': engagement_result.get('success', False)
                 }
             }
             
@@ -770,17 +842,8 @@ Te enviaremos el documento por correo electrónico o puedes solicitarlo directam
                 image_url = None  # Forzar fallback si no hay ngrok
                 logger.info(f"⚠️ NGROK_URL no configurado, usando fallback para imagen")
             
-            # Mensaje acompañando a la imagen
-            image_message = f"""🎯 **ESTRUCTURA VISUAL DEL CURSO**
-
-Esta imagen te muestra de un vistazo:
-
-🧠 **Módulos de aprendizaje** organizados progresivamente
-⚡ **Herramientas prácticas** que dominarás
-📊 **Resultados medibles** que obtendrás
-🚀 **Plan de implementación** semana a semana
-
-*¡La transformación de tu empresa empieza aquí!* ✨"""
+            # Mensaje acompañando a la imagen - solo título en negritas
+            image_message = f"""🎯 **ESTRUCTURA VISUAL DEL CURSO**"""
 
             # Si tenemos URL válida, enviar archivo; si no, usar fallback
             if image_url and image_url.startswith('http'):
@@ -853,9 +916,7 @@ Te enviaremos las imágenes por correo electrónico o las puedes ver directament
                 "• Analiza cómo aplicarías esto en tu empresa específica",
                 "• Si tienes preguntas específicas, escríbeme aquí mismo",
                 "",
-                f"🎯 **Oferta especial:** Reserva tu lugar ahora con solo $97 (resto antes de iniciar)",
-                "",
-                "¿Qué te parece más interesante del curso? ¿Tienes alguna pregunta específica sobre la implementación en tu sector?"
+                f"🎯 **Oferta especial:** Reserva tu lugar ahora con solo $97 (resto antes de iniciar)"
             ]
             
             return "\n".join(follow_up_parts)

@@ -109,6 +109,23 @@ python test_webhook_simulation.py
 # ✅ Message under 1600 character limit
 ```
 
+### Development Workflow
+```bash
+# 1. Basic setup and testing
+python test_webhook_simulation.py  # Test complete system
+python test_whatsapp_connection.py  # Test basic Twilio connection
+
+# 2. Feature-specific testing
+python test_course_announcement_flow.py  # Course announcement system
+python test_purchase_bonus_system.py     # Purchase intent and bonus system
+python test_buyer_persona_matching_improved.py  # Buyer persona detection
+
+# 3. Running the full system
+python run_webhook_server.py      # Production-ready server
+python run_webhook_server_debug.py  # Debug mode with detailed logging
+python run_development.py         # Development mode with auto-reload
+```
+
 ### 🆕 Testing Purchase Bonus System
 ```bash
 # Send purchase intent messages to test bonus activation:
@@ -129,29 +146,28 @@ python test_webhook_simulation.py
 ## Environment Variables Required
 
 ```env
-# Twilio WhatsApp Integration
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token  
-TWILIO_PHONE_NUMBER=your_whatsapp_number
+# === CORE CREDENTIALS (REQUIRED) ===
+TWILIO_ACCOUNT_SID=your_twilio_sid       # From Twilio Console
+TWILIO_AUTH_TOKEN=your_twilio_token      # From Twilio Console
+TWILIO_PHONE_NUMBER=+14155238886         # Your Twilio WhatsApp number
+OPENAI_API_KEY=sk-proj-...               # From OpenAI API keys
 
-# OpenAI Intelligence
-OPENAI_API_KEY=your_openai_key
+# === MULTIMEDIA SUPPORT (REQUIRED for file sending) ===
+NGROK_URL=https://your-ngrok-url.ngrok-free.app  # From ngrok http 8000
 
-# Database (Optional)
-DATABASE_URL=postgresql://...
-SUPABASE_URL=https://...
-SUPABASE_KEY=your_supabase_key
+# === DATABASE (OPTIONAL - system works without it) ===
+DATABASE_URL=postgresql://username:password@host:port/database
+SUPABASE_URL=https://your-ref.supabase.co
+SUPABASE_KEY=your_supabase_anon_key
 
-# ✅ Ngrok for Multimedia (REQUIRED for file sending)
-NGROK_URL=https://your-ngrok-url.ngrok-free.app
+# === APPLICATION SETTINGS ===
+APP_ENVIRONMENT=development              # development|production
+LOG_LEVEL=INFO                          # DEBUG|INFO|WARNING|ERROR
+WEBHOOK_VERIFY_SIGNATURE=true          # Enable/disable signature verification
 
-# Application Settings
-APP_ENVIRONMENT=development
-LOG_LEVEL=INFO
-
-# Advisor Configuration
-ADVISOR_PHONE_NUMBER=+5215614686075
-ADVISOR_NAME=Especialista en IA
+# === ADVISOR CONFIGURATION ===
+ADVISOR_PHONE_NUMBER=+5215614686075     # Phone for advisor referrals
+ADVISOR_NAME=Especialista en IA         # Advisor display name
 ```
 
 ## Message Processing Priority System
@@ -279,16 +295,40 @@ Validates AI responses to prevent hallucinations using:
 - Multimedia requires public URLs (ngrok solution implemented)
 - No inline buttons (text-based interactions only)
 
-### Ngrok Requirements
+### Ngrok Requirements & Troubleshooting
 - **Development**: Ngrok required for multimedia file testing
 - **Production**: Replace with permanent domain solution
 - **Fallback**: System works with text-only if multimedia unavailable
+
+**Common Issues:**
+- If files don't send: Check NGROK_URL in .env matches current ngrok session
+- If webhook fails: Verify ngrok tunnel is active and Twilio webhook URL is updated
+- If slow responses: Check OpenAI API limits and database connection
 
 ### Message Processing
 - Privacy flow is mandatory and always executes first
 - Course announcements have priority over ad flow
 - All flows include comprehensive error handling
 - System maintains conversation context across interactions
+
+## Architecture Notes for Development
+
+### Clean Architecture Implementation
+- **Domain Layer** (`app/domain/`): Business entities and core logic
+- **Application Layer** (`app/application/usecases/`): Business use cases and workflows
+- **Infrastructure Layer** (`app/infrastructure/`): External service integrations (Twilio, OpenAI, Database)
+- **Presentation Layer** (`app/presentation/`): API endpoints and webhook handlers
+
+### Key Design Patterns
+- **Use Case Pattern**: Each business operation is encapsulated in a use case class
+- **Repository Pattern**: Database access abstracted through repository interfaces
+- **Template Pattern**: Message templates separated from business logic
+- **Strategy Pattern**: Different response generation strategies based on context
+
+### Testing Strategy
+- **Integration Tests**: `test_webhook_simulation.py` tests complete message flows
+- **Unit Tests**: Individual use case testing with mocked dependencies
+- **Feature Tests**: Specific functionality like course announcements and purchase flow
 
 ## Legacy Reference
 
