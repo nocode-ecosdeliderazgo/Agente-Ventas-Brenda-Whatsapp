@@ -15,6 +15,7 @@ from app.application.usecases.personalize_response_use_case import PersonalizeRe
 from app.application.usecases.dynamic_course_info_provider import DynamicCourseInfoProvider
 from app.application.usecases.bonus_activation_use_case import BonusActivationUseCase
 from app.application.usecases.purchase_bonus_use_case import PurchaseBonusUseCase
+from app.infrastructure.faq.faq_knowledge_provider import FAQKnowledgeProvider
 from uuid import UUID
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.infrastructure.openai.client import OpenAIClient
@@ -86,6 +87,9 @@ class GenerateIntelligentResponseUseCase:
         self.purchase_bonus_use_case = PurchaseBonusUseCase(
             course_query_use_case, None, twilio_client  # memory_use_case se pasará en execute
         )
+        
+        # Inicializar proveedor de conocimiento FAQ para respuestas inteligentes (NUEVO)
+        self.faq_knowledge_provider = FAQKnowledgeProvider()
         
         self.logger = logging.getLogger(__name__)
     
@@ -204,7 +208,30 @@ class GenerateIntelligentResponseUseCase:
             
             debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
             
-            # 🎁 NUEVA PRIORIDAD: Verificar intención de compra para activar bonos workbook
+            # 🆕 PRIORIDAD MÁXIMA: Verificar si es una FAQ para respuesta inteligente
+            user_context = {
+                'user_role': getattr(user_memory, 'role', '') if user_memory else '',
+                'company_size': getattr(user_memory, 'company_size', '') if user_memory else '',
+                'industry': getattr(user_memory, 'industry', '') if user_memory else '',
+                'name': getattr(user_memory, 'name', 'Usuario') if user_memory else 'Usuario'
+            }
+            
+            faq_context = await self.faq_knowledge_provider.get_faq_context_for_intelligence(
+                incoming_message.body, user_context
+            )
+            
+            if faq_context['is_faq']:
+                debug_print(f"❓ FAQ detectada: {faq_context['category']} - Generando respuesta inteligente", "_generate_contextual_response")
+                
+                # Generar respuesta FAQ inteligente usando OpenAI con contexto
+                faq_response = await self._generate_intelligent_faq_response(
+                    incoming_message.body, faq_context, user_context, intent_analysis
+                )
+                
+                debug_print("✅ Respuesta FAQ inteligente generada", "_generate_contextual_response")
+                return faq_response
+            
+            # 🎁 PRIORIDAD 2: Verificar intención de compra para activar bonos workbook
             if self.purchase_bonus_use_case.should_activate_purchase_bonus(intent_analysis):
                 debug_print("🎁 Intención de compra detectada - Activando bonos workbook", "_generate_contextual_response")
                 
@@ -1775,3 +1802,121 @@ Mientras tanto, te comento que es una inversión única que incluye:
             estimated_monthly_savings = max(3000 if currency == "MXN" else 200, price_numeric // 3)
             months_to_break_even = max(1, round(price_numeric / estimated_monthly_savings, 1))
             return f"**💡 Inversión inteligente:** Recuperas el costo en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'} con automatización de procesos"
+    
+    async def _generate_intelligent_faq_response(
+        self,
+        user_message: str,
+        faq_context: Dict[str, Any],
+        user_context: Dict[str, Any],
+        intent_analysis: Dict[str, Any]
+    ) -> str:
+        """
+        Genera respuesta inteligente y natural para FAQs usando OpenAI con contexto.
+        
+        Args:
+            user_message: Mensaje original del usuario
+            faq_context: Contexto de la FAQ detectada
+            user_context: Contexto del usuario (rol, empresa, etc.)
+            intent_analysis: Análisis de intención del mensaje
+            
+        Returns:
+            Respuesta inteligente y personalizada
+        """
+        try:
+            debug_print(f"🤖 Generando respuesta FAQ inteligente para: {faq_context['category']}", "_generate_intelligent_faq_response")
+            
+            # Construir prompt para respuesta FAQ inteligente
+            system_prompt = f"""Eres Brenda, asistente inteligente de "Aprenda y Aplique IA".
+
+Responde de forma natural, conversacional y personalizada usando EXACTAMENTE la información proporcionada.
+
+INFORMACIÓN DEL USUARIO:
+- Nombre: {user_context.get('name', 'Usuario')}
+- Rol: {user_context.get('user_role', 'No especificado')}
+- Empresa: {user_context.get('company_size', 'No especificada')}
+- Industria: {user_context.get('industry', 'No especificada')}
+
+{faq_context['context_for_ai']}
+
+REGLAS IMPORTANTES:
+1. Usa SOLO la información proporcionada, no inventes datos
+2. Personaliza la respuesta según el rol y contexto del usuario
+3. Mantén un tono profesional pero amigable
+4. Si la FAQ requiere escalación, menciona que un especialista se contactará
+5. No excedas 1600 caracteres para WhatsApp
+6. Usa emojis moderadamente para hacer el mensaje más amigable
+
+Responde de forma natural y conversacional a la pregunta del usuario."""
+
+            user_prompt = f"""Pregunta del usuario: "{user_message}"
+
+Genera una respuesta personalizada, natural y útil usando la información del contexto."""
+
+            # Generar respuesta con OpenAI
+            response = await self.openai_client.generate_completion(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=500,
+                temperature=0.7
+            )
+            
+            if response and response.strip():
+                debug_print("✅ Respuesta FAQ inteligente generada exitosamente", "_generate_intelligent_faq_response")
+                return response.strip()
+            else:
+                debug_print("⚠️ OpenAI no generó respuesta, usando respuesta base", "_generate_intelligent_faq_response")
+                # Fallback a respuesta base personalizada
+                return self._generate_fallback_faq_response(faq_context, user_context)
+                
+        except Exception as e:
+            debug_print(f"❌ Error generando respuesta FAQ inteligente: {e}", "_generate_intelligent_faq_response")
+            # Fallback a respuesta base
+            return self._generate_fallback_faq_response(faq_context, user_context)
+    
+    def _generate_fallback_faq_response(
+        self,
+        faq_context: Dict[str, Any],
+        user_context: Dict[str, Any]
+    ) -> str:
+        """
+        Genera respuesta FAQ de fallback cuando OpenAI no está disponible.
+        
+        Args:
+            faq_context: Contexto de la FAQ
+            user_context: Contexto del usuario
+            
+        Returns:
+            Respuesta FAQ personalizada básica
+        """
+        name = user_context.get('name', 'Usuario')
+        user_role = user_context.get('user_role', '')
+        base_answer = faq_context['base_answer']
+        category = faq_context['category']
+        escalation_needed = faq_context.get('escalation_needed', False)
+        
+        # Personalización básica
+        greeting = f"¡Hola {name}! 😊" if name != 'Usuario' else "¡Hola! 😊"
+        
+        if user_role and 'CEO' in user_role:
+            role_context = "Como líder de tu organización, "
+        elif user_role and ('Manager' in user_role or 'Gerente' in user_role):
+            role_context = "Como gerente, "
+        else:
+            role_context = ""
+        
+        # Construir respuesta personalizada
+        response = f"{greeting}\n\n{role_context}{base_answer}"
+        
+        # Agregar información de escalación si es necesaria
+        if escalation_needed:
+            response += "\n\n👨‍💼 Para darte información más detallada y personalizada, te conectaré con un especialista que se pondrá en contacto contigo muy pronto."
+        
+        # Agregar contexto adicional según categoría
+        if category == 'precio':
+            response += "\n\n💡 ¿Te gustaría que calcule el ROI específico para tu empresa?"
+        elif category == 'implementación':
+            response += "\n\n🚀 ¿Te interesaría ver casos de éxito similares a tu industria?"
+        
+        return response

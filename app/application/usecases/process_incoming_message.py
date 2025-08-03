@@ -15,6 +15,7 @@ from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtag
 from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
 from app.application.usecases.welcome_flow_use_case import WelcomeFlowUseCase
 from app.application.usecases.advisor_referral_use_case import AdvisorReferralUseCase
+from app.application.usecases.faq_flow_use_case import FAQFlowUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,8 @@ class ProcessIncomingMessageUseCase:
         detect_ad_hashtags_use_case: DetectAdHashtagsUseCase = None,
         process_ad_flow_use_case: ProcessAdFlowUseCase = None,
         welcome_flow_use_case: WelcomeFlowUseCase = None,
-        advisor_referral_use_case: AdvisorReferralUseCase = None
+        advisor_referral_use_case: AdvisorReferralUseCase = None,
+        faq_flow_use_case: FAQFlowUseCase = None
     ):
         """
         Inicializa el caso de uso.
@@ -45,6 +47,7 @@ class ProcessIncomingMessageUseCase:
             privacy_flow_use_case: Caso de uso para flujo de privacidad (opcional)
             tool_activation_use_case: Caso de uso para activación de herramientas (opcional)
             course_announcement_use_case: Caso de uso para anuncios de cursos (opcional)
+            faq_flow_use_case: Caso de uso para FAQ (opcional)
         """
         self.twilio_client = twilio_client
         self.memory_use_case = memory_use_case
@@ -56,6 +59,7 @@ class ProcessIncomingMessageUseCase:
         self.process_ad_flow_use_case = process_ad_flow_use_case
         self.welcome_flow_use_case = welcome_flow_use_case
         self.advisor_referral_use_case = advisor_referral_use_case
+        self.faq_flow_use_case = faq_flow_use_case
     
     async def execute(self, webhook_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -432,6 +436,42 @@ class ProcessIncomingMessageUseCase:
                 except Exception as e:
                     logger.error(f"❌ Error en respuesta inteligente, usando fallback: {e}")
                     # Continuar con respuesta básica si falla la inteligente
+            
+            # FALLBACK INTELIGENTE: Verificar si es una FAQ (en caso de que el agente inteligente haya fallado)
+            if self.faq_flow_use_case:
+                try:
+                    user_memory = self.memory_use_case.get_user_memory(user_id)
+                    
+                    # Verificar si el mensaje indica intención de FAQ como fallback
+                    if await self.faq_flow_use_case.detect_faq_intent(incoming_message.body):
+                        logger.info(f"❓ FAQ FALLBACK activado para usuario {user_id}")
+                        
+                        faq_result = await self.faq_flow_use_case.execute(
+                            webhook_data, 
+                            {'id': user_id, 'first_name': getattr(user_memory, 'name', 'Usuario') if user_memory else 'Usuario'}
+                        )
+                        
+                        if faq_result['success'] and faq_result.get('is_faq'):
+                            logger.info(f"✅ FAQ fallback procesada para {user_id} - Categoría: {faq_result.get('faq_category')}")
+                            return {
+                                'success': True,
+                                'processed': True,
+                                'incoming_message': {
+                                    'from': incoming_message.from_number,
+                                    'body': incoming_message.body,
+                                    'message_sid': incoming_message.message_sid
+                                },
+                                'response_sent': True,
+                                'response_sid': None,  # FAQ flow sends message internally
+                                'response_text': faq_result.get('response_text', ''),
+                                'processing_type': 'faq_flow_fallback',
+                                'faq_category': faq_result.get('faq_category'),
+                                'escalation_needed': faq_result.get('escalation_needed', False)
+                            }
+                    
+                except Exception as e:
+                    logger.error(f"❌ Error procesando FAQ fallback: {e}")
+                    # Continuar con fallback básico
             
             # Fallback: Procesamiento básico con memoria
             try:

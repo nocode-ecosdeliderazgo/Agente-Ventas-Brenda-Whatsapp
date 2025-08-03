@@ -34,6 +34,7 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **Database Integration** ✅ **COMPLETAMENTE FUNCIONAL** - 100% datos dinámicos de BD
 - **Intelligent Bonus System** ✅ **COMPLETAMENTE FUNCIONAL** - Bonos contextuales activados
 - **Advisor Referral System** ✅ **COMPLETAMENTE FUNCIONAL** - Referencia automática a asesores
+- **🆕 FAQ System** ✅ **NUEVO - COMPLETAMENTE FUNCIONAL** - Sistema de preguntas frecuentes integrado
 
 ### **🔧 Últimas Mejoras Críticas Implementadas (1 Agosto 2025)**
 - **✅ Purchase Intent Detection**: IMPLEMENTADO - Detección automática de intención de compra
@@ -180,9 +181,11 @@ The system processes messages with the following priority:
 4. **PRIORIDAD 1.7**: Welcome Flow (generic messages)
 5. **PRIORIDAD 1.8**: Advisor Referral (contact requests)
 6. **PRIORIDAD 2**: Intelligent Responses (OpenAI-powered)
+   - **🆕 Intelligent FAQ Handling**: Natural FAQ responses with personalization
    - **🆕 Purchase Intent Detection**: Automatic bonus activation on purchase signals
    - **🆕 Workbook Bonus Activation**: Database-driven bonus offering
-7. **Fallback**: Basic context-aware responses
+7. **FAQ Fallback**: Direct FAQ flow if intelligent agent fails
+8. **Fallback**: Basic context-aware responses
 
 ## Course Announcement System
 
@@ -256,6 +259,28 @@ Validates AI responses to prevent hallucinations using:
 - RFC: AAI210307DEF
 - Uso de CFDI: GO3-Gastos en general
 
+### 🆕 Intelligent FAQ System
+**Dual-layer FAQ handling** with intelligent and fallback responses:
+
+**Primary: Intelligent FAQ (PRIORIDAD 2)**
+- **Natural Responses**: OpenAI generates conversational, personalized answers
+- **FAQ Knowledge Provider**: Contextual information for intelligent responses
+- **Advanced Personalization**: Role-specific, industry-adapted messaging
+- **Escalation Intelligence**: Smart detection of complex questions requiring human expertise
+- **BD Compatibility**: Works with file-based knowledge, ready for database integration
+
+**Fallback: Direct FAQ Flow**
+- **Robust Backup**: Activates if intelligent agent fails
+- **Template-Based**: Structured responses using predefined templates
+- **Guaranteed Response**: Ensures FAQ questions always get answered
+- **10 Predefined FAQs**: Price, duration, implementation, requirements, success cases, ROI, certificate, support, access, guarantee
+
+**System Features:**
+- **Seamless Integration**: Both methods share same FAQ database
+- **Memory Integration**: FAQ history tracking across both systems
+- **Escalation Consistency**: Same escalation rules in both approaches
+- **Future-Ready**: Easy BD integration when database issues are resolved
+
 ## Testing Scripts
 
 ### Core System Tests
@@ -269,6 +294,8 @@ Validates AI responses to prevent hallucinations using:
 - `test_personalization_system.py` - Buyer persona detection
 - `test_course_announcement_flow.py` - Course code processing
 - `test_purchase_bonus_system.py` - 🆕 Purchase intent & workbook bonus activation
+- `test_faq_flow_integration.py` - 🆕 FAQ system integration and detection
+- `test_intelligent_faq_system.py` - 🆕 Intelligent FAQ with knowledge provider and fallback
 
 ## Production Readiness
 
@@ -281,6 +308,7 @@ Validates AI responses to prevent hallucinations using:
 - **Multimedia Support**: Real file sending with ngrok integration
 - **🆕 Purchase Flow**: Complete purchase intent detection with bonus activation
 - **🆕 Banking Integration**: Automatic banking details in purchase responses
+- **🆕 Intelligent FAQ System**: Dual-layer FAQ handling with intelligent responses and robust fallback
 
 ### 🔄 Future Enhancements
 - Custom domain for multimedia (replace ngrok)
