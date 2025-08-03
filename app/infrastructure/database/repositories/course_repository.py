@@ -138,7 +138,7 @@ class CourseRepository:
     async def get_course_bonds(self, course_id: UUID) -> List[Bond]:
         """Obtiene los bonos asociados a un curso."""
         query = """
-            SELECT id_bond, created_at, content, type_bond, id_courses_fk
+            SELECT id_bond, created_at, content, type_bond, id_courses_fk, emisor
             FROM bond
             WHERE id_courses_fk = $1
             ORDER BY created_at DESC
@@ -152,6 +152,10 @@ class CourseRepository:
         except Exception as e:
             logger.error(f"Error obteniendo bonos del curso {course_id}: {e}")
             return []
+    
+    async def get_course_bonuses(self, course_id: UUID) -> List[Bond]:
+        """Alias para get_course_bonds para compatibilidad."""
+        return await self.get_course_bonds(course_id)
     
     async def get_session_activities(self, session_id: UUID) -> List[SessionActivity]:
         """Obtiene las actividades de una sesión."""

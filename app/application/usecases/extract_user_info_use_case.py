@@ -39,37 +39,77 @@ class ExtractUserInfoUseCase:
     def __init__(self, openai_client: OpenAIClient):
         self.openai_client = openai_client
         
-        # Buyer persona patterns for detection
+        # 🆕 Enhanced buyer persona patterns with advanced matching
         self.buyer_persona_patterns = {
             'lucia_copypro': {
-                'keywords': ['marketing', 'campaña', 'contenido', 'social media', 'agencia', 'clientes', 'leads'],
-                'roles': ['marketing manager', 'digital marketing', 'content manager', 'social media manager'],
-                'pain_points': ['crear contenido', 'campañas', 'leads', 'clientes', 'creatividad'],
-                'automation_needs': ['contenido automático', 'campañas', 'reportes', 'análisis']
+                'primary_keywords': ['marketing digital', 'content marketing', 'social media', 'campaigns', 'agencia marketing'],
+                'secondary_keywords': ['marketing', 'campaña', 'contenido', 'creativo', 'diseño', 'clientes', 'leads', 'brand'],
+                'industry_context': ['agencia', 'publicidad', 'comunicación', 'medios', 'creative', 'branding'],
+                'specific_roles': ['marketing manager', 'digital marketing manager', 'content manager', 'social media manager', 
+                                 'creative director', 'brand manager', 'community manager', 'growth marketing'],
+                'pain_indicators': ['crear contenido', 'generar ideas', 'campañas efectivas', 'engagement', 'conversión',
+                                  'crear posts', 'contenido viral', 'creatividad bloqueada', 'tiempo contenido'],
+                'automation_signals': ['automatizar posts', 'generar contenido', 'análisis campañas', 'reportes automáticos',
+                                     'programar publicaciones', 'ideas automáticas', 'copywriting'],
+                'business_context': ['20-100 empleados', 'agencia pequeña', 'freelance', 'marketing team', 'cliente b2b'],
+                'urgency_signals': ['campaña urgente', 'deadline', 'cliente esperando', 'resultados rápidos'],
+                'weight_multipliers': {'primary_keywords': 4, 'specific_roles': 3, 'pain_indicators': 2, 'industry_context': 2}
             },
             'marcos_multitask': {
-                'keywords': ['operaciones', 'procesos', 'eficiencia', 'productividad', 'equipos', 'manufacturar'],
-                'roles': ['operations manager', 'gerente operaciones', 'director operativo', 'jefe producción'],
-                'pain_points': ['procesos manuales', 'eficiencia', 'costos', 'tiempo', 'recursos'],
-                'automation_needs': ['automatizar procesos', 'reportes', 'inventarios', 'calidad']
+                'primary_keywords': ['operaciones', 'procesos empresariales', 'efficiency', 'productividad operativa', 'manufactura'],
+                'secondary_keywords': ['producción', 'calidad', 'inventarios', 'logística', 'cadena suministro', 'equipos'],
+                'industry_context': ['manufactura', 'industrial', 'producción', 'fábrica', 'planta', 'almacén', 'logística'],
+                'specific_roles': ['operations manager', 'gerente de operaciones', 'director operativo', 'jefe de producción',
+                                 'plant manager', 'production manager', 'process improvement', 'lean manager'],
+                'pain_indicators': ['procesos manuales', 'ineficiencias', 'costos operativos', 'tiempo perdido', 'errores humanos',
+                                  'reportes manuales', 'control inventario', 'seguimiento producción'],
+                'automation_signals': ['automatizar procesos', 'streamline operations', 'reportes automáticos', 
+                                     'control automático', 'optimizar workflows', 'reducir manual work'],
+                'business_context': ['50-200 empleados', 'empresa manufacturera', 'pyme industrial', 'planta producción'],
+                'urgency_signals': ['reducir costos ya', 'eficiencia inmediata', 'competencia', 'presión resultados'],
+                'weight_multipliers': {'primary_keywords': 4, 'specific_roles': 3, 'pain_indicators': 3, 'industry_context': 2}
             },
             'sofia_visionaria': {
-                'keywords': ['ceo', 'fundador', 'empresa', 'crecimiento', 'estrategia', 'competencia', 'innovación'],
-                'roles': ['ceo', 'founder', 'director general', 'presidente', 'cofundador'],
-                'pain_points': ['competencia', 'crecimiento', 'innovación', 'costos', 'escalabilidad'],
-                'automation_needs': ['decisiones estratégicas', 'análisis mercado', 'innovación', 'competitividad']
+                'primary_keywords': ['ceo', 'founder', 'director general', 'estrategia empresarial', 'crecimiento empresa'],
+                'secondary_keywords': ['liderazgo', 'visión', 'innovación', 'competitividad', 'escalabilidad', 'transformación'],
+                'industry_context': ['servicios profesionales', 'consultoría', 'tecnología', 'startups', 'scale-up'],
+                'specific_roles': ['ceo', 'chief executive', 'founder', 'co-founder', 'director general', 'presidente',
+                                 'managing director', 'executive director', 'dueño empresa', 'emprendedor'],
+                'pain_indicators': ['competencia feroz', 'crecimiento estancado', 'falta innovación', 'decisiones lentas',
+                                  'escalabilidad limitada', 'dependencia personal', 'ventaja competitiva', 'diferenciación'],
+                'automation_signals': ['decisiones basadas datos', 'análisis estratégico', 'insights mercado',
+                                     'automatizar decisiones', 'inteligencia competitiva', 'predictive analytics'],
+                'business_context': ['30-150 empleados', 'servicios profesionales', 'consultoría', 'b2b services'],
+                'urgency_signals': ['transformación digital urgente', 'competencia avanza', 'oportunidad mercado'],
+                'weight_multipliers': {'primary_keywords': 5, 'specific_roles': 4, 'pain_indicators': 2, 'urgency_signals': 3}
             },
             'ricardo_rh_agil': {
-                'keywords': ['recursos humanos', 'talento', 'capacitación', 'empleados', 'reclutamiento', 'training'],
-                'roles': ['hr manager', 'recursos humanos', 'people operations', 'talent manager', 'rrhh'],
-                'pain_points': ['capacitación', 'talento', 'retención', 'productividad empleados', 'skills'],
-                'automation_needs': ['capacitación automática', 'evaluaciones', 'onboarding', 'desarrollo']
+                'primary_keywords': ['recursos humanos', 'people operations', 'talent management', 'rrhh', 'gestión talento'],
+                'secondary_keywords': ['empleados', 'capacitación', 'training', 'desarrollo', 'reclutamiento', 'onboarding'],
+                'industry_context': ['scale-up', 'tecnología', 'servicios', 'crecimiento rápido', 'startup'],
+                'specific_roles': ['hr manager', 'people operations', 'talent manager', 'hr director', 'chief people officer',
+                                 'learning & development', 'talent acquisition', 'hr business partner'],
+                'pain_indicators': ['retención talento', 'capacitación escalable', 'onboarding lento', 'skills gap',
+                                  'cultura empresa', 'engagement empleados', 'desarrollo profesional'],
+                'automation_signals': ['training automático', 'onboarding digital', 'evaluaciones automáticas',
+                                     'desarrollo personalizado', 'learning paths', 'skill assessment'],
+                'business_context': ['100-300 empleados', 'crecimiento rápido', 'tech company', 'scale-up'],
+                'urgency_signals': ['retención crítica', 'skills shortage', 'crecimiento acelerado', 'talent war'],
+                'weight_multipliers': {'primary_keywords': 4, 'specific_roles': 3, 'pain_indicators': 3, 'urgency_signals': 2}
             },
             'daniel_data_innovador': {
-                'keywords': ['datos', 'análisis', 'business intelligence', 'reportes', 'métricas', 'insights'],
-                'roles': ['data analyst', 'business intelligence', 'innovation manager', 'analista datos'],
-                'pain_points': ['análisis datos', 'reportes', 'insights', 'decisiones basadas datos'],
-                'automation_needs': ['reportes automáticos', 'análisis predictivo', 'dashboards', 'insights']
+                'primary_keywords': ['business intelligence', 'data analysis', 'analytics', 'data science', 'insights'],
+                'secondary_keywords': ['datos', 'métricas', 'reportes', 'dashboards', 'kpis', 'análisis', 'estadísticas'],
+                'industry_context': ['tecnología', 'fintech', 'e-commerce', 'saas', 'digital', 'corporativo'],
+                'specific_roles': ['data analyst', 'business intelligence', 'data scientist', 'analytics manager',
+                                 'insights analyst', 'bi developer', 'data manager', 'innovation analyst'],
+                'pain_indicators': ['datos dispersos', 'reportes manuales', 'falta insights', 'decisiones sin datos',
+                                  'análisis lento', 'dashboards estáticos', 'datos no confiables'],
+                'automation_signals': ['reportes automáticos', 'análisis predictivo', 'ai insights', 'automated dashboards',
+                                     'data pipelines', 'machine learning', 'predictive models'],
+                'business_context': ['200+ empleados', 'data-driven', 'tecnología', 'corporativo', 'digital transformation'],
+                'urgency_signals': ['competitive intelligence', 'data-driven decisions', 'real-time insights'],
+                'weight_multipliers': {'primary_keywords': 4, 'specific_roles': 3, 'pain_indicators': 2, 'automation_signals': 3}
             }
         }
         
@@ -180,14 +220,42 @@ Extrae la siguiente información y responde en formato JSON:
 9. decision_making_power: influencer, decision_maker, budget_holder
 10. buyer_persona_match: lucia_copypro, marcos_multitask, sofia_visionaria, ricardo_rh_agil, daniel_data_innovador, unknown
 
-BUYER PERSONAS DE REFERENCIA:
-- lucia_copypro: Marketing Digital Manager (Agencies)
-- marcos_multitask: Operations Manager (Manufacturing PyMEs)
-- sofia_visionaria: CEO/Founder (Professional Services)
-- ricardo_rh_agil: Head of Talent & Learning (Scale-ups)
-- daniel_data_innovador: Senior Innovation/BI Analyst (Corporates)
+🎯 BUYER PERSONAS ESPECÍFICOS (prioriza exactitud sobre generalización):
 
-Responde solo con JSON válido, sin explicaciones adicionales.
+**lucia_copypro** - Marketing Digital Manager (20-100 empleados)
+• Keywords clave: "marketing digital", "content marketing", "social media", "campaigns", "agencia"
+• Roles específicos: marketing manager, content manager, social media manager, creative director
+• Pain points: crear contenido, generar ideas, campañas efectivas, engagement, conversión
+• Contexto: agencias, publicidad, medios, creative, branding
+
+**marcos_multitask** - Operations Manager (50-200 empleados)  
+• Keywords clave: "operaciones", "procesos empresariales", "efficiency", "productividad operativa", "manufactura"
+• Roles específicos: operations manager, gerente de operaciones, director operativo, plant manager
+• Pain points: procesos manuales, ineficiencias, costos operativos, reportes manuales
+• Contexto: manufactura, industrial, producción, fábrica, logística
+
+**sofia_visionaria** - CEO/Founder (30-150 empleados)
+• Keywords clave: "ceo", "founder", "director general", "estrategia empresarial", "crecimiento empresa"
+• Roles específicos: ceo, founder, director general, managing director, dueño empresa
+• Pain points: competencia feroz, crecimiento estancado, falta innovación, escalabilidad
+• Contexto: servicios profesionales, consultoría, startups, scale-up
+
+**ricardo_rh_agil** - Head of Talent (100-300 empleados)
+• Keywords clave: "recursos humanos", "people operations", "talent management", "rrhh"
+• Roles específicos: hr manager, people operations, talent manager, chief people officer
+• Pain points: retención talento, capacitación escalable, skills gap, engagement empleados
+• Contexto: scale-up, tecnología, crecimiento rápido, startup
+
+**daniel_data_innovador** - BI/Data Analyst (200+ empleados)
+• Keywords clave: "business intelligence", "data analysis", "analytics", "data science"
+• Roles específicos: data analyst, business intelligence, data scientist, analytics manager
+• Pain points: datos dispersos, reportes manuales, falta insights, decisiones sin datos
+• Contexto: tecnología, fintech, corporativo, digital transformation
+
+⚠️ CRITERIOS ESTRICTOS: Solo asignar buyer_persona_match si hay evidencia CLARA y ESPECÍFICA. 
+Si hay dudas, usar "unknown". Mejor precisión que recall.
+
+Responde SOLO con JSON válido, sin markdown ni explicaciones.
 """
 
         try:
@@ -222,39 +290,115 @@ Responde solo con JSON válido, sin explicaciones adicionales.
             return UserInsights()
 
     def _enhance_with_patterns(self, insights: UserInsights, conversation_text: str) -> UserInsights:
-        """Enhances AI insights with pattern-based detection"""
+        """🆕 Enhanced AI insights with advanced pattern-based detection"""
         
         text_lower = conversation_text.lower()
         
-        # Enhance buyer persona detection
+        # Enhance buyer persona detection with advanced scoring
         if insights.buyer_persona_match == 'unknown':
             persona_scores = {}
+            persona_details = {}
             
             for persona, patterns in self.buyer_persona_patterns.items():
-                score = 0
+                score = 0.0
+                matches = {'categories': [], 'total_matches': 0}
                 
-                # Check keywords
-                for keyword in patterns['keywords']:
-                    if keyword in text_lower:
-                        score += 2
+                # Weight multipliers for different categories
+                multipliers = patterns.get('weight_multipliers', {})
                 
-                # Check roles
-                for role in patterns['roles']:
-                    if role in text_lower:
-                        score += 3
+                # Check primary keywords (highest weight)
+                primary_matches = [kw for kw in patterns.get('primary_keywords', []) if kw in text_lower]
+                if primary_matches:
+                    weight = multipliers.get('primary_keywords', 4)
+                    score += len(primary_matches) * weight
+                    matches['categories'].append(f"primary_keywords({len(primary_matches)})")
+                    matches['total_matches'] += len(primary_matches)
                 
-                # Check pain points
-                for pain in patterns['pain_points']:
-                    if pain in text_lower:
-                        score += 1
+                # Check specific roles (high weight)
+                role_matches = [role for role in patterns.get('specific_roles', []) if role in text_lower]
+                if role_matches:
+                    weight = multipliers.get('specific_roles', 3)
+                    score += len(role_matches) * weight
+                    matches['categories'].append(f"specific_roles({len(role_matches)})")
+                    matches['total_matches'] += len(role_matches)
+                
+                # Check industry context
+                industry_matches = [ctx for ctx in patterns.get('industry_context', []) if ctx in text_lower]
+                if industry_matches:
+                    weight = multipliers.get('industry_context', 2)
+                    score += len(industry_matches) * weight
+                    matches['categories'].append(f"industry_context({len(industry_matches)})")
+                    matches['total_matches'] += len(industry_matches)
+                
+                # Check pain indicators
+                pain_matches = [pain for pain in patterns.get('pain_indicators', []) if pain in text_lower]
+                if pain_matches:
+                    weight = multipliers.get('pain_indicators', 2)
+                    score += len(pain_matches) * weight
+                    matches['categories'].append(f"pain_indicators({len(pain_matches)})")
+                    matches['total_matches'] += len(pain_matches)
+                
+                # Check automation signals
+                automation_matches = [sig for sig in patterns.get('automation_signals', []) if sig in text_lower]
+                if automation_matches:
+                    weight = multipliers.get('automation_signals', 2)
+                    score += len(automation_matches) * weight
+                    matches['categories'].append(f"automation_signals({len(automation_matches)})")
+                    matches['total_matches'] += len(automation_matches)
+                
+                # Check business context
+                business_matches = [ctx for ctx in patterns.get('business_context', []) if ctx in text_lower]
+                if business_matches:
+                    weight = multipliers.get('business_context', 1)
+                    score += len(business_matches) * weight
+                    matches['categories'].append(f"business_context({len(business_matches)})")
+                    matches['total_matches'] += len(business_matches)
+                
+                # Check urgency signals (bonus multiplier)
+                urgency_matches = [sig for sig in patterns.get('urgency_signals', []) if sig in text_lower]
+                if urgency_matches:
+                    weight = multipliers.get('urgency_signals', 2)
+                    score += len(urgency_matches) * weight
+                    matches['categories'].append(f"urgency_signals({len(urgency_matches)})")
+                    matches['total_matches'] += len(urgency_matches)
+                
+                # Check secondary keywords (lower weight)
+                secondary_matches = [kw for kw in patterns.get('secondary_keywords', []) if kw in text_lower]
+                if secondary_matches:
+                    weight = multipliers.get('secondary_keywords', 1)
+                    score += len(secondary_matches) * weight
+                    matches['categories'].append(f"secondary_keywords({len(secondary_matches)})")
+                    matches['total_matches'] += len(secondary_matches)
+                
+                # Apply contextual bonuses
+                if matches['total_matches'] >= 3:  # Multiple category matches
+                    score *= 1.2  # 20% bonus
+                
+                if len(matches['categories']) >= 3:  # Diverse category matches
+                    score *= 1.1  # 10% bonus
                 
                 persona_scores[persona] = score
+                persona_details[persona] = matches
             
-            # Select highest scoring persona
+            # Select highest scoring persona with improved threshold
             if persona_scores:
                 best_persona = max(persona_scores, key=persona_scores.get)
-                if persona_scores[best_persona] >= 3:  # Minimum confidence threshold
+                best_score = persona_scores[best_persona]
+                
+                # Dynamic threshold based on match quality
+                min_threshold = 6.0  # Minimum score required
+                confidence_threshold = 8.0  # High confidence score
+                
+                if best_score >= min_threshold:
                     insights.buyer_persona_match = best_persona
+                    
+                    # Log matching details for debugging
+                    matches_info = persona_details[best_persona]
+                    logger.info(f"🎯 Buyer persona match: {best_persona} (score: {best_score:.1f})")
+                    logger.info(f"   Matches: {', '.join(matches_info['categories'])}")
+                    logger.info(f"   Confidence: {'HIGH' if best_score >= confidence_threshold else 'MEDIUM'}")
+                else:
+                    logger.info(f"🤔 No strong buyer persona match (best: {best_persona} with {best_score:.1f}, need {min_threshold})")
         
         # Enhance company size detection
         if insights.company_size == 'unknown':
