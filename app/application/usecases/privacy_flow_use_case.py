@@ -608,44 +608,33 @@ class PrivacyFlowUseCase:
         self.memory_use_case.start_sales_agent_flow(user_id)
         debug_print("🤖 Flujo de agente de ventas iniciado", "_complete_role_collection")
         
-        # Verificar si el mensaje original tenía hashtags de anuncio
-        ad_flow_activated = False
+        # Verificar si el mensaje original tenía códigos de curso específicos
+        course_announcement_activated = False
         if original_message:
             try:
-                from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
-                from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
+                from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
                 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
                 
-                # Crear instancias temporales para verificar hashtags
-                detect_hashtags = DetectAdHashtagsUseCase()
-                hashtags_info = await detect_hashtags.execute(original_message.body)
+                # Crear instancia temporal para verificar códigos de curso
+                course_query_use_case = QueryCourseInformationUseCase()
+                course_announcement = CourseAnnouncementUseCase(
+                    course_query_use_case=course_query_use_case,
+                    memory_use_case=self.memory_use_case,
+                    twilio_client=self.twilio_client
+                )
                 
-                if hashtags_info.get('has_course_hashtag'):
-                    debug_print(f"🎯 Detectados hashtags de anuncio en mensaje original: {hashtags_info}", "_complete_role_collection")
+                # Verificar si el mensaje original contiene códigos de curso
+                if course_announcement.should_handle_course_announcement(original_message):
+                    debug_print(f"🎯 Detectado código de curso en mensaje original: {original_message.body}", "_complete_role_collection")
                     
-                    # Procesar flujo de anuncios automáticamente
-                    course_query_use_case = QueryCourseInformationUseCase()
-                    process_ad = ProcessAdFlowUseCase(
-                        self.memory_use_case,
-                        self.twilio_client,
-                        course_query_use_case
+                    # Procesar flujo de anuncio de curso automáticamente
+                    course_announcement_result = await course_announcement.handle_course_announcement(
+                        user_id, original_message
                     )
                     
-                    webhook_data = {
-                        'From': original_message.from_number,
-                        'Body': original_message.body,
-                        'MessageSid': original_message.message_sid
-                    }
-                    
-                    ad_flow_result = await process_ad.execute(
-                        webhook_data,
-                        {'id': user_id, 'first_name': updated_memory.name},
-                        hashtags_info
-                    )
-                    
-                    if ad_flow_result['success'] and ad_flow_result['ad_flow_completed']:
-                        debug_print("✅ Flujo de anuncios activado automáticamente después de privacidad", "_complete_role_collection")
-                        ad_flow_activated = True
+                    if course_announcement_result['success']:
+                        debug_print("✅ Flujo de anuncio de curso activado automáticamente después de privacidad", "_complete_role_collection")
+                        course_announcement_activated = True
                         return {
                             'success': True,
                             'in_privacy_flow': False,
@@ -655,17 +644,18 @@ class PrivacyFlowUseCase:
                             'ready_for_sales_agent': True,
                             'message_sent': True,
                             'flow_completed': True,
-                            'ad_flow_activated': True,
-                            'ad_flow_result': ad_flow_result
+                            'course_announcement_activated': True,
+                            'course_announcement_result': course_announcement_result,
+                            'should_continue_normal_flow': False  # NO continuar con procesamiento normal
                         }
                     else:
-                        debug_print(f"⚠️ Error activando flujo de anuncios: {ad_flow_result}", "_complete_role_collection")
+                        debug_print(f"⚠️ Error activando flujo de anuncio de curso: {course_announcement_result}", "_complete_role_collection")
                         
             except Exception as e:
-                debug_print(f"❌ Error verificando hashtags de anuncio: {e}", "_complete_role_collection")
+                debug_print(f"❌ Error verificando códigos de curso: {e}", "_complete_role_collection")
         
-        # Si no se activó el flujo de anuncios, activar automáticamente el flujo de bienvenida
-        if not ad_flow_activated:
+        # Si no se activó el flujo de anuncio de curso, activar automáticamente el flujo de bienvenida
+        if not course_announcement_activated:
             debug_print("✅ Flujo de privacidad completado, activando automáticamente flujo de bienvenida", "_complete_role_collection")
             return {
                 'success': True,
@@ -676,7 +666,7 @@ class PrivacyFlowUseCase:
                 'ready_for_sales_agent': True,
                 'message_sent': False,  # NO enviar mensaje aquí
                 'flow_completed': True,
-                'should_continue_normal_flow': True,  # Indicar que debe continuar con las siguientes prioridades
+                'should_continue_normal_flow': True,  # Continuar con procesamiento normal
                 'trigger_welcome_flow': True  # TRIGGER para activar flujo de bienvenida automáticamente
             }
         
