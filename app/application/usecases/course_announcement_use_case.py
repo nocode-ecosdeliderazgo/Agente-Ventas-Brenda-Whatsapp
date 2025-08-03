@@ -11,6 +11,11 @@ from typing import Optional, Dict, Any, Tuple
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+from app.config.campaign_config import (
+    COURSE_HASHTAG_MAPPING, 
+    get_course_id_from_hashtag, 
+    is_course_hashtag
+)
 from memory.lead_memory import LeadMemory
 
 logger = logging.getLogger(__name__)
@@ -29,16 +34,27 @@ class CourseAnnouncementUseCase:
         self.memory_use_case = memory_use_case
         self.twilio_client = twilio_client
         
-        # Mapeo de códigos de curso a IDs de base de datos
-        # TODO: Esto debería venir de la base de datos o configuración
-        self.course_code_mapping = {
+        # Usar mapeo centralizado desde campaign_config.py
+        # Extender con códigos adicionales si es necesario
+        additional_mappings = {
             "#CursoIA1": "curso-ia-basico-001",  # ID del curso en la base de datos
             "#CursoIA2": "curso-ia-intermedio-001",
             "#CursoIA3": "curso-ia-avanzado-001",
-            # Nuevos códigos para curso específico con archivos reales
-            "#Experto_IA_GPT_Gemini": "experto-ia-profesionales-001",
-            "#ADSIM_05": "experto-ia-profesionales-001"  # Mismo curso, diferente código de campaña
         }
+        
+        # Combinar mapeo centralizado con códigos adicionales
+        self.course_code_mapping = {}
+        
+        # Agregar mapeos desde campaign_config.py (con # para compatibilidad)
+        for hashtag, course_id in COURSE_HASHTAG_MAPPING.items():
+            # Agregar tanto con # como sin # para flexibilidad
+            self.course_code_mapping[f"#{hashtag}"] = course_id
+            self.course_code_mapping[hashtag] = course_id
+        
+        # Agregar mapeos adicionales
+        self.course_code_mapping.update(additional_mappings)
+        
+        logger.info(f"📋 Mapeo de códigos de curso cargado: {list(self.course_code_mapping.keys())}")
     
     def should_handle_course_announcement(self, incoming_message: IncomingMessage) -> bool:
         """
@@ -57,6 +73,12 @@ class CourseAnnouncementUseCase:
             for code in self.course_code_mapping.keys():
                 if code.lower() in message_text.lower():
                     logger.info(f"📚 Código de curso detectado: {code}")
+                    return True
+            
+            # También buscar usando el sistema centralizado (sin #)
+            for hashtag in COURSE_HASHTAG_MAPPING.keys():
+                if hashtag.lower() in message_text.lower():
+                    logger.info(f"📚 Hashtag de curso centralizado detectado: {hashtag}")
                     return True
             
             return False
@@ -78,9 +100,15 @@ class CourseAnnouncementUseCase:
         try:
             message_lower = message_text.lower()
             
+            # Buscar en mapeo local primero
             for code in self.course_code_mapping.keys():
                 if code.lower() in message_lower:
                     return code
+            
+            # Buscar en mapeo centralizado (sin #)
+            for hashtag in COURSE_HASHTAG_MAPPING.keys():
+                if hashtag.lower() in message_lower:
+                    return f"#{hashtag}"  # Retornar con # para compatibilidad
             
             return None
             
@@ -406,6 +434,26 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 if course_name not in user_memory.interests:
                     user_memory.interests.append(course_name)
             
+            # 🆕 GUARDAR HASHTAG ORIGINAL EN LA MEMORIA
+            # Extraer hashtag limpio (sin #) para guardar en memoria
+            hashtag_clean = course_code.replace('#', '')
+            
+            # Guardar el hashtag en el campo original_message_body para rastreo
+            user_memory.original_message_body = course_code
+            
+            # También agregarlo a los intereses como hashtag
+            hashtag_interest = f"hashtag:{hashtag_clean}"
+            if hashtag_interest not in user_memory.interests:
+                user_memory.interests.append(hashtag_interest)
+            
+            # Mapear hashtag a course_id usando sistema centralizado
+            course_id = get_course_id_from_hashtag(hashtag_clean)
+            if course_id:
+                course_id_interest = f"course_id:{course_id}"
+                if course_id_interest not in user_memory.interests:
+                    user_memory.interests.append(course_id_interest)
+                logger.info(f"💾 Hashtag {hashtag_clean} mapeado a course_id {course_id} y guardado en memoria")
+            
             # Agregar señal de compra
             buying_signal = f"Solicitó información de {course_code}"
             if buying_signal not in user_memory.buying_signals:
@@ -419,6 +467,8 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 'timestamp': datetime.now().isoformat(),
                 'action': 'course_request',
                 'course_code': course_code,
+                'hashtag_clean': hashtag_clean,
+                'course_id': course_id,
                 'course_name': course_info.get('name', 'Curso IA'),
                 'description': f"Solicitó información detallada del curso {course_code}: {course_info.get('name', 'Curso IA')}"
             })

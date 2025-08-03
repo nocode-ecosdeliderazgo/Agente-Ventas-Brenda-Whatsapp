@@ -10,6 +10,11 @@ from app.domain.entities.message import IncomingMessage, OutgoingMessage, Messag
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.templates.privacy_flow_templates import PrivacyFlowTemplates
+from app.config.campaign_config import (
+    COURSE_HASHTAG_MAPPING, 
+    get_course_id_from_hashtag, 
+    is_course_hashtag
+)
 from memory.lead_memory import LeadMemory
 
 logger = logging.getLogger(__name__)
@@ -142,6 +147,12 @@ class PrivacyFlowUseCase:
             # Almacenar mensaje original en memoria para verificar hashtags después
             user_memory.original_message_body = incoming_message.body
             user_memory.original_message_sid = incoming_message.message_sid
+            
+            # 🆕 EXTRAER Y MAPEAR HASHTAGS INMEDIATAMENTE desde el primer mensaje
+            hashtags_detected = self._extract_and_map_hashtags(incoming_message.body, user_memory)
+            if hashtags_detected:
+                debug_print(f"📋 Hashtags detectados y mapeados: {hashtags_detected}", "_initiate_privacy_flow")
+            
             self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
             
             # Iniciar flujo de privacidad
@@ -776,3 +787,98 @@ Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector esp
         return (
             user_memory.is_first_interaction() and user_memory.needs_privacy_flow()
         ) or user_memory.waiting_for_response in ["privacy_acceptance", "user_name", "user_role"]
+    
+    def _extract_and_map_hashtags(self, message_body: str, user_memory: LeadMemory) -> Dict[str, Any]:
+        """
+        Extrae hashtags del mensaje y los mapea a course_ids usando el sistema centralizado.
+        Guarda la información en la memoria del usuario inmediatamente.
+        
+        Args:
+            message_body: Cuerpo del mensaje a analizar
+            user_memory: Memoria del usuario para actualizar
+            
+        Returns:
+            Dict con información de hashtags detectados y mapeados
+        """
+        try:
+            debug_print(f"🔍 Analizando mensaje para hashtags: '{message_body}'", "_extract_and_map_hashtags")
+            
+            # Inicializar listas en memoria si no existen
+            if user_memory.interests is None:
+                user_memory.interests = []
+            if user_memory.buying_signals is None:
+                user_memory.buying_signals = []
+            
+            hashtags_found = []
+            course_ids_mapped = []
+            message_lower = message_body.lower()
+            
+            # Buscar en el mapeo centralizado de cursos
+            for hashtag in COURSE_HASHTAG_MAPPING.keys():
+                # Buscar tanto con # como sin #
+                for pattern in [f"#{hashtag}", hashtag]:
+                    if pattern.lower() in message_lower:
+                        debug_print(f"📋 Hashtag detectado: {hashtag}", "_extract_and_map_hashtags")
+                        
+                        # Evitar duplicados
+                        if hashtag not in hashtags_found:
+                            hashtags_found.append(hashtag)
+                        
+                        # Mapear a course_id
+                        course_id = get_course_id_from_hashtag(hashtag)
+                        if course_id and course_id not in course_ids_mapped:
+                            course_ids_mapped.append(course_id)
+                        
+                        # 🎯 GUARDAR COURSE_ID EN EL CAMPO CORRECTO: selected_course
+                        if course_id and not user_memory.selected_course:
+                            user_memory.selected_course = course_id
+                            debug_print(f"🎯 Course ID guardado en selected_course: {course_id}", "_extract_and_map_hashtags")
+                        
+                        # Guardar en memoria del usuario (intereses adicionales)
+                        hashtag_interest = f"hashtag:{hashtag}"
+                        if hashtag_interest not in user_memory.interests:
+                            user_memory.interests.append(hashtag_interest)
+                            debug_print(f"💾 Guardado en intereses: {hashtag_interest}", "_extract_and_map_hashtags")
+                        
+                        if course_id:
+                            course_id_interest = f"course_id:{course_id}"
+                            if course_id_interest not in user_memory.interests:
+                                user_memory.interests.append(course_id_interest)
+                                debug_print(f"💾 Guardado course_id en intereses: {course_id_interest}", "_extract_and_map_hashtags")
+                        
+                        # Agregar señal de compra temprana
+                        buying_signal = f"Mensaje inicial con hashtag: {hashtag}"
+                        if buying_signal not in user_memory.buying_signals:
+                            user_memory.buying_signals.append(buying_signal)
+                        
+                        # Solo procesar el primer hashtag encontrado (para evitar sobrecargar)
+                        break
+                
+                # Solo procesar el primer hashtag de curso válido
+                if hashtags_found:
+                    break
+            
+            # Incrementar lead score si se encontraron hashtags
+            if hashtags_found:
+                user_memory.lead_score += 10
+                debug_print(f"📈 Lead score incrementado a {user_memory.lead_score}", "_extract_and_map_hashtags")
+            
+            result = {
+                'hashtags_found': hashtags_found,
+                'course_ids_mapped': course_ids_mapped,
+                'interests_updated': len(hashtags_found) > 0,
+                'buying_signals_added': len(hashtags_found) > 0
+            }
+            
+            debug_print(f"✅ Resultado extracción: {result}", "_extract_and_map_hashtags")
+            return result
+            
+        except Exception as e:
+            debug_print(f"💥 Error extrayendo hashtags: {e}", "_extract_and_map_hashtags")
+            return {
+                'hashtags_found': [],
+                'course_ids_mapped': [],
+                'interests_updated': False,
+                'buying_signals_added': False,
+                'error': str(e)
+            }
