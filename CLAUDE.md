@@ -36,7 +36,7 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **Advisor Referral System** ✅ **COMPLETAMENTE FUNCIONAL** - Referencia automática a asesores
 - **🆕 FAQ System** ✅ **NUEVO - COMPLETAMENTE FUNCIONAL** - Sistema de preguntas frecuentes integrado
 
-### **🔧 Últimas Mejoras Críticas Implementadas (3 Agosto 2025)**
+### **🔧 Últimas Mejoras Críticas Implementadas (4 Agosto 2025)**
 - **✅ Purchase Intent Detection**: IMPLEMENTADO - Detección automática de intención de compra
 - **✅ Workbook Bonus Activation**: IMPLEMENTADO - Bonos workbook desde base de datos por compra
 - **✅ Banking Information**: IMPLEMENTADO - Datos bancarios automáticos en respuestas de compra
@@ -45,7 +45,9 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **✅ Twilio Character Limit**: RESUELTO - Mensajes optimizados bajo 1600 caracteres
 - **✅ Processing Priority**: RESUELTO - Course Announcement tiene prioridad sobre Ad Flow
 - **✅ Ngrok Integration**: IMPLEMENTADO - URLs públicas para multimedia con fallback automático
-- **🆕 Concise Specific Responses**: IMPLEMENTADO - Respuestas concisas para consultas específicas con datos de BD
+- **✅ Concise Specific Responses**: IMPLEMENTADO - Respuestas concisas para consultas específicas con datos de BD
+- **🆕 Enhanced FAQ System**: IMPLEMENTADO - 13 FAQs expandidas con información detallada ($2,990 MXN)
+- **🆕 Conversational Tone Improvement**: IMPLEMENTADO - Eliminadas frases empáticas repetitivas, tono más dinámico
 
 ## Current Architecture
 
@@ -219,9 +221,10 @@ The system processes messages with the following priority:
 4. **PRIORIDAD 1.7**: Welcome Flow (generic messages)
 5. **PRIORIDAD 1.8**: Advisor Referral (contact requests)
 6. **PRIORIDAD 2**: Intelligent Responses (OpenAI-powered)
-   - **🆕 Intelligent FAQ Handling**: Natural FAQ responses with personalization
-   - **🆕 Purchase Intent Detection**: Automatic bonus activation on purchase signals
-   - **🆕 Workbook Bonus Activation**: Database-driven bonus offering
+   - **✅ Enhanced Intelligent FAQ Handling**: Natural FAQ responses (13 expanded FAQs) with improved conversational tone
+   - **✅ Concise Specific Responses**: Direct answers for price/session/duration inquiries from database
+   - **✅ Purchase Intent Detection**: Automatic bonus activation on purchase signals
+   - **✅ Workbook Bonus Activation**: Database-driven bonus offering
 7. **FAQ Fallback**: Direct FAQ flow if intelligent agent fails
 8. **Fallback**: Basic context-aware responses
 
@@ -416,6 +419,6 @@ The `legacy/` folder contains the complete Telegram implementation with 35+ conv
 
 ---
 
-**Current Status**: ✅ **PRODUCTION READY** - Complete purchase bonus system with banking integration + Concise specific responses
-**Last Updated**: August 3, 2025
-**Version**: 2.2 - Concise Specific Response System with Database Integration
+**Current Status**: ✅ **PRODUCTION READY** - Enhanced FAQ system + Improved conversational tone + Concise specific responses
+**Last Updated**: August 4, 2025
+**Version**: 2.3 - Enhanced FAQ System with Improved Conversational Tone
