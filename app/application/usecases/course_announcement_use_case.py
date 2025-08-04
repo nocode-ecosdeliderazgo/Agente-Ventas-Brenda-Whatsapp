@@ -20,6 +20,75 @@ from memory.lead_memory import LeadMemory
 
 logger = logging.getLogger(__name__)
 
+# 🎯 Gatillos genéricos que deben activar el flujo de anuncio de curso por defecto
+# 🎯 Gatillos que activan el anuncio del curso
+GREETING_TRIGGERS = [
+    # saludos
+    "hola", "Hola", "HOLA",
+    "buenos dias", "Buenos dias", "BUENOS DIAS",
+    "buenas", "Buenas", "BUENAS",
+    "buenas tardes", "Buenas tardes", "BUENAS TARDES",
+    "buenas noches", "Buenas noches", "BUENAS NOCHES",
+
+    # solicitudes genéricas
+    "info", "Info", "INFO",
+    "informacion", "Informacion", "INFORMACION",
+    "información", "Información", "INFORMACIÓN",
+    "me das informacion", "Me das informacion", "ME DAS INFORMACION",
+    "me das información", "Me das información", "ME DAS INFORMACIÓN",
+    "quiero informacion", "Quiero informacion", "QUIERO INFORMACION",
+    "quiero información", "Quiero información", "QUIERO INFORMACIÓN",
+    "dame info", "Dame info", "DAME INFO",
+    "dame información", "Dame información", "DAME INFORMACIÓN",
+    "mas info", "Mas info", "MAS INFO",
+    "más info", "Más info", "MÁS INFO",
+    "quiero saber mas", "Quiero saber mas", "QUIERO SABER MAS",
+    "quiero saber más", "Quiero saber más", "QUIERO SABER MÁS",
+    "que cursos tienes", "Que cursos tienes", "QUE CURSOS TIENES",
+    "qué cursos tienes", "Qué cursos tienes", "QUÉ CURSOS TIENES",
+
+    # palabras clave del curso
+    "curso", "Curso", "CURSO",
+    "cursos", "Cursos", "CURSOS",
+    "curso ia", "Curso ia", "CURSO IA",
+    "curso de ia", "Curso de ia", "CURSO DE IA",
+    "curso inteligencia artificial", "Curso inteligencia artificial", "CURSO INTELIGENCIA ARTIFICIAL",
+    "temario", "Temario", "TEMARIO",
+    "programa", "Programa", "PROGRAMA",
+    "syllabus", "Syllabus", "SYLLABUS",
+
+    # precio e inscripción
+    "precio", "Precio", "PRECIO",
+    "coste", "Coste", "COSTE",
+    "costo", "Costo", "COSTO",
+    "valor", "Valor", "VALOR",
+    "cuanto cuesta", "Cuanto cuesta", "CUANTO CUESTA",
+    "cuánto cuesta", "Cuánto cuesta", "CUÁNTO CUESTA",
+    "inversion", "Inversion", "INVERSION",
+    "inversión", "Inversión", "INVERSIÓN",
+    "inscripcion", "Inscripcion", "INSCRIPCION",
+    "inscripción", "Inscripción", "INSCRIPCIÓN",
+    "inscribirme", "Inscribirme", "INSCRIBIRME",
+    "registrarme", "Registrarme", "REGISTRARME",
+
+    # frases de acción
+    "empezar curso", "Empezar curso", "EMPEZAR CURSO",
+    "comenzar curso", "Comenzar curso", "COMENZAR CURSO",
+    "quiero el curso", "Quiero el curso", "QUIERO EL CURSO",
+    "adquirir curso", "Adquirir curso", "ADQUIRIR CURSO",
+
+    # equivalentes en inglés
+    "course", "Course", "COURSE",
+    "courses", "Courses", "COURSES",
+    "course info", "Course info", "COURSE INFO",
+    "course information", "Course information", "COURSE INFORMATION",
+    "about the course", "About the course", "ABOUT THE COURSE",
+    "price", "Price", "PRICE",
+    "enroll", "Enroll", "ENROLL",
+    "signup", "Signup", "SIGNUP"
+]
+
+
 
 class CourseAnnouncementUseCase:
     """Caso de uso para manejar anuncios de cursos por código específico."""
@@ -80,6 +149,12 @@ class CourseAnnouncementUseCase:
                 if hashtag.lower() in message_text.lower():
                     logger.info(f"📚 Hashtag de curso centralizado detectado: {hashtag}")
                     return True
+
+            # Detectar gatillos genéricos (saludos o peticiones de información)
+            for phrase in GREETING_TRIGGERS:
+                if phrase in message_text.lower():
+                    logger.info(f"👋 Gatillo genérico detectado: '{phrase}'. Activando curso por defecto.")
+                    return True
             
             return False
             
@@ -109,6 +184,12 @@ class CourseAnnouncementUseCase:
             for hashtag in COURSE_HASHTAG_MAPPING.keys():
                 if hashtag.lower() in message_lower:
                     return f"#{hashtag}"  # Retornar con # para compatibilidad
+            
+            # Si no se detectó un hashtag explícito, verificar gatillos genéricos
+            for phrase in GREETING_TRIGGERS:
+                if phrase in message_lower:
+                    logger.info(f"👋 Gatillo genérico '{phrase}' detectado. Usando código de curso por defecto.")
+                    return "#Experto_IA_GPT_Gemini"
             
             return None
             
