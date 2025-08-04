@@ -5,24 +5,25 @@ Aquí van todas las credenciales y configuraciones de APIs.
 from pydantic_settings import BaseSettings
 from typing import Optional
 import logging
+import os
 
 
 class Settings(BaseSettings):
     """Configuración principal de la aplicación."""
     
     # === TWILIO CREDENTIALS ===
-    twilio_account_sid: str
-    twilio_auth_token: str  
-    twilio_phone_number: str
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_phone_number: str = "+14155238886"
     
     # === OPENAI CREDENTIALS ===
-    openai_api_key: str
+    openai_api_key: str = ""
     
     # === DATABASE ===
     database_url: Optional[str] = None
     
     # === APPLICATION SETTINGS ===
-    app_environment: str = "development"
+    app_environment: str = "production"
     log_level: str = "INFO"
     webhook_verify_signature: bool = False
     
@@ -41,6 +42,19 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = False
         extra = "ignore"  # Ignora variables extra del .env
+        
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # En Heroku, las variables de entorno tienen nombres específicos
+        self.twilio_account_sid = os.getenv('TWILIO_ACCOUNT_SID', self.twilio_account_sid)
+        self.twilio_auth_token = os.getenv('TWILIO_AUTH_TOKEN', self.twilio_auth_token)
+        self.twilio_phone_number = os.getenv('TWILIO_PHONE_NUMBER', self.twilio_phone_number)
+        self.openai_api_key = os.getenv('OPENAI_API_KEY', self.openai_api_key)
+        self.app_environment = os.getenv('APP_ENVIRONMENT', self.app_environment)
+        self.log_level = os.getenv('LOG_LEVEL', self.log_level)
+        self.advisor_phone_number = os.getenv('ADVISOR_PHONE_NUMBER', self.advisor_phone_number)
+        self.advisor_name = os.getenv('ADVISOR_NAME', self.advisor_name)
+        self.advisor_title = os.getenv('ADVISOR_TITLE', self.advisor_title)
         
     def get_log_level(self) -> int:
         """Convierte string log level a constante de logging."""
