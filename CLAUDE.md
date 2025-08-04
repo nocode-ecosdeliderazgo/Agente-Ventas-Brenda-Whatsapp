@@ -34,6 +34,7 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **Database Integration** ✅ **COMPLETAMENTE FUNCIONAL** - 100% datos dinámicos de BD
 - **Intelligent Bonus System** ✅ **COMPLETAMENTE FUNCIONAL** - Bonos contextuales activados
 - **Advisor Referral System** ✅ **COMPLETAMENTE FUNCIONAL** - Referencia automática a asesores
+- **🆕 FAQ System** ✅ **NUEVO - COMPLETAMENTE FUNCIONAL** - Sistema de preguntas frecuentes integrado
 
 ### **🔧 Últimas Mejoras Críticas Implementadas (3 Agosto 2025)**
 - **✅ Purchase Intent Detection**: IMPLEMENTADO - Detección automática de intención de compra
@@ -218,9 +219,11 @@ The system processes messages with the following priority:
 4. **PRIORIDAD 1.7**: Welcome Flow (generic messages)
 5. **PRIORIDAD 1.8**: Advisor Referral (contact requests)
 6. **PRIORIDAD 2**: Intelligent Responses (OpenAI-powered)
+   - **🆕 Intelligent FAQ Handling**: Natural FAQ responses with personalization
    - **🆕 Purchase Intent Detection**: Automatic bonus activation on purchase signals
    - **🆕 Workbook Bonus Activation**: Database-driven bonus offering
-7. **Fallback**: Basic context-aware responses
+7. **FAQ Fallback**: Direct FAQ flow if intelligent agent fails
+8. **Fallback**: Basic context-aware responses
 
 ## Course Announcement System
 
@@ -294,42 +297,6 @@ Validates AI responses to prevent hallucinations using:
 - RFC: AAI210307DEF
 - Uso de CFDI: GO3-Gastos en general
 
-### 🆕 Concise Specific Response System
-**Intelligent detection of specific inquiries** triggers concise, database-driven responses:
-
-#### Supported Inquiry Types
-- **PRICE_INQUIRY**: Direct price questions → Shows course name + price + follow-up question
-- **SESSION_INQUIRY**: Session count questions → Shows course name + session info + follow-up question  
-- **DURATION_INQUIRY**: Duration questions → Shows course name + time duration + follow-up question
-- **CONTENT_INQUIRY**: Content/curriculum questions → Shows course name + content overview + follow-up question
-- **MODALITY_INQUIRY**: Format questions → Shows course name + modality info + follow-up question
-
-#### Detection Methods
-1. **OpenAI Categorization**: Automatically categorizes specific inquiry types
-2. **Keyword Detection**: Fallback detection using Spanish keywords
-3. **Smart Mapping**: Maps categories to specific response types
-
-#### Example Responses
-```
-# Price Inquiry: "¿cuál es el precio del curso?"
-🎓 **Experto en IA para Profesionales**
-💰 **Precio**: $4,500 MXN
-
-¿Te gustaría conocer más detalles del curso?
-
-# Session Inquiry: "¿cuántas sesiones tiene?"
-🎓 **Experto en IA para Profesionales**  
-📅 **Sesiones**: 8 sesiones (12 horas)
-
-¿Te gustaría conocer el contenido de las sesiones?
-```
-
-#### Key Benefits
-- **Always Database-Driven**: Real data from PostgreSQL, never hardcoded
-- **Concise Format**: Only shows requested information + course name + follow-up
-- **Maintains Context**: Preserves conversation flow and buyer persona detection
-- **No Information Invention**: Prevents AI hallucination with specific data
-
 ## Testing Scripts
 
 ### Core System Tests
@@ -343,6 +310,8 @@ Validates AI responses to prevent hallucinations using:
 - `test_personalization_system.py` - Buyer persona detection
 - `test_course_announcement_flow.py` - Course code processing
 - `test_purchase_bonus_system.py` - 🆕 Purchase intent & workbook bonus activation
+- `test_faq_flow_integration.py` - 🆕 FAQ system integration and detection
+- `test_intelligent_faq_system.py` - 🆕 Intelligent FAQ with knowledge provider and fallback
 
 ## Production Readiness
 
@@ -355,6 +324,7 @@ Validates AI responses to prevent hallucinations using:
 - **Multimedia Support**: Real file sending with ngrok integration
 - **🆕 Purchase Flow**: Complete purchase intent detection with bonus activation
 - **🆕 Banking Integration**: Automatic banking details in purchase responses
+- **🆕 Intelligent FAQ System**: Dual-layer FAQ handling with intelligent responses and robust fallback
 
 ### 🔄 Future Enhancements
 - Custom domain for multimedia (replace ngrok)

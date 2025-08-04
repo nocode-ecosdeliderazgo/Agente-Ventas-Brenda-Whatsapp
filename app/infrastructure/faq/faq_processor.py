@@ -30,7 +30,7 @@ class FAQProcessor:
                 'category': 'precio',
                 'question': '¿Cuál es el precio del curso?',
                 'keywords': ['precio', 'costo', 'valor', 'cuánto cuesta', 'inversión', 'pago'],
-                'answer': 'El curso tiene un precio de $997 USD. Ofrecemos diferentes formas de pago: pago único, 3 pagos de $347 USD, o 6 pagos de $197 USD. Incluye acceso completo, certificado, soporte técnico y comunidad privada.',
+                'answer': 'El curso tiene un precio de $2,990 MXN. Ofrecemos modalidades de pago flexibles: pago completo o pago en 2 exhibiciones sin interés. Además, tenemos un descuento del 10% por inscripción grupal (más de 3 personas). Incluye acceso completo, certificado, soporte técnico y comunidad privada.',
                 'escalation_needed': False,
                 'priority': 'high'
             },
@@ -38,8 +38,8 @@ class FAQProcessor:
                 'id': 'FAQ_002',
                 'category': 'duración',
                 'question': '¿Cuánto tiempo dura el curso?',
-                'keywords': ['duración', 'tiempo', 'cuánto dura', 'horas', 'semanas', 'meses'],
-                'answer': 'El curso tiene 12 horas de contenido principal, 8 horas de ejercicios prácticos y 4 horas de casos de estudio. Puedes completarlo en 8 semanas dedicando 2-3 horas por semana.',
+                'keywords': ['duración', 'tiempo', 'cuánto dura', 'horas', 'semanas', 'meses', 'sesiones', 'estructura'],
+                'answer': 'El curso consta de 4 sesiones en vivo con práctica guiada donde cada concepto se aplica inmediatamente. Incluye 12 horas de contenido principal, 8 horas de ejercicios prácticos y 4 horas de casos de estudio. Al final desarrollarás un proyecto real que servirá como entregable práctico para tu organización, demostrando el valor inmediato de lo aprendido. Tiempo total estimado: 8 semanas dedicando 2-3 horas por semana.',
                 'escalation_needed': False,
                 'priority': 'high'
             },
@@ -56,8 +56,8 @@ class FAQProcessor:
                 'id': 'FAQ_004',
                 'category': 'requisitos',
                 'question': '¿Qué requisitos necesito?',
-                'keywords': ['requisitos', 'necesito', 'conocimientos', 'experiencia', 'perfil'],
-                'answer': 'Necesitas conocimientos básicos de computación, experiencia en gestión de equipos e interés en innovación tecnológica. No necesitas conocimientos de programación ni experiencia previa con IA.',
+                'keywords': ['requisitos', 'necesito', 'conocimientos', 'experiencia', 'perfil', 'dirigido', 'para quién'],
+                'answer': 'Necesitas conocimientos básicos de computación, experiencia en gestión de equipos e interés en innovación tecnológica. No necesitas conocimientos de programación ni experiencia previa con IA. Está dirigido específicamente a: Ejecutivos y managers que necesitan optimizar procesos, Emprendedores y consultores que buscan escalar servicios, y Equipos de PYMES interesados en automatización inteligente. Ideal si buscas potenciar la toma de decisiones con IA, reducir tareas manuales repetitivas y generar insights en segundos.',
                 'escalation_needed': False,
                 'priority': 'medium'
             },
@@ -83,28 +83,28 @@ class FAQProcessor:
                 'id': 'FAQ_007',
                 'category': 'certificado',
                 'question': '¿Incluye certificado?',
-                'keywords': ['certificado', 'diploma', 'acreditación', 'reconocimiento'],
-                'answer': 'Sí, el curso incluye un certificado oficial que acredita tu formación en IA para profesionales. Es reconocido por empresas y organizaciones.',
+                'keywords': ['certificado', 'diploma', 'acreditación', 'reconocimiento', 'examen', 'evaluación', 'proyecto'],
+                'answer': 'Sí, incluye certificado digital "Experto en IA para Profesionales" con código único. La evaluación consta de: Examen final práctico (proyecto integrador + diseño de workflow, duración 90 minutos) con escenarios reales, diseño de prompts y análisis de resultados. Requisitos para certificarse: Asistencia mínima al 75% de las sesiones y calificación mínima de 70% en el proyecto y examen práctico. Recomendaciones: Repasar plantillas IMPULSO, ejemplos de Custom GPTs y practicar workflows diarios.',
                 'escalation_needed': False,
-                'priority': 'low'
+                'priority': 'high'
             },
             {
                 'id': 'FAQ_008',
                 'category': 'soporte',
                 'question': '¿Qué tipo de soporte incluye?',
-                'keywords': ['soporte', 'ayuda', 'asistencia', 'comunidad', 'consultoría'],
-                'answer': 'Incluye soporte técnico 24/7, comunidad privada de usuarios, consultoría personalizada y actualizaciones de por vida del contenido.',
+                'keywords': ['soporte', 'ayuda', 'asistencia', 'comunidad', 'consultoría', 'Q&A', 'foro', 'networking'],
+                'answer': 'Incluye soporte completo: 2 sesiones Q&A en vivo para resolver dudas directamente, Foro privado para dudas y networking con otros participantes, Agente "AplicaAI Helper" disponible 24/7 para asistencia técnica, y comunidad exclusiva para compartir experiencias. También incluye soporte post-curso con actualizaciones continuas del contenido.',
                 'escalation_needed': False,
-                'priority': 'medium'
+                'priority': 'high'
             },
             {
                 'id': 'FAQ_009',
                 'category': 'acceso',
                 'question': '¿Por cuánto tiempo tengo acceso?',
-                'keywords': ['acceso', 'tiempo', 'duración', 'permanente', 'ilimitado'],
-                'answer': 'Tienes acceso ilimitado por 12 meses al contenido del curso, incluyendo todas las actualizaciones y mejoras que se agreguen durante ese período.',
+                'keywords': ['acceso', 'tiempo', 'duración', 'permanente', 'ilimitado', 'grabaciones', 'sesiones'],
+                'answer': 'Tienes acceso completo por 12 meses que incluye: Acceso a grabaciones de las 4 sesiones en vivo, todos los materiales descargables (manual PDF, plantillas, documentación), foro privado y comunidad exclusiva, y todas las actualizaciones y mejoras que se agreguen durante ese período. Las grabaciones están disponibles inmediatamente después de cada sesión.',
                 'escalation_needed': False,
-                'priority': 'low'
+                'priority': 'medium'
             },
             {
                 'id': 'FAQ_010',
@@ -112,6 +112,33 @@ class FAQProcessor:
                 'question': '¿Hay garantía de satisfacción?',
                 'keywords': ['garantía', 'satisfacción', 'devolución', 'reembolso', 'seguridad'],
                 'answer': 'Sí, ofrecemos garantía de satisfacción de 30 días. Si no estás completamente satisfecho, te devolvemos tu dinero sin preguntas.',
+                'escalation_needed': False,
+                'priority': 'medium'
+            },
+            {
+                'id': 'FAQ_011',
+                'category': 'incluye',
+                'question': '¿Qué incluye el curso?',
+                'keywords': ['incluye', 'contiene', 'materiales', 'recursos', 'entregables', 'manual', 'plantillas'],
+                'answer': 'El curso incluye recursos entregables completos: Manual completo en PDF con documentación detallada de todas las técnicas y metodologías, Plantillas de prompting, Gems y GPTs personalizados, Acceso a grabaciones de las 4 sesiones. Soporte adicional: 2 sesiones Q&A en vivo y Foro privado para dudas y networking. Todo diseñado para maximizar tu productividad con IA.',
+                'escalation_needed': False,
+                'priority': 'high'
+            },
+            {
+                'id': 'FAQ_012',
+                'category': 'ventajas',
+                'question': '¿Cuáles son las ventajas principales?',
+                'keywords': ['ventajas', 'beneficios', 'por qué', 'diferencias', 'única', 'práctica', 'premium'],
+                'answer': 'Las ventajas únicas son: Práctica guiada en vivo donde cada concepto se aplica inmediatamente garantizando aprendizaje efectivo, Acceso a recursos premium con plantillas diseñadas específicamente para maximizar productividad con IA, Soporte post-curso con Agente "AplicaAI Helper" 24/7 y foro exclusivo, y Proyecto real que te dará un entregable práctico para tu organización demostrando valor inmediato.',
+                'escalation_needed': False,
+                'priority': 'high'
+            },
+            {
+                'id': 'FAQ_013',
+                'category': 'examen',
+                'question': '¿Cómo es el examen?',
+                'keywords': ['examen', 'evaluación', 'proyecto', 'preguntas', 'certificación', 'formato', 'duración'],
+                'answer': 'El examen es 100% práctico: Proyecto integrador + preguntas tipo caso con duración de 90 minutos. Las preguntas incluyen escenarios reales, diseño de prompts y análisis de resultados. Para prepararte recomendamos: Repasar plantillas IMPULSO y ejemplos de Custom GPTs, Practicar con workflows diarios y medir tiempos. Es una evaluación práctica que demuestra tu capacidad real de aplicar IA en situaciones profesionales.',
                 'escalation_needed': False,
                 'priority': 'medium'
             }

@@ -24,6 +24,7 @@ from memory.lead_memory import MemoryManager
 from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
 from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
 from app.application.usecases.advisor_referral_use_case import AdvisorReferralUseCase
+from app.application.usecases.faq_flow_use_case import FAQFlowUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +72,12 @@ welcome_flow_use_case = None
 detect_ad_hashtags_use_case = None
 process_ad_flow_use_case = None
 advisor_referral_use_case = None
+faq_flow_use_case = None
 
 @app.on_event("startup")
 async def startup_event():
     """Evento de startup para inicializar todas las dependencias."""
-    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case, detect_ad_hashtags_use_case, process_ad_flow_use_case, advisor_referral_use_case
+    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case, detect_ad_hashtags_use_case, process_ad_flow_use_case, advisor_referral_use_case, faq_flow_use_case
     
     debug_print("🚀 INICIANDO SISTEMA BOT BRENDA...", "startup", "webhook.py")
     
@@ -204,6 +206,15 @@ async def startup_event():
             debug_print(f"⚠️ Error con sistema de asesores: {e}", "startup", "webhook.py")
             advisor_referral_use_case = None
         
+        # Inicializar sistema de FAQ
+        debug_print("❓ Inicializando sistema de FAQ...", "startup", "webhook.py")
+        try:
+            faq_flow_use_case = FAQFlowUseCase(memory_use_case, twilio_client)
+            debug_print("✅ Sistema de FAQ inicializado correctamente", "startup", "webhook.py")
+        except Exception as e:
+            debug_print(f"⚠️ Error con sistema de FAQ: {e}", "startup", "webhook.py")
+            faq_flow_use_case = None
+        
         # Crear caso de uso de procesamiento con capacidades inteligentes
         debug_print("⚙️ Creando procesador de mensajes principal...", "startup", "webhook.py")
         process_message_use_case = ProcessIncomingMessageUseCase(
@@ -216,7 +227,8 @@ async def startup_event():
             detect_ad_hashtags_use_case=detect_ad_hashtags_use_case,
             process_ad_flow_use_case=process_ad_flow_use_case,
             welcome_flow_use_case=welcome_flow_use_case,
-            advisor_referral_use_case=advisor_referral_use_case
+            advisor_referral_use_case=advisor_referral_use_case,
+            faq_flow_use_case=faq_flow_use_case
         )
         debug_print("✅ Procesador de mensajes principal creado", "startup", "webhook.py")
         
@@ -248,6 +260,9 @@ async def startup_event():
         # Crear sistema de referencia a asesores básico
         advisor_referral_use_case = AdvisorReferralUseCase(twilio_client)
         
+        # Crear sistema de FAQ básico
+        faq_flow_use_case = FAQFlowUseCase(memory_use_case, twilio_client)
+        
         # Crear caso de uso de procesamiento básico
         process_message_use_case = ProcessIncomingMessageUseCase(
             twilio_client, 
@@ -257,7 +272,8 @@ async def startup_event():
             None,  # tool_activation_use_case
             course_announcement_use_case,
             welcome_flow_use_case=welcome_flow_use_case,
-            advisor_referral_use_case=advisor_referral_use_case
+            advisor_referral_use_case=advisor_referral_use_case,
+            faq_flow_use_case=faq_flow_use_case
         )
         
         debug_print("⚠️ SISTEMA FALLBACK: Funcionalidad básica disponible", "startup", "webhook.py")

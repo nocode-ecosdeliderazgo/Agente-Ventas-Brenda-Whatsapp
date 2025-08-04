@@ -15,6 +15,7 @@ from app.application.usecases.personalize_response_use_case import PersonalizeRe
 from app.application.usecases.dynamic_course_info_provider import DynamicCourseInfoProvider
 from app.application.usecases.bonus_activation_use_case import BonusActivationUseCase
 from app.application.usecases.purchase_bonus_use_case import PurchaseBonusUseCase
+from app.infrastructure.faq.faq_knowledge_provider import FAQKnowledgeProvider
 from uuid import UUID
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.infrastructure.openai.client import OpenAIClient
@@ -86,6 +87,9 @@ class GenerateIntelligentResponseUseCase:
         self.purchase_bonus_use_case = PurchaseBonusUseCase(
             course_query_use_case, None, twilio_client  # memory_use_case se pasará en execute
         )
+        
+        # Inicializar proveedor de conocimiento FAQ para respuestas inteligentes (NUEVO)
+        self.faq_knowledge_provider = FAQKnowledgeProvider()
         
         self.logger = logging.getLogger(__name__)
     
@@ -204,7 +208,30 @@ class GenerateIntelligentResponseUseCase:
             
             debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
             
-            # 🎁 NUEVA PRIORIDAD: Verificar intención de compra para activar bonos workbook
+            # 🆕 PRIORIDAD MÁXIMA: Verificar si es una FAQ para respuesta inteligente
+            user_context = {
+                'user_role': getattr(user_memory, 'role', '') if user_memory else '',
+                'company_size': getattr(user_memory, 'company_size', '') if user_memory else '',
+                'industry': getattr(user_memory, 'industry', '') if user_memory else '',
+                'name': getattr(user_memory, 'name', 'Usuario') if user_memory else 'Usuario'
+            }
+            
+            faq_context = await self.faq_knowledge_provider.get_faq_context_for_intelligence(
+                incoming_message.body, user_context
+            )
+            
+            if faq_context['is_faq']:
+                debug_print(f"❓ FAQ detectada: {faq_context['category']} - Generando respuesta inteligente", "_generate_contextual_response")
+                
+                # Generar respuesta FAQ inteligente usando OpenAI con contexto
+                faq_response = await self._generate_intelligent_faq_response(
+                    incoming_message.body, faq_context, user_context, intent_analysis
+                )
+                
+                debug_print("✅ Respuesta FAQ inteligente generada", "_generate_contextual_response")
+                return faq_response
+            
+            # 🎁 PRIORIDAD 2: Verificar intención de compra para activar bonos workbook
             if self.purchase_bonus_use_case.should_activate_purchase_bonus(intent_analysis):
                 debug_print("🎁 Intención de compra detectada - Activando bonos workbook", "_generate_contextual_response")
                 
