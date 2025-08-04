@@ -1,0 +1,34 @@
+# ========================================
+# CONFIGURACIÓN BOT BRENDA WHATSAPP 2025
+# ========================================
+# Copia este archivo como .env y configura tus credenciales
+
+# === TWILIO CREDENTIALS ===
+# Obtén estas credenciales desde: https://console.twilio.com/
+TWILIO_ACCOUNT_SID=tu_account_sid_aqui
+TWILIO_AUTH_TOKEN=tu_auth_token_aqui
+TWILIO_PHONE_NUMBER=+14155238886
+
+# === OPENAI CREDENTIALS ===
+# Obtén tu API key desde: https://platform.openai.com/api-keys
+OPENAI_API_KEY=tu_openai_api_key_aqui
+
+# === DATABASE ===
+# URL de tu base de datos (opcional)
+DATABASE_URL=tu_database_url_aqui
+
+# === APPLICATION SETTINGS ===
+APP_ENVIRONMENT=production
+LOG_LEVEL=INFO
+WEBHOOK_VERIFY_SIGNATURE=false
+
+# === ADVISOR CONFIGURATION ===
+ADVISOR_PHONE_NUMBER=+52 1 56 1468 6075
+ADVISOR_NAME=Especialista en IA
+ADVISOR_TITLE=Asesor Comercial
+
+# === SECURITY ===
+ALLOWED_WEBHOOK_IPS=*
+
+# === NGROK CONFIGURATION (solo para desarrollo) ===
+# NGROK_URL=https://tu-ngrok-url.ngrok.io 
