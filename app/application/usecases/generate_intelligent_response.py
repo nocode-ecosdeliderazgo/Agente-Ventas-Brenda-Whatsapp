@@ -208,7 +208,13 @@ class GenerateIntelligentResponseUseCase:
             
             debug_print(f"🎯 Generando respuesta para categoría: {category}", "_generate_contextual_response")
             
-            # 🆕 PRIORIDAD MÁXIMA: Verificar si es una FAQ para respuesta inteligente
+            # 🚨 PRIORIDAD MÁXIMA: Manejar mensajes fuera de contexto y ofensivos
+            off_topic_categories = ['OFF_TOPIC_CASUAL', 'OFF_TOPIC_PERSONAL', 'OFF_TOPIC_UNRELATED', 'OFF_TOPIC_REPEATED', 'OFFENSIVE_MESSAGE']
+            if category in off_topic_categories:
+                debug_print(f"🚨 Mensaje fuera de contexto detectado: {category}", "_generate_contextual_response")
+                return await self._handle_off_topic_message(category, user_memory, user_id, intent_analysis)
+            
+            # 🆕 PRIORIDAD ALTA: Verificar si es una FAQ para respuesta inteligente
             user_context = {
                 'user_role': getattr(user_memory, 'role', '') if user_memory else '',
                 'company_size': getattr(user_memory, 'company_size', '') if user_memory else '',
@@ -2062,3 +2068,155 @@ Genera una respuesta personalizada, natural y útil usando la información del c
             response += "\n\n🚀 ¿Te interesaría ver casos de éxito similares a tu industria?"
         
         return response
+    
+    async def _handle_off_topic_message(
+        self,
+        category: str,
+        user_memory,
+        user_id: str,
+        intent_analysis: Dict[str, Any]
+    ) -> str:
+        """
+        Maneja mensajes fuera de contexto y ofensivos según la severidad.
+        
+        Args:
+            category: Categoría del mensaje off-topic
+            user_memory: Memoria del usuario
+            user_id: ID del usuario
+            intent_analysis: Análisis de intención completo
+            
+        Returns:
+            Respuesta apropiada según el tipo de mensaje off-topic
+        """
+        try:
+            debug_print(f"🚨 Manejando mensaje fuera de contexto: {category}", "_handle_off_topic_message")
+            
+            user_name = getattr(user_memory, 'name', '') if user_memory else ''
+            
+            # Importar templates
+            from prompts.agent_prompts import WhatsAppBusinessTemplates
+            
+            # Obtener información sobre intentos previos de off-topic
+            off_topic_attempts = self._get_off_topic_attempts_count(user_memory)
+            redirection_style = intent_analysis.get('redirection_style', 'humor')
+            
+            if category == 'OFFENSIVE_MESSAGE':
+                debug_print("🚨 Mensaje ofensivo detectado - Respuesta firme", "_handle_off_topic_message")
+                # Actualizar memoria con comportamiento inapropiado
+                await self._update_user_memory_with_offensive_behavior(user_id, user_memory)
+                return WhatsAppBusinessTemplates.offensive_message_firm_response(user_name)
+            
+            elif category == 'OFF_TOPIC_REPEATED' or off_topic_attempts >= 2:
+                debug_print(f"🚨 Intentos repetidos detectados ({off_topic_attempts}) - Mensaje predeterminado", "_handle_off_topic_message")
+                # Actualizar contador de intentos
+                await self._update_user_memory_with_off_topic_attempt(user_id, user_memory)
+                return WhatsAppBusinessTemplates.off_topic_repeated_predefined(user_name)
+            
+            else:
+                debug_print(f"😊 Primer intento off-topic - Redirección con humor/sarcasmo", "_handle_off_topic_message")
+                # Actualizar contador de intentos
+                await self._update_user_memory_with_off_topic_attempt(user_id, user_memory)
+                
+                topic_mentioned = intent_analysis.get('key_topics', [''])[0] if intent_analysis.get('key_topics') else ''
+                return WhatsAppBusinessTemplates.off_topic_casual_redirect(user_name, topic_mentioned)
+            
+        except Exception as e:
+            debug_print(f"❌ Error manejando mensaje off-topic: {e}", "_handle_off_topic_message")
+            # Fallback seguro
+            return WhatsAppBusinessTemplates.off_topic_casual_redirect(user_name)
+    
+    def _get_off_topic_attempts_count(self, user_memory) -> int:
+        """
+        Obtiene el número de intentos previos de mensajes off-topic.
+        
+        Args:
+            user_memory: Memoria del usuario
+            
+        Returns:
+            Número de intentos off-topic previos
+        """
+        if not user_memory:
+            return 0
+        
+        # Si la memoria tiene el atributo off_topic_attempts, usarlo
+        if hasattr(user_memory, 'off_topic_attempts'):
+            return getattr(user_memory, 'off_topic_attempts', 0)
+        
+        # Si no, buscar en pain_points por registros de off-topic
+        pain_points = getattr(user_memory, 'pain_points', [])
+        off_topic_count = len([p for p in pain_points if 'off_topic_attempt' in str(p).lower()])
+        
+        return off_topic_count
+
+    async def _update_user_memory_with_off_topic_attempt(self, user_id: str, user_memory):
+        """
+        Actualiza la memoria del usuario con un nuevo intento off-topic.
+        
+        Args:
+            user_id: ID del usuario
+            user_memory: Memoria actual del usuario
+        """
+        try:
+            from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+            from memory.lead_memory import MemoryManager
+            
+            memory_manager = MemoryManager()
+            memory_use_case = ManageUserMemoryUseCase(memory_manager)
+            
+            if user_memory:
+                # Incrementar contador de intentos off-topic
+                current_attempts = self._get_off_topic_attempts_count(user_memory)
+                user_memory.off_topic_attempts = current_attempts + 1
+                
+                # Agregar a pain_points para tracking
+                if not hasattr(user_memory, 'pain_points'):
+                    user_memory.pain_points = []
+                
+                user_memory.pain_points.append(f"off_topic_attempt_{current_attempts + 1}")
+                
+                # Reducir ligeramente el lead_score por comportamiento off-topic
+                if hasattr(user_memory, 'lead_score'):
+                    user_memory.lead_score = max(0, user_memory.lead_score - 2)
+                
+                memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+                
+            debug_print(f"✅ Memoria actualizada con intento off-topic para usuario {user_id}", "_update_user_memory_with_off_topic_attempt")
+            
+        except Exception as e:
+            debug_print(f"❌ Error actualizando memoria con off-topic: {e}", "_update_user_memory_with_off_topic_attempt")
+
+    async def _update_user_memory_with_offensive_behavior(self, user_id: str, user_memory):
+        """
+        Actualiza la memoria del usuario con comportamiento ofensivo.
+        
+        Args:
+            user_id: ID del usuario
+            user_memory: Memoria actual del usuario
+        """
+        try:
+            from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+            from memory.lead_memory import MemoryManager
+            
+            memory_manager = MemoryManager()
+            memory_use_case = ManageUserMemoryUseCase(memory_manager)
+            
+            if user_memory:
+                # Marcar comportamiento ofensivo
+                if not hasattr(user_memory, 'pain_points'):
+                    user_memory.pain_points = []
+                
+                user_memory.pain_points.append("offensive_behavior_detected")
+                
+                # Reducir significativamente el lead_score
+                if hasattr(user_memory, 'lead_score'):
+                    user_memory.lead_score = max(0, user_memory.lead_score - 10)
+                
+                # Marcar como lead problemático
+                user_memory.stage = 'problematic_lead'
+                
+                memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+                
+            debug_print(f"✅ Memoria actualizada con comportamiento ofensivo para usuario {user_id}", "_update_user_memory_with_offensive_behavior")
+            
+        except Exception as e:
+            debug_print(f"❌ Error actualizando memoria con comportamiento ofensivo: {e}", "_update_user_memory_with_offensive_behavior")

@@ -48,6 +48,7 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **✅ Concise Specific Responses**: IMPLEMENTADO - Respuestas concisas para consultas específicas con datos de BD
 - **🆕 Enhanced FAQ System**: IMPLEMENTADO - 13 FAQs expandidas con información detallada ($2,990 MXN)
 - **🆕 Conversational Tone Improvement**: IMPLEMENTADO - Eliminadas frases empáticas repetitivas, tono más dinámico
+- **🆕 Off-Topic Message Handling**: IMPLEMENTADO - Sistema de manejo de mensajes fuera de contexto con humor y escalación gradual
 
 ## Current Architecture
 
