@@ -21,8 +21,9 @@ from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.infrastructure.openai.client import OpenAIClient
 from app.infrastructure.database.client import DatabaseClient
 from app.infrastructure.database.repositories.course_repository import CourseRepository
+from app.infrastructure.tools.tool_db import get_tool_db
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
-from prompts.agent_prompts import WhatsAppMessageTemplates, get_response_generation_prompt
+from prompts.agent_prompts import WhatsAppMessageTemplates, get_response_generation_prompt, DATABASE_TOOL_PROMPT, get_database_integration_context
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,10 @@ class GenerateIntelligentResponseUseCase:
         self.anti_hallucination_use_case = AntiHallucinationUseCase(
             openai_client, course_repository, self.validate_response_use_case
         )
+        
+        # Inicializar tool_db para consultas inteligentes
+        self.db_client = db_client
+        self.tool_db = None  # Se inicializa bajo demanda
         
         # Inicializar sistema de personalización avanzada (FASE 2)
         self.extract_user_info_use_case = ExtractUserInfoUseCase(openai_client)
@@ -287,6 +292,30 @@ class GenerateIntelligentResponseUseCase:
                         'MODALITY_INQUIRY': 'modality'
                     }
                     inquiry_type = category_to_type[category]
+                    
+                    # 🆕 NUEVA FUNCIONALIDAD: Usar tool_db para obtener datos reales de BD
+                    debug_print(f"🔍 Consulta específica detectada: {inquiry_type} - Usando tool_db", "_generate_contextual_response")
+                    
+                    try:
+                        # Inicializar tool_db si no está disponible
+                        if self.tool_db is None:
+                            self.tool_db = await get_tool_db()
+                        
+                        # Obtener datos específicos desde BD según el tipo de consulta
+                        db_response = await self._handle_specific_database_inquiry(
+                            inquiry_type, incoming_message.body, user_memory
+                        )
+                        
+                        if db_response:
+                            debug_print(f"✅ Respuesta de BD generada para {inquiry_type}", "_generate_contextual_response")
+                            return db_response
+                        else:
+                            debug_print(f"⚠️ Tool_db no retornó datos, usando fallback", "_generate_contextual_response")
+                    
+                    except Exception as e:
+                        debug_print(f"❌ Error en tool_db para {inquiry_type}: {e}", "_generate_contextual_response")
+                        logger.error(f"Error usando tool_db para consulta {inquiry_type}: {e}")
+                        # Continuar con el flujo normal como fallback
                 else:
                     # Detectar por keywords para otras categorías
                     inquiry_type = self._detect_specific_inquiry_type(incoming_message.body)
@@ -2348,3 +2377,206 @@ Genera una respuesta personalizada, natural y útil usando la información del c
             
         except Exception as e:
             debug_print(f"❌ Error actualizando memoria con acción post-compra: {e}", "_update_user_memory_with_post_purchase_action")
+    
+    async def _handle_specific_database_inquiry(
+        self,
+        inquiry_type: str,
+        user_message: str,
+        user_memory
+    ) -> Optional[str]:
+        """
+        Maneja consultas específicas usando tool_db para obtener datos reales de BD.
+        
+        Args:
+            inquiry_type: Tipo de consulta (price, sessions, duration, content, modality)
+            user_message: Mensaje original del usuario
+            user_memory: Memoria del usuario para personalización
+            
+        Returns:
+            Respuesta generada con datos de BD o None si no hay datos disponibles
+        """
+        try:
+            debug_print(f"🔍 Iniciando consulta específica de BD: {inquiry_type}", "_handle_specific_database_inquiry")
+            
+            if self.tool_db is None:
+                debug_print("⚠️ tool_db no disponible", "_handle_specific_database_inquiry")
+                return None
+            
+            user_name = user_memory.name if user_memory and user_memory.name != "Usuario" else ""
+            
+            # Detectar curso mencionado en la conversación (simplificado)
+            detected_course = self._detect_course_in_message(user_message)
+            
+            if inquiry_type == "price":
+                # Consultar precio desde BD
+                if detected_course:
+                    courses = await self.tool_db.query('ai_courses', {'name': detected_course}, limit=1)
+                else:
+                    # Buscar curso principal (Experto en IA)
+                    courses = await self.tool_db.query('ai_courses', {}, limit=1)
+                
+                if courses:
+                    course = courses[0]
+                    price = course.get('price', 'No disponible')
+                    currency = course.get('currency', 'MXN')
+                    course_name = course.get('name', 'Curso de IA')
+                    
+                    greeting = f"{user_name}, " if user_name else ""
+                    
+                    response = f"""🎓 **{course_name}**
+💰 **Precio**: ${price} {currency}
+
+¿Te gustaría conocer más detalles del curso?"""
+                    
+                    debug_print(f"✅ Respuesta de precio generada desde BD: ${price} {currency}", "_handle_specific_database_inquiry")
+                    return response
+            
+            elif inquiry_type == "sessions":
+                # Consultar sesiones desde BD
+                if detected_course:
+                    courses = await self.tool_db.query('ai_courses', {'name': detected_course}, limit=1)
+                else:
+                    courses = await self.tool_db.query('ai_courses', {}, limit=1)
+                
+                if courses:
+                    course = courses[0]
+                    session_count = course.get('session_count', 0)
+                    course_name = course.get('name', 'Curso de IA')
+                    total_duration = course.get('total_duration_min', 0)
+                    
+                    if total_duration:
+                        hours = total_duration // 60
+                        duration_text = f" ({hours} horas)" if hours > 0 else ""
+                    else:
+                        duration_text = ""
+                    
+                    response = f"""🎓 **{course_name}**  
+📅 **Sesiones**: {session_count} sesiones{duration_text}
+
+¿Te gustaría conocer el contenido de las sesiones?"""
+                    
+                    debug_print(f"✅ Respuesta de sesiones generada desde BD: {session_count} sesiones", "_handle_specific_database_inquiry")
+                    return response
+            
+            elif inquiry_type == "duration":
+                # Consultar duración desde BD
+                if detected_course:
+                    courses = await self.tool_db.query('ai_courses', {'name': detected_course}, limit=1)
+                else:
+                    courses = await self.tool_db.query('ai_courses', {}, limit=1)
+                
+                if courses:
+                    course = courses[0]
+                    total_duration = course.get('total_duration_min', 0)
+                    course_name = course.get('name', 'Curso de IA')
+                    
+                    if total_duration:
+                        hours = total_duration // 60
+                        minutes = total_duration % 60
+                        duration_text = f"{hours} horas"
+                        if minutes > 0:
+                            duration_text += f" y {minutes} minutos"
+                    else:
+                        duration_text = "No disponible"
+                    
+                    response = f"""🎓 **{course_name}**
+⏰ **Duración**: {duration_text}
+
+¿Te gustaría conocer la distribución por sesiones?"""
+                    
+                    debug_print(f"✅ Respuesta de duración generada desde BD: {duration_text}", "_handle_specific_database_inquiry")
+                    return response
+            
+            elif inquiry_type == "content":
+                # Consultar contenido/actividades desde BD
+                if detected_course:
+                    courses = await self.tool_db.query('ai_courses', {'name': detected_course}, limit=1)
+                else:
+                    courses = await self.tool_db.query('ai_courses', {}, limit=1)
+                
+                if courses:
+                    course = courses[0]
+                    course_id = course.get('id_course')
+                    course_name = course.get('name', 'Curso de IA')
+                    short_description = course.get('short_description', '')
+                    
+                    # Obtener actividades del curso
+                    activities = await self.tool_db.query('ai_tema_activity', {'id_course_fk': course_id}, limit=10)
+                    
+                    response = f"""🎓 **{course_name}**
+📚 **Contenido**: {short_description}"""
+                    
+                    if activities:
+                        response += "\n\n**Incluye:**"
+                        activity_types = set()
+                        for activity in activities[:5]:  # Mostrar máximo 5
+                            item_type = activity.get('item_type', '').title()
+                            if item_type and item_type not in activity_types:
+                                activity_types.add(item_type)
+                                response += f"\n• {item_type}"
+                    
+                    response += "\n\n¿Te interesa algún módulo en particular?"
+                    
+                    debug_print(f"✅ Respuesta de contenido generada desde BD", "_handle_specific_database_inquiry")
+                    return response
+            
+            elif inquiry_type == "modality":
+                # Consultar modalidad desde BD
+                if detected_course:
+                    courses = await self.tool_db.query('ai_courses', {'name': detected_course}, limit=1)
+                else:
+                    courses = await self.tool_db.query('ai_courses', {}, limit=1)
+                
+                if courses:
+                    course = courses[0]
+                    modality = course.get('modality', 'No disponible')
+                    course_name = course.get('name', 'Curso de IA')
+                    
+                    modality_text = {
+                        'online': 'Online - 100% virtual',
+                        'presencial': 'Presencial',
+                        'hibrido': 'Híbrido (online + presencial)',
+                        'virtual': 'Virtual en vivo'
+                    }.get(modality.lower(), modality)
+                    
+                    response = f"""🎓 **{course_name}**
+🌐 **Modalidad**: {modality_text}
+
+¿Te gustaría conocer los horarios disponibles?"""
+                    
+                    debug_print(f"✅ Respuesta de modalidad generada desde BD: {modality_text}", "_handle_specific_database_inquiry")
+                    return response
+            
+            debug_print(f"⚠️ No se encontraron datos en BD para {inquiry_type}", "_handle_specific_database_inquiry")
+            return None
+            
+        except Exception as e:
+            debug_print(f"❌ Error en consulta específica de BD para {inquiry_type}: {e}", "_handle_specific_database_inquiry")
+            logger.error(f"Error en _handle_specific_database_inquiry para {inquiry_type}: {e}")
+            return None
+    
+    def _detect_course_in_message(self, message: str) -> Optional[str]:
+        """
+        Detecta si hay un curso específico mencionado en el mensaje.
+        
+        Args:
+            message: Mensaje del usuario
+            
+        Returns:
+            Nombre del curso detectado o None
+        """
+        message_lower = message.lower()
+        
+        # Patrones de cursos conocidos
+        course_patterns = {
+            'experto': 'Experto en IA para Profesionales',
+            'chatgpt': 'Experto en IA con ChatGPT y Gemini',
+            'gemini': 'Experto en IA con ChatGPT y Gemini',
+            'profesionales': 'Experto en IA para Profesionales'
+        }
+        
+        for pattern, course_name in course_patterns.items():
+            if pattern in message_lower:
+                return course_name
+        
+        return None

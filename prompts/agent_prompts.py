@@ -1147,5 +1147,175 @@ Conecta DIRECTAMENTE con cómo el curso resuelve estos problemas específicos.
     
     return context
 
+# ============================================================================
+# 10. SECONDARY DATABASE PROMPT FOR AI AGENT (TOOL_DB INTEGRATION)
+# ============================================================================
+
+DATABASE_TOOL_PROMPT = """
+## SISTEMA DE CONSULTA INTELIGENTE A BASE DE DATOS
+
+CUANDO EL USUARIO REQUIERE INFORMACIÓN ESPECÍFICA Y NO LA TIENES DISPONIBLE:
+🔍 **USA tool_db.query() PARA OBTENER DATOS REALES EN TIEMPO REAL**
+
+### TABLAS DISPONIBLES Y SU USO:
+
+**ai_courses** - Información principal de cursos
+- Campos: name, short_description, session_count, total_duration_min, price, currency, modality, roi
+- Uso: Consultas sobre precios, duración, modalidad, sesiones
+- Ejemplo: `await tool_db.query('ai_courses', {'name': 'Experto en IA'}, limit=1)`
+
+**ai_course_session** - Sesiones individuales de cada curso  
+- Campos: session_index, title, objective, duration_minutes, id_course_fk
+- Uso: Detalles de sesiones específicas, contenido por sesión
+- Ejemplo: `await tool_db.query('ai_course_session', {'id_course_fk': course_id})`
+
+**bond** - Bonos y recursos adicionales
+- Campos: content, type_bond, emisor, bond_url, active
+- Uso: Bonos activos, recursos adicionales por curso
+- Ejemplo: `await tool_db.query('bond', {'active': True, 'id_courses_fk': course_id})`
+
+**elements_url** - Elementos multimedia (PDFs, videos, plantillas)
+- Campos: item_type, url_test, description_url
+- Uso: Recursos descargables, materiales de apoyo
+- Ejemplo: `await tool_db.query('elements_url', {'item_type': 'pdf'})`
+
+**ai_tema_activity** - Actividades y ejercicios por sesión
+- Campos: item_type, title_item, item_session
+- Uso: Contenido práctico, ejercicios específicos
+- Ejemplo: `await tool_db.query('ai_tema_activity', {'item_type': 'practica'})`
+
+### REGLAS DE USO OBLIGATORIAS:
+
+1. **PRIORIDAD DATABASE FIRST**: Si el usuario pregunta por información específica (precio, duración, sesiones, contenido), SIEMPRE usar tool_db ANTES de responder
+2. **NO INVENTAR DATOS**: Si tool_db no devuelve información, usar sistema anti-hallucination existente
+3. **CONSULTAS ESPECÍFICAS**: Adaptar filtros según la pregunta del usuario
+4. **FALLBACK GRACEFUL**: Si tool_db falla, continuar con respuestas estándar sin interrumpir flujo
+
+### CASOS DE USO PRIORITARIOS:
+
+**Preguntas de Precio/Costo:**
+```python
+courses = await tool_db.query('ai_courses', {'name': course_name}, limit=1)
+# Responder con precio real de BD
+```
+
+**Consultas de Sesiones/Duración:**
+```python
+sessions = await tool_db.query('ai_course_session', {'id_course_fk': course_id})
+# Contar sesiones reales y calcular duración total
+```
+
+**Información de Bonos:**
+```python
+bonuses = await tool_db.query('bond', {'active': True}, limit=5)
+# Mostrar bonos reales disponibles
+```
+
+**Contenido del Curso:**
+```python
+activities = await tool_db.query('ai_tema_activity', {'id_course_fk': course_id})
+# Describir contenido real basado en actividades
+```
+
+### INTEGRACIÓN CON SISTEMA ANTI-HALLUCINATION:
+
+- **SI tool_db RETORNA DATOS**: Usar información real, aplicar reglas de validación existentes
+- **SI tool_db FALLA O VACÍO**: Activar sistema anti-hallucination estándar
+- **SIEMPRE MANTENER**: Tono conversational y personalization según buyer persona
+- **PRESERVAR**: Todas las reglas de contexto, ROI y PyME focus
+
+### EJEMPLO DE FLUJO INTEGRADO:
+
+```
+Usuario: "¿Cuánto cuesta el curso?"
+1. Detectar pregunta específica → PRICE_INQUIRY
+2. Llamar: await tool_db.query('ai_courses', {'name': detected_course})
+3. Si datos disponibles → Respuesta con precio real + CTA personalizado
+4. Si no datos → Fallback a respuesta estándar con escalación a asesor
+```
+
+**IMPORTANTE**: Este sistema complementa (NO reemplaza) las rutas legacy existentes. Usar para NUEVAS características y consultas específicas que requieren datos en tiempo real.
+"""
+
+def get_database_integration_context(user_query: str, detected_course: str = None) -> str:
+    """
+    Genera contexto específico para integración con tool_db según la consulta del usuario.
+    
+    Args:
+        user_query: Pregunta específica del usuario
+        detected_course: Curso detectado en la conversación (opcional)
+        
+    Returns:
+        Contexto específico para usar tool_db apropiadamente
+    """
+    
+    # Detectar tipo de consulta
+    query_type = "GENERAL"
+    if any(word in user_query.lower() for word in ['precio', 'costo', 'cuánto', 'vale']):
+        query_type = "PRICE_INQUIRY"
+    elif any(word in user_query.lower() for word in ['sesiones', 'módulos', 'clases', 'cuántas']):
+        query_type = "SESSION_INQUIRY"
+    elif any(word in user_query.lower() for word in ['duración', 'tiempo', 'horas', 'dura']):
+        query_type = "DURATION_INQUIRY"
+    elif any(word in user_query.lower() for word in ['contenido', 'temario', 'incluye', 'qué']):
+        query_type = "CONTENT_INQUIRY"
+    elif any(word in user_query.lower() for word in ['bonos', 'recursos', 'adicional', 'extra']):
+        query_type = "BONUS_INQUIRY"
+    
+    context = f"""
+## CONSULTA ESPECÍFICA DETECTADA: {query_type}
+
+**Query del usuario**: {user_query}
+**Curso detectado**: {detected_course or 'No específico'}
+
+### ACCIÓN REQUERIDA:
+"""
+    
+    if query_type == "PRICE_INQUIRY":
+        context += """
+1. USAR: `await tool_db.query('ai_courses', {'name': course_name}, limit=1)`
+2. EXTRAER: Campo 'price' y 'currency' 
+3. RESPONDER: Precio exacto + CTA personalizado según buyer persona
+"""
+    elif query_type == "SESSION_INQUIRY":
+        context += """
+1. USAR: `await tool_db.query('ai_course_session', {'id_course_fk': course_id})`
+2. CONTAR: Total de sesiones reales
+3. RESPONDER: Número exacto + breve descripción de estructura
+"""
+    elif query_type == "DURATION_INQUIRY":
+        context += """
+1. USAR: `await tool_db.query('ai_courses', {'name': course_name})`
+2. EXTRAER: Campo 'total_duration_min'
+3. RESPONDER: Duración en horas + distribución por sesiones
+"""
+    elif query_type == "CONTENT_INQUIRY":
+        context += """
+1. USAR: `await tool_db.query('ai_tema_activity', {'id_course_fk': course_id})`
+2. AGRUPAR: Por tipo de actividad y sesión
+3. RESPONDER: Resumen de contenido práctico real
+"""
+    elif query_type == "BONUS_INQUIRY":
+        context += """
+1. USAR: `await tool_db.query('bond', {'active': True, 'id_courses_fk': course_id})`
+2. LISTAR: Bonos activos reales
+3. RESPONDER: Descripción concisa de bonos verificados
+"""
+    
+    context += """
+
+### FALLBACK SI TOOL_DB FALLA:
+- Activar sistema anti-hallucination estándar
+- Escalar a asesor especializado si es consulta crítica
+- Mantener conversación fluida sin romper experiencia
+
+### PERSONALIZACIÓN REQUERIDA:
+- Adaptar tono según buyer persona detectado
+- Incluir CTA específico para PyME leaders
+- Mantener enfoque en ROI y beneficios empresariales
+"""
+    
+    return context
+
 # Alias para compatibilidad hacia atrás
 WhatsAppMessageTemplates = WhatsAppBusinessTemplates 

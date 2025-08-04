@@ -12,8 +12,10 @@ import re
 
 from app.infrastructure.openai.client import OpenAIClient
 from app.infrastructure.database.repositories.course_repository import CourseRepository
+from app.infrastructure.tools.tool_db import get_tool_db
 from app.application.usecases.validate_response_use_case import ValidateResponseUseCase, ValidationResult
 from prompts.anti_hallucination_prompts import get_anti_hallucination_prompt, get_course_validation_rules
+from prompts.agent_prompts import DATABASE_TOOL_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,7 @@ class AntiHallucinationUseCase:
         self.openai_client = openai_client
         self.course_repository = course_repository
         self.validate_response_use_case = validate_response_use_case
+        self.tool_db = None  # Se inicializa bajo demanda
         
         # Indicadores de que el usuario busca información específica
         self.specific_info_keywords = [
@@ -71,6 +74,26 @@ class AntiHallucinationUseCase:
                 combined_course_info.update(course_detailed_info)
                 
             data_availability = await self._check_data_availability(combined_course_info, needs_specific_info)
+            
+            # 🆕 2.5. Si no hay datos suficientes, intentar obtener desde tool_db
+            if not data_availability['has_sufficient_data'] and needs_specific_info:
+                logger.info("🔍 Datos insuficientes - Intentando obtener desde tool_db")
+                
+                try:
+                    if self.tool_db is None:
+                        self.tool_db = await get_tool_db()
+                    
+                    # Obtener datos específicos desde BD usando tool_db
+                    enhanced_course_info = await self._get_course_info_from_tool_db(user_message)
+                    
+                    if enhanced_course_info:
+                        combined_course_info.update(enhanced_course_info)
+                        # Re-evaluar disponibilidad de datos con información de tool_db
+                        data_availability = await self._check_data_availability(combined_course_info, needs_specific_info)
+                        logger.info(f"✅ tool_db mejoró disponibilidad de datos: {data_availability['has_sufficient_data']}")
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ Error usando tool_db en anti-hallucination: {e}")
             
             # 3. Generar respuesta según disponibilidad de datos
             if data_availability['has_sufficient_data']:
@@ -315,3 +338,92 @@ En este momento estoy consultando la información más actualizada para darte da
         return await self.validate_response_use_case.validate_response(
             response_text, course_info
         )
+    
+    async def _get_course_info_from_tool_db(self, user_message: str) -> Optional[Dict[str, Any]]:
+        """
+        Intenta obtener información del curso desde la base de datos usando tool_db.
+        
+        Args:
+            user_message: Mensaje del usuario para detectar qué información necesita
+            
+        Returns:
+            Diccionario con información del curso o None si no se encuentra
+        """
+        try:
+            if self.tool_db is None:
+                return None
+            
+            logger.info("🔍 Obteniendo información de curso desde tool_db")
+            
+            # Detectar qué tipo de información específica necesita el usuario
+            message_lower = user_message.lower()
+            
+            # Obtener curso(s) principal(es)
+            courses = await self.tool_db.query('ai_courses', {}, limit=3)
+            
+            if not courses:
+                logger.warning("⚠️ No se encontraron cursos en tool_db")
+                return None
+            
+            course_info = {}
+            main_course = courses[0]  # Usar el primer curso como principal
+            
+            # Mapear información básica del curso
+            course_info.update({
+                'name': main_course.get('name', ''),
+                'price': main_course.get('price', ''),
+                'currency': main_course.get('currency', 'MXN'),
+                'session_count': main_course.get('session_count', 0),
+                'total_duration_min': main_course.get('total_duration_min', 0),
+                'modality': main_course.get('modality', ''),
+                'short_description': main_course.get('short_description', ''),
+                'roi': main_course.get('roi', '')
+            })
+            
+            # Si el usuario pregunta por contenido específico, obtener actividades
+            if any(word in message_lower for word in ['contenido', 'temario', 'incluye', 'módulos']):
+                course_id = main_course.get('id_course')
+                if course_id:
+                    activities = await self.tool_db.query('ai_tema_activity', {'id_course_fk': course_id}, limit=10)
+                    if activities:
+                        course_info['activities'] = activities
+                        # Crear resumen de contenido
+                        activity_types = list(set(act.get('item_type', '') for act in activities))
+                        course_info['content_summary'] = f"Incluye: {', '.join(activity_types)}"
+            
+            # Si el usuario pregunta por bonos, obtener bonos activos
+            if any(word in message_lower for word in ['bonos', 'recursos', 'adicional', 'extra']):
+                course_id = main_course.get('id_course')
+                if course_id:
+                    bonuses = await self.tool_db.query('bond', {'active': True, 'id_courses_fk': course_id}, limit=5)
+                    if bonuses:
+                        course_info['bonuses'] = bonuses
+                        course_info['bonus_count'] = len(bonuses)
+            
+            # Si el usuario pregunta por sesiones específicas, obtener sesiones
+            if any(word in message_lower for word in ['sesiones', 'clases', 'módulos']):
+                course_id = main_course.get('id_course')
+                if course_id:
+                    sessions = await self.tool_db.query('ai_course_session', {'id_course_fk': course_id}, limit=20)
+                    if sessions:
+                        course_info['sessions'] = sessions
+                        course_info['session_details'] = [
+                            {'title': s.get('title'), 'duration': s.get('duration_minutes')} 
+                            for s in sessions
+                        ]
+            
+            # Calcular duración en formato legible
+            if course_info.get('total_duration_min'):
+                hours = course_info['total_duration_min'] // 60
+                minutes = course_info['total_duration_min'] % 60
+                duration_text = f"{hours} horas"
+                if minutes > 0:
+                    duration_text += f" y {minutes} minutos"
+                course_info['duration_formatted'] = duration_text
+            
+            logger.info(f"✅ Información de curso obtenida desde tool_db: {course_info.get('name', 'Sin nombre')}")
+            return course_info
+            
+        except Exception as e:
+            logger.error(f"❌ Error obteniendo información de curso desde tool_db: {e}")
+            return None
