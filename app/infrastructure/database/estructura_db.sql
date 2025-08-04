@@ -44,8 +44,8 @@ CREATE TABLE public.ai_tema_activity (
   item_type text NOT NULL,
   title_item character varying NOT NULL,
   CONSTRAINT ai_tema_activity_pkey PRIMARY KEY (id_activity),
-  CONSTRAINT ai_tema_activity_id_session_fk_fkey FOREIGN KEY (id_session_fk) REFERENCES public.ai_course_session(id_session),
-  CONSTRAINT ai_tema_activity_id_course_fk_fkey FOREIGN KEY (id_course_fk) REFERENCES public.ai_courses(id_course)
+  CONSTRAINT ai_tema_activity_id_course_fk_fkey FOREIGN KEY (id_course_fk) REFERENCES public.ai_courses(id_course),
+  CONSTRAINT ai_tema_activity_id_session_fk_fkey FOREIGN KEY (id_session_fk) REFERENCES public.ai_course_session(id_session)
 );
 CREATE TABLE public.bond (
   id_bond bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -54,6 +54,8 @@ CREATE TABLE public.bond (
   type_bond character varying NOT NULL,
   id_courses_fk uuid,
   emisor character varying NOT NULL,
+  bond_url text,
+  active boolean DEFAULT false,
   CONSTRAINT bond_pkey PRIMARY KEY (id_bond),
   CONSTRAINT Bond_id_courses_fk_fkey FOREIGN KEY (id_courses_fk) REFERENCES public.ai_courses(id_course)
 );
@@ -66,6 +68,6 @@ CREATE TABLE public.elements_url (
   url_test character varying NOT NULL,
   description_url character varying NOT NULL,
   CONSTRAINT elements_url_pkey PRIMARY KEY (id_element),
-  CONSTRAINT Elements_url_id_activity_fk_fkey FOREIGN KEY (id_activity_fk) REFERENCES public.ai_tema_activity(id_activity),
-  CONSTRAINT Elements_url_id_session_fk_fkey FOREIGN KEY (id_session_fk) REFERENCES public.ai_course_session(id_session)
+  CONSTRAINT Elements_url_id_session_fk_fkey FOREIGN KEY (id_session_fk) REFERENCES public.ai_course_session(id_session),
+  CONSTRAINT Elements_url_id_activity_fk_fkey FOREIGN KEY (id_activity_fk) REFERENCES public.ai_tema_activity(id_activity)
 );

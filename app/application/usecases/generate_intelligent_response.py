@@ -237,8 +237,13 @@ class GenerateIntelligentResponseUseCase:
                 debug_print("✅ Respuesta FAQ inteligente generada", "_generate_contextual_response")
                 return faq_response
             
-            # 🎁 PRIORIDAD 2: Verificar intención de compra para activar bonos workbook
-            if self.purchase_bonus_use_case.should_activate_purchase_bonus(intent_analysis):
+            # 🏦 PRIORIDAD 2: Verificar intenciones post-compra (confirmación, pago realizado, comprobante)
+            if self.purchase_bonus_use_case.is_post_purchase_intent(intent_analysis):
+                debug_print(f"🏦 Intención post-compra detectada: {category}", "_generate_contextual_response")
+                return await self._handle_post_purchase_intent(category, user_memory, user_id)
+            
+            # 🎁 PRIORIDAD 3: Verificar intención de compra para activar bonos workbook
+            if self.purchase_bonus_use_case.should_activate_purchase_bonus(intent_analysis, user_id):
                 debug_print("🎁 Intención de compra detectada - Activando bonos workbook", "_generate_contextual_response")
                 
                 # Configurar memory_use_case temporalmente
@@ -257,6 +262,9 @@ class GenerateIntelligentResponseUseCase:
                 await self.purchase_bonus_use_case.update_user_memory_with_purchase_intent(
                     user_id, intent_analysis
                 )
+                
+                # 🆕 IMPORTANTE: Marcar que se enviaron los datos bancarios
+                await self.purchase_bonus_use_case.mark_purchase_data_sent(user_id)
                 
                 debug_print("✅ Bono de compra activado y mensaje generado", "_generate_contextual_response")
                 return purchase_bonus_message
@@ -2220,3 +2228,123 @@ Genera una respuesta personalizada, natural y útil usando la información del c
             
         except Exception as e:
             debug_print(f"❌ Error actualizando memoria con comportamiento ofensivo: {e}", "_update_user_memory_with_offensive_behavior")
+    
+    async def _handle_post_purchase_intent(
+        self,
+        category: str,
+        user_memory,
+        user_id: str
+    ) -> str:
+        """
+        Maneja intenciones post-compra (confirmación de pago, pago realizado, comprobante).
+        
+        Args:
+            category: Categoría de intención post-compra
+            user_memory: Memoria del usuario
+            user_id: ID del usuario
+            
+        Returns:
+            Mensaje apropiado de contacto con asesor
+        """
+        try:
+            debug_print(f"🏦 Manejando intención post-compra: {category}", "_handle_post_purchase_intent")
+            
+            user_name = getattr(user_memory, 'name', '') if user_memory else ''
+            
+            # Importar templates
+            from prompts.agent_prompts import WhatsAppBusinessTemplates
+            
+            # Actualizar memoria del usuario con la acción post-compra
+            await self._update_user_memory_with_post_purchase_action(user_id, user_memory, category)
+            
+            # Seleccionar template apropiado según la categoría
+            if category == 'PAYMENT_CONFIRMATION':
+                debug_print("✅ Confirmación de pago - Enviando mensaje de asesor", "_handle_post_purchase_intent")
+                return WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
+            
+            elif category == 'PAYMENT_COMPLETED':
+                debug_print("✅ Pago completado - Enviando mensaje de verificación y asesor", "_handle_post_purchase_intent")
+                return WhatsAppBusinessTemplates.payment_completed_advisor_contact(user_name)
+            
+            elif category == 'COMPROBANTE_UPLOAD':
+                debug_print("✅ Comprobante recibido - Enviando mensaje de procesamiento", "_handle_post_purchase_intent")
+                return WhatsAppBusinessTemplates.comprobante_received_advisor_contact(user_name)
+            
+            else:
+                # Fallback genérico para cualquier post-purchase
+                debug_print("⚠️ Categoría post-compra no reconocida, usando fallback", "_handle_post_purchase_intent")
+                return WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
+            
+        except Exception as e:
+            debug_print(f"❌ Error manejando intención post-compra: {e}", "_handle_post_purchase_intent")
+            # Fallback seguro
+            from prompts.agent_prompts import WhatsAppBusinessTemplates
+            return WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
+    
+    async def _update_user_memory_with_post_purchase_action(
+        self,
+        user_id: str,
+        user_memory,
+        category: str
+    ) -> None:
+        """
+        Actualiza la memoria del usuario con acciones post-compra.
+        
+        Args:
+            user_id: ID del usuario
+            user_memory: Memoria actual del usuario  
+            category: Categoría de la acción post-compra
+        """
+        try:
+            from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+            from memory.lead_memory import MemoryManager
+            from datetime import datetime
+            
+            memory_manager = MemoryManager()
+            memory_use_case = ManageUserMemoryUseCase(memory_manager)
+            
+            if user_memory:
+                # Actualizar stage a post-purchase
+                user_memory.stage = 'post_purchase'
+                
+                # Incrementar lead score por acción post-compra
+                if hasattr(user_memory, 'lead_score'):
+                    if category == 'PAYMENT_CONFIRMATION':
+                        user_memory.lead_score += 10  # Confirmó que pagará
+                    elif category == 'PAYMENT_COMPLETED':
+                        user_memory.lead_score += 20  # Confirmó que ya pagó
+                    elif category == 'COMPROBANTE_UPLOAD':
+                        user_memory.lead_score += 25  # Envió comprobante
+                
+                # Agregar señal de comportamiento post-compra
+                if hasattr(user_memory, 'buying_signals'):
+                    action_descriptions = {
+                        'PAYMENT_CONFIRMATION': 'Confirmó que procederá con el pago',
+                        'PAYMENT_COMPLETED': 'Indicó que realizó el pago',
+                        'COMPROBANTE_UPLOAD': 'Mencionó envío de comprobante'
+                    }
+                    signal = action_descriptions.get(category, f'Acción post-compra: {category}')
+                    
+                    if signal not in user_memory.buying_signals:
+                        user_memory.buying_signals.append(signal)
+                
+                # Agregar al historial de mensajes
+                if hasattr(user_memory, 'message_history'):
+                    if user_memory.message_history is None:
+                        user_memory.message_history = []
+                    
+                    user_memory.message_history.append({
+                        'timestamp': datetime.now().isoformat(),
+                        'action': f'post_purchase_{category.lower()}',
+                        'category': category,
+                        'description': f'Usuario ejecutó acción post-compra: {category}',
+                        'advisor_contact_scheduled': True
+                    })
+                
+                # Guardar memoria actualizada
+                memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+                
+            debug_print(f"✅ Memoria actualizada con acción post-compra {category} para usuario {user_id}", "_update_user_memory_with_post_purchase_action")
+            
+        except Exception as e:
+            debug_print(f"❌ Error actualizando memoria con acción post-compra: {e}", "_update_user_memory_with_post_purchase_action")
