@@ -1,0 +1,30 @@
+# Development and Testing Requirements
+# ===================================
+
+# Testing Framework
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.0.0
+
+# Async Testing Utilities
+asynctest>=0.13.0
+
+# Code Quality and Linting
+ruff>=0.1.0
+black>=23.0.0
+mypy>=1.5.0
+
+# Type Checking Extensions
+types-requests>=2.31.0
+
+# Coverage and Reporting
+coverage[toml]>=7.0.0
+
+# Development Utilities
+pre-commit>=3.0.0
+
+# Database Testing Mocks
+asyncpg-stubs>=0.28.0
+
+# Optional: For more advanced async testing
+pytest-mock>=3.12.0

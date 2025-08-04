@@ -14,7 +14,6 @@ DESIGN PRINCIPLES:
 
 import logging
 from typing import Dict, List, Any, Optional
-import asyncio
 from app.infrastructure.database.client import DatabaseClient
 
 logger = logging.getLogger(__name__)
@@ -197,7 +196,14 @@ class ToolDB:
 _tool_db_instance = None
 
 async def get_tool_db() -> ToolDB:
-    """Get or create global ToolDB instance."""
+    """Get or create global ToolDB instance.
+    
+    Returns:
+        ToolDB: Configured ToolDB instance ready for database queries.
+        
+    Note:
+        Uses singleton pattern to ensure single database connection pool.
+    """
     global _tool_db_instance
     if _tool_db_instance is None:
         _tool_db_instance = ToolDB()
@@ -205,7 +211,20 @@ async def get_tool_db() -> ToolDB:
 
 # Convenience function for direct access
 async def query(table: str, filters: Dict[str, Any] = None, limit: int = 5) -> List[Dict[str, Any]]:
-    """Direct query function - main interface for AI agent."""
+    """Direct query function - main interface for AI agent.
+    
+    Args:
+        table: Name of the database table to query (must be whitelisted).
+        filters: Optional dictionary of column-value pairs for WHERE conditions.
+        limit: Maximum number of results to return (default: 5, max: 20).
+        
+    Returns:
+        List[Dict[str, Any]]: Query results as list of dictionaries.
+        
+    Example:
+        >>> courses = await query('ai_courses', {'modality': 'online'}, limit=3)
+        >>> sessions = await query('ai_course_session', {'id_course_fk': course_id})
+    """
     tool_db = await get_tool_db()
     return await tool_db.query(table, filters, limit)
 
