@@ -639,6 +639,9 @@ Una vez que se refleje tu transferencia, nuestro asesor comercial te contactará
 ⏰ **Horario de contacto**: 9:00 AM - 6:00 PM (México)
 📞 **Tiempo estimado**: Dentro de las siguientes 2 horas hábiles tras confirmarse el pago
 
+🎁 **Bonos activos incluidos:**
+{bonuses_block}
+
 ¡Gracias por confiar en nosotros para tu transformación con IA! 🚀"""
 
     @staticmethod
@@ -657,6 +660,9 @@ He recibido tu confirmación de pago. Nuestro asesor comercial verificará la tr
 📋 **Coordinar tus primeros pasos en el curso**
 
 ⏰ **Contacto estimado**: Dentro de las próximas 2 horas en horario laboral (9 AM - 6 PM México)
+
+🎁 **Bonos activos incluidos:**
+{bonuses_block}
 
 Si enviaste comprobante, será procesado de inmediato. ¡Bienvenido al mundo de la IA práctica! 🎓✨"""
 
@@ -682,6 +688,9 @@ He recibido tu comprobante de pago. Nuestro equipo lo procesará inmediatamente.
 📚 Orientarte en tus primeros pasos
 
 ⏰ **Horario**: 9:00 AM - 6:00 PM (México)
+
+🎁 **Bonos activos incluidos:**
+{bonuses_block}
 
 ¡Gracias por unirte! Tu transformación con IA comienza ahora 🎯"""
 

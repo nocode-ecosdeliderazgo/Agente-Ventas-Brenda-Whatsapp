@@ -3,6 +3,7 @@ Caso de uso para análisis de intención de mensajes.
 Integra OpenAI con el sistema de memoria para análisis inteligente.
 """
 import logging
+import re
 from typing import Dict, Any, Optional
 
 from app.infrastructure.openai.client import OpenAIClient
@@ -10,6 +11,9 @@ from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.domain.entities.message import IncomingMessage
 
 logger = logging.getLogger(__name__)
+
+# Constante para regex de afirmaciones cortas (expandido)
+AFFIRMATIVE_SHORT_REGEX = r"^\s*(s[ií]|sip|ok|okay|claro|vale|hecho|👍|✅)\s*$"
 
 def debug_print(message: str, function_name: str = "", file_name: str = "analyze_message_intent.py"):
     """Print de debug visual para consola"""
@@ -43,6 +47,100 @@ class AnalyzeMessageIntentUseCase:
         self.memory_use_case = memory_use_case
         self.logger = logging.getLogger(__name__)
     
+    def _bot_already_sent_bank_data(self, user_memory) -> bool:
+        """
+        Verifica si el bot ya envió datos bancarios revisando el historial de mensajes.
+        
+        Args:
+            user_memory: Memoria del usuario
+            
+        Returns:
+            True si se detecta que ya se enviaron datos bancarios, False si no
+        """
+        try:
+            if not user_memory or not user_memory.message_history:
+                return False
+            
+            # Revisar los últimos mensajes del historial (expandido a 5 mensajes)
+            for message in reversed(user_memory.message_history[-5:]):  # Últimos 5 mensajes
+                # Verificar si hay acción de purchase_bonus_sent
+                if message.get('action') == 'purchase_bonus_sent':
+                    return True
+                
+                # Verificar si la descripción contiene palabras clave de datos bancarios
+                description = message.get('description', '')
+                bank_keywords = ['Cuenta CLABE', 'datos bancarios', 'bono workbook enviados', 'banking_data_sent', 'BBVA', 'transferencia']
+                if any(keyword in description for keyword in bank_keywords):
+                    return True
+                
+                # Verificar si el contenido del mensaje contiene datos bancarios
+                content = message.get('content', '')
+                if any(keyword in content for keyword in bank_keywords):
+                    return True
+                
+                # Verificar si hay banking_data_sent en el mensaje
+                if message.get('banking_data_sent'):
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error verificando datos bancarios enviados: {e}")
+            return False
+    
+    def _check_fast_payment_confirmation(
+        self,
+        message: str,
+        user_memory
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Verifica si el mensaje cumple las condiciones para detección rápida de PAYMENT_CONFIRMATION.
+        
+        Args:
+            message: Mensaje del usuario
+            user_memory: Memoria del usuario
+            
+        Returns:
+            Dict con análisis de intención si cumple condiciones, None si no
+        """
+        try:
+            # Verificar si el mensaje anterior contenía datos bancarios (flag directo O fallback)
+            purchase_bonus_sent = hasattr(user_memory, 'purchase_bonus_sent') and user_memory.purchase_bonus_sent
+            bank_data_sent = self._bot_already_sent_bank_data(user_memory)
+            
+            # Si no hay flag directo pero sí hay datos bancarios en historial, log WARNING
+            if not purchase_bonus_sent and bank_data_sent:
+                self.logger.warning(f"⚠️ FALLBACK ACTIVADO: purchase_bonus_sent=False pero se encontró CLABE en historial para usuario")
+            
+            if not (purchase_bonus_sent or bank_data_sent):
+                return None
+            
+            # Verificar longitud del mensaje (<= 5 palabras)
+            word_count = len(message.strip().split())
+            if word_count > 5:
+                return None
+            
+            # Verificar si coincide con regex de afirmación corta
+            if not re.match(AFFIRMATIVE_SHORT_REGEX, message.strip(), re.IGNORECASE):
+                return None
+            
+            debug_print(f"⚡ DETECCIÓN RÁPIDA PAYMENT_CONFIRMATION - Mensaje: '{message}'", "_check_fast_payment_confirmation", "analyze_message_intent.py")
+            debug_print(f"🔍 Condiciones: purchase_bonus_sent={purchase_bonus_sent}, bank_data_sent={bank_data_sent}", "_check_fast_payment_confirmation", "analyze_message_intent.py")
+            
+            return {
+                'category': 'PAYMENT_CONFIRMATION',
+                'confidence': 0.9,
+                'detection_method': 'fast_rule',
+                'message_length': word_count,
+                'matched_pattern': message.strip(),
+                'purchase_bonus_sent': purchase_bonus_sent,
+                'bank_data_sent': bank_data_sent
+            }
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error en detección rápida PAYMENT_CONFIRMATION: {e}")
+            return None
+    
     async def execute(
         self,
         user_id: str,
@@ -67,6 +165,33 @@ class AnalyzeMessageIntentUseCase:
             debug_print("📚 Obteniendo memoria del usuario...", "execute", "analyze_message_intent.py")
             user_memory = self.memory_use_case.get_user_memory(user_id)
             debug_print(f"✅ Memoria obtenida - Nombre: {user_memory.name}, Interacciones: {user_memory.interaction_count}", "execute", "analyze_message_intent.py")
+            
+            # 1.1. Verificar detección rápida de PAYMENT_CONFIRMATION
+            debug_print("⚡ Verificando detección rápida de PAYMENT_CONFIRMATION...", "execute", "analyze_message_intent.py")
+            fast_detection = self._check_fast_payment_confirmation(message.body, user_memory)
+            
+            if fast_detection:
+                debug_print(f"🎯 DETECCIÓN RÁPIDA ACTIVADA: {fast_detection['category']} (confianza: {fast_detection['confidence']})", "execute", "analyze_message_intent.py")
+                
+                # Retornar resultado de detección rápida sin pasar por OpenAI
+                result = {
+                    'success': True,
+                    'intent_analysis': fast_detection,
+                    'extracted_info': {},
+                    'generated_response': '',
+                    'updated_memory': user_memory,
+                    'recommended_actions': ['continue_conversation'],
+                    'should_use_ai_response': False
+                }
+                
+                self.logger.info(
+                    f"✅ Detección rápida completada para usuario {user_id}. "
+                    f"Categoría: {fast_detection.get('category', 'UNKNOWN')}"
+                )
+                
+                return result
+            
+            debug_print("➡️ No se activó detección rápida, continuando con análisis principal...", "execute", "analyze_message_intent.py")
             
             # 2. Preparar contexto de mensajes recientes
             debug_print("📋 Preparando contexto de mensajes recientes...", "execute", "analyze_message_intent.py")

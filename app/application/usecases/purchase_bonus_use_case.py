@@ -89,6 +89,11 @@ class PurchaseBonusUseCase:
             
             user_memory = self.memory_use_case.get_user_memory(user_id)
             
+            # 🚨 PRIORITARIO: Verificar flag directo primero
+            if user_memory and hasattr(user_memory, 'purchase_bonus_sent') and user_memory.purchase_bonus_sent:
+                logger.info(f"💳 Flag purchase_bonus_sent=True para usuario {user_id}")
+                return True
+            
             # Verificar en message_history si hay envío previo de datos bancarios
             if user_memory and user_memory.message_history:
                 for event in user_memory.message_history:
@@ -416,6 +421,9 @@ El curso incluye múltiples recursos prácticos y bonos exclusivos que te permit
             
             user_memory = self.memory_use_case.get_user_memory(user_id)
             
+            # 🚨 CRÍTICO: Marcar flag de datos bancarios enviados
+            user_memory.purchase_bonus_sent = True
+            
             # Agregar señal de que se enviaron datos bancarios
             banking_data_signal = "Datos bancarios enviados - BBVA CLABE: 012345678901234567"
             if banking_data_signal not in user_memory.buying_signals:
@@ -443,7 +451,7 @@ El curso incluye múltiples recursos prácticos y bonos exclusivos que te permit
                 
             # Guardar memoria actualizada
             self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
-            logger.info(f"💾 Marcado envío de datos bancarios para usuario {user_id}")
+            logger.info(f"💾 Marcado envío de datos bancarios para usuario {user_id} (purchase_bonus_sent=True)")
             
         except Exception as e:
             logger.error(f"Error marcando envío de datos bancarios: {e}")

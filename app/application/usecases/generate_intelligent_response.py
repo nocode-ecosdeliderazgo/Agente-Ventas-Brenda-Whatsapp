@@ -141,6 +141,26 @@ class GenerateIntelligentResponseUseCase:
             
             if send_result['success']:
                 debug_print(f"✅ MENSAJE ENVIADO EXITOSAMENTE!\n🔗 SID: {send_result.get('message_sid', 'N/A')}", "execute", "generate_intelligent_response.py")
+                
+                # 🆕 IMPORTANTE: Marcar que se enviaron los datos bancarios DESPUÉS del envío exitoso
+                try:
+                    intent_analysis = analysis_result.get('intent_analysis', {})
+                    if (self.purchase_bonus_use_case.should_activate_purchase_bonus(intent_analysis, user_id) and
+                        'Cuenta CLABE' in response_text):
+                        debug_print("🏦 Mensaje contiene datos bancarios - Marcando purchase_bonus_sent", "execute", "generate_intelligent_response.py")
+                        
+                        # Configurar memory_use_case temporalmente
+                        from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+                        from memory.lead_memory import MemoryManager
+                        memory_manager = MemoryManager()
+                        memory_use_case = ManageUserMemoryUseCase(memory_manager)
+                        self.purchase_bonus_use_case.memory_use_case = memory_use_case
+                        
+                        await self.purchase_bonus_use_case.mark_purchase_data_sent(user_id)
+                        debug_print("✅ purchase_bonus_sent marcado exitosamente", "execute", "generate_intelligent_response.py")
+                except Exception as e:
+                    debug_print(f"❌ Error marcando purchase_bonus_sent: {e}", "execute", "generate_intelligent_response.py")
+                    self.logger.error(f"Error marcando purchase_bonus_sent: {e}")
             else:
                 debug_print(f"❌ ERROR ENVIANDO MENSAJE: {send_result.get('error', 'Error desconocido')}", "execute", "generate_intelligent_response.py")
             
@@ -262,9 +282,6 @@ class GenerateIntelligentResponseUseCase:
                 await self.purchase_bonus_use_case.update_user_memory_with_purchase_intent(
                     user_id, intent_analysis
                 )
-                
-                # 🆕 IMPORTANTE: Marcar que se enviaron los datos bancarios
-                await self.purchase_bonus_use_case.mark_purchase_data_sent(user_id)
                 
                 debug_print("✅ Bono de compra activado y mensaje generado", "_generate_contextual_response")
                 return purchase_bonus_message
@@ -2244,42 +2261,58 @@ Genera una respuesta personalizada, natural y útil usando la información del c
             user_id: ID del usuario
             
         Returns:
-            Mensaje apropiado de contacto con asesor
+            Mensaje apropiado de contacto con asesor con bonos activos
         """
         try:
             debug_print(f"🏦 Manejando intención post-compra: {category}", "_handle_post_purchase_intent")
             
             user_name = getattr(user_memory, 'name', '') if user_memory else ''
             
-            # Importar templates
+            # Importar templates y tool_db
             from prompts.agent_prompts import WhatsAppBusinessTemplates
+            from app.infrastructure.tools.tool_db import get_tool_db
             
             # Actualizar memoria del usuario con la acción post-compra
             await self._update_user_memory_with_post_purchase_action(user_id, user_memory, category)
             
-            # Seleccionar template apropiado según la categoría
+            # Obtener bonos activos
+            tool_db = await get_tool_db()
+            bonuses = await tool_db.get_active_bonuses()
+            
+            # Construir bloque de bonos
+            if bonuses:
+                bonus_lines = "\n".join(f"• {b['content']} 👉 {b['bond_url']}" for b in bonuses)
+            else:
+                bonus_lines = "• (No hay bonos activos en este momento)"
+            
+            # Seleccionar template apropiado según la categoría y formatear con bonos
             if category == 'PAYMENT_CONFIRMATION':
-                debug_print("✅ Confirmación de pago - Enviando mensaje de asesor", "_handle_post_purchase_intent")
-                return WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
+                debug_print("✅ Confirmación de pago - Enviando mensaje de asesor con bonos", "_handle_post_purchase_intent")
+                response_template = WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
+                return response_template.format(bonuses_block=bonus_lines)
             
             elif category == 'PAYMENT_COMPLETED':
-                debug_print("✅ Pago completado - Enviando mensaje de verificación y asesor", "_handle_post_purchase_intent")
-                return WhatsAppBusinessTemplates.payment_completed_advisor_contact(user_name)
+                debug_print("✅ Pago completado - Enviando mensaje de verificación y asesor con bonos", "_handle_post_purchase_intent")
+                response_template = WhatsAppBusinessTemplates.payment_completed_advisor_contact(user_name)
+                return response_template.format(bonuses_block=bonus_lines)
             
             elif category == 'COMPROBANTE_UPLOAD':
-                debug_print("✅ Comprobante recibido - Enviando mensaje de procesamiento", "_handle_post_purchase_intent")
-                return WhatsAppBusinessTemplates.comprobante_received_advisor_contact(user_name)
+                debug_print("✅ Comprobante recibido - Enviando mensaje de procesamiento con bonos", "_handle_post_purchase_intent")
+                response_template = WhatsAppBusinessTemplates.comprobante_received_advisor_contact(user_name)
+                return response_template.format(bonuses_block=bonus_lines)
             
             else:
                 # Fallback genérico para cualquier post-purchase
-                debug_print("⚠️ Categoría post-compra no reconocida, usando fallback", "_handle_post_purchase_intent")
-                return WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
+                debug_print("⚠️ Categoría post-compra no reconocida, usando fallback con bonos", "_handle_post_purchase_intent")
+                response_template = WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
+                return response_template.format(bonuses_block=bonus_lines)
             
         except Exception as e:
             debug_print(f"❌ Error manejando intención post-compra: {e}", "_handle_post_purchase_intent")
             # Fallback seguro
             from prompts.agent_prompts import WhatsAppBusinessTemplates
-            return WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
+            response_template = WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
+            return response_template.format(bonuses_block="• (No hay bonos activos en este momento)")
     
     async def _update_user_memory_with_post_purchase_action(
         self,
