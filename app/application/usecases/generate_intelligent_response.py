@@ -2009,25 +2009,6 @@ Mientras tanto, te comento que es una inversión única que incluye:
 
 ¿Te gustaría conocer más detalles del formato del curso?"""
             
-            elif inquiry_type == 'methodology':
-                # Consulta sobre metodología de enseñanza
-                return f"""🎓 **{course_name}**
-🎯 **Metodología**: Aprendizaje práctico y aplicado
-
-📋 **Nuestro enfoque educativo:**
-• **Hands-on Learning**: Cada sesión incluye ejercicios prácticos
-• **Casos Reales**: Ejemplos específicos de tu industria
-• **Learning by Doing**: Implementas herramientas durante la clase
-• **Mentoring Personalizado**: Guía paso a paso en cada proceso
-
-**🔄 Estructura de cada sesión:**
-1. Introducción teórica (20%)
-2. Demostración práctica (40%) 
-3. Ejercicios guiados (30%)
-4. Q&A y casos específicos (10%)
-
-¿Te interesa conocer más sobre algún aspecto específico de la metodología?"""
-            
             elif inquiry_type == 'affirmative_detailed':
                 # Respuesta afirmativa - manejar como contenido para flujo progresivo
                 return await self._handle_progressive_content_flow(course_data, course_name, user_memory)
@@ -2096,13 +2077,6 @@ Mientras tanto, te comento que es una inversión única que incluye:
         if is_content_query and not is_excluded:
             return 'content'
         
-        # Detectar consultas de metodología/enseñanza
-        methodology_keywords = [
-            'metodología', 'metodo', 'método', 'enseñanza', 'pedagogía',
-            'cómo enseñan', 'como enseñan', 'forma de enseñar', 'estilo de enseñanza'
-        ]
-        if any(keyword in message_lower for keyword in methodology_keywords):
-            return 'methodology'
         
         # Detectar consultas de modalidad
         modality_keywords = ['modalidad', 'formato', 'presencial', 'online', 'virtual', 'cómo es', 'como es']

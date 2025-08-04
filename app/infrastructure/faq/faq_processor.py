@@ -141,6 +141,15 @@ class FAQProcessor:
                 'answer': 'El examen es 100% práctico: Proyecto integrador + preguntas tipo caso con duración de 90 minutos. Las preguntas incluyen escenarios reales, diseño de prompts y análisis de resultados. Para prepararte recomendamos: Repasar plantillas IMPULSO y ejemplos de Custom GPTs, Practicar con workflows diarios y medir tiempos. Es una evaluación práctica que demuestra tu capacidad real de aplicar IA en situaciones profesionales.',
                 'escalation_needed': False,
                 'priority': 'medium'
+            },
+            {
+                'id': 'FAQ_014',
+                'category': 'metodología',
+                'question': '¿Qué metodología de enseñanza siguen?',
+                'keywords': ['metodología', 'método', 'enseñanza', 'pedagogía', 'cómo enseñan', 'forma de enseñar', 'enfoque', 'práctica'],
+                'answer': 'Utilizamos un enfoque altamente práctico y progresivo: Práctica guiada en vivo donde cada concepto se aplica inmediatamente durante la sesión, asegurando aprendizaje efectivo en tiempo real. Transición rápida de la teoría a la acción en solo 12 horas distribuidas en cuatro sesiones. Ejercicios estructurados de diseño de prompts y agentes (metaprompt, prompt progresivo, megaprompt) y aplicación del modelo IMPULSO para resolver problemas de negocio en PYMES. Proyecto integrador con métricas SMART y KPIs que permite demostrar el valor tangible de lo aprendido en un caso real. Evaluación basada en desempeño mediante un proyecto práctico y preguntas tipo caso de 90 minutos. Soporte continuo con agente de ayuda 24/7, foro de networking y plantillas especializadas. Enfoque en resultados medibles donde los participantes generan un entregable práctico para su organización y reciben acompañamiento post-curso.',
+                'escalation_needed': False,
+                'priority': 'high'
             }
         ]
     
@@ -173,7 +182,8 @@ class FAQProcessor:
             'certificado': ['certificado', 'diploma'],
             'soporte': ['soporte', 'ayuda', 'asistencia'],
             'acceso': ['acceso', 'tiempo', 'ilimitado'],
-            'garantía': ['garantía', 'satisfacción', 'devolución']
+            'garantía': ['garantía', 'satisfacción', 'devolución'],
+            'metodología': ['metodología', 'método', 'enseñanza', 'pedagogía', 'cómo enseñan', 'forma de enseñar']
         }
         
         for category, keywords in category_keywords.items():
