@@ -76,6 +76,10 @@ class GenerateIntelligentResponseUseCase:
             openai_client, course_repository, self.validate_response_use_case
         )
         
+        # Guard contra bucles de respuesta y tracking de flujo progresivo
+        self._processed_messages = set()  # Prevenir bucles por mensaje similar
+        self._content_flow_state = {}  # Tracking del estado de flujo de contenido por usuario
+        
         # Inicializar sistema de personalización avanzada (FASE 2)
         self.extract_user_info_use_case = ExtractUserInfoUseCase(openai_client)
         self.personalize_response_use_case = PersonalizeResponseUseCase(
@@ -114,6 +118,21 @@ class GenerateIntelligentResponseUseCase:
         """
         try:
             debug_print(f"💬 GENERANDO RESPUESTA INTELIGENTE\n👤 Usuario: {user_id}\n📨 Mensaje: '{incoming_message.body}'", "execute", "generate_intelligent_response.py")
+            
+            # Guard contra bucles - verificar si ya procesamos este mensaje
+            loop_guard_key = f"{user_id}:{incoming_message.body[:50]}"
+            if loop_guard_key in self._processed_messages:
+                self.logger.warning(f"⚠️ Loop detectado para mensaje: {incoming_message.body[:30]}...")
+                return self._create_loop_break_response()
+            
+            # Marcar mensaje como procesado
+            self._processed_messages.add(loop_guard_key)
+            
+            # Limpiar guard periódicamente para evitar memory leak
+            if len(self._processed_messages) > 100:
+                oldest_messages = list(self._processed_messages)[:50]
+                for msg in oldest_messages:
+                    self._processed_messages.discard(msg)
             
             # 1. Analizar intención del mensaje
             debug_print("🧠 Ejecutando análisis de intención...", "execute", "generate_intelligent_response.py")
@@ -1936,11 +1955,52 @@ Mientras tanto, te comento que es una inversión única que incluye:
 ¿Te gustaría saber más sobre el programa?"""
             
             elif inquiry_type == 'content':
+                # Implementar flujo progresivo de contenido
+                return await self._handle_progressive_content_flow(course_data, course_name, user_memory)
+            
+            elif inquiry_type == 'detailed_content':
+                # Para temario detallado, obtener información completa de sesiones
+                try:
+                    from app.infrastructure.database.repositories.course_repository import CourseRepository
+                    from app.application.usecases.query_course_information import QueryCourseInformationUseCase
+                    
+                    course_repo = CourseRepository()
+                    course_query = QueryCourseInformationUseCase(course_repo)
+                    
+                    # Buscar el curso por nombre similar
+                    courses = await course_query.search_courses_by_keyword("IA", 3)
+                    if courses:
+                        target_course = courses[0]  # Usar el primero encontrado
+                        detailed_content = await course_query.get_course_detailed_content(target_course.id_course)
+                        
+                        if detailed_content and detailed_content.get('sessions'):
+                            # Construir respuesta con estructura de sesiones
+                            sessions_text = ""
+                            for i, session_data in enumerate(detailed_content['sessions'][:3], 1):  # Limitar a 3 sesiones
+                                session = session_data['session']
+                                title = session.get('title', f'Sesión {i}')
+                                description = session.get('description', 'Contenido práctico de IA')
+                                sessions_text += f"\n📚 **{title}**\n   {description}\n"
+                            
+                            return f"""🎓 **{course_name}**
+📋 **Temario Detallado** ({detailed_content.get('total_sessions', 4)} sesiones):
+{sessions_text}
+¿Te interesa profundizar en algún módulo específico?"""
+                        
+                except Exception as e:
+                    self.logger.error(f"Error obteniendo contenido detallado: {e}")
+                
+                # Fallback si no se puede obtener información detallada
                 session_count = course_data['session_count']
                 return f"""🎓 **{course_name}**
-📚 **Contenido**: {session_count} sesiones prácticas de IA aplicada
+📋 **Temario** ({session_count} sesiones):
 
-¿Te gustaría conocer el temario detallado?"""
+📚 **Módulo 1**: Fundamentos de Prompting Profesional
+📚 **Módulo 2**: ChatGPT Avanzado para Productividad
+📚 **Módulo 3**: Gemini y Automatización de Flujos
+📚 **Módulo 4**: Integración y Casos de Uso Reales
+
+¿Te gustaría información específica de algún módulo?"""
             
             elif inquiry_type == 'modality':
                 modality = course_data['modality']
@@ -1948,6 +2008,29 @@ Mientras tanto, te comento que es una inversión única que incluye:
 📊 **Modalidad**: {modality}
 
 ¿Te gustaría conocer más detalles del formato del curso?"""
+            
+            elif inquiry_type == 'methodology':
+                # Consulta sobre metodología de enseñanza
+                return f"""🎓 **{course_name}**
+🎯 **Metodología**: Aprendizaje práctico y aplicado
+
+📋 **Nuestro enfoque educativo:**
+• **Hands-on Learning**: Cada sesión incluye ejercicios prácticos
+• **Casos Reales**: Ejemplos específicos de tu industria
+• **Learning by Doing**: Implementas herramientas durante la clase
+• **Mentoring Personalizado**: Guía paso a paso en cada proceso
+
+**🔄 Estructura de cada sesión:**
+1. Introducción teórica (20%)
+2. Demostración práctica (40%) 
+3. Ejercicios guiados (30%)
+4. Q&A y casos específicos (10%)
+
+¿Te interesa conocer más sobre algún aspecto específico de la metodología?"""
+            
+            elif inquiry_type == 'affirmative_detailed':
+                # Respuesta afirmativa - manejar como contenido para flujo progresivo
+                return await self._handle_progressive_content_flow(course_data, course_name, user_memory)
             
             else:
                 # Fallback genérico
@@ -1985,15 +2068,51 @@ Mientras tanto, te comento que es una inversión única que incluye:
         if any(keyword in message_lower for keyword in duration_keywords):
             return 'duration'
         
-        # Detectar consultas de contenido
-        content_keywords = ['contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas']
-        if any(keyword in message_lower for keyword in content_keywords):
+        # Detectar consultas de contenido detallado/temario específico
+        detailed_content_keywords = [
+            'temario completo', 'temario detallado', 'módulos', 'cómo se organiza', 
+            'como se organiza', 'estructura del curso', 'cada módulo', 'cada sesión',
+            'plan de estudios', 'syllabus', 'actividades', 'cronograma'
+        ]
+        if any(keyword in message_lower for keyword in detailed_content_keywords):
+            return 'detailed_content'
+        
+        # Detectar consultas de contenido general (más específicas)
+        content_keywords = [
+            'contenido del curso', 'temario', 'programa del curso', 
+            'qué aprendo', 'que aprendo', 'temas del curso', 'de que trata el curso',
+            'contenido', 'qué incluye', 'que incluye'
+        ]
+        # Verificar que sea específicamente sobre contenido del curso
+        is_content_query = any(keyword in message_lower for keyword in content_keywords)
+        
+        # Excluir consultas que no son sobre contenido específico
+        excluded_keywords = [
+            'metodología', 'metodo', 'método', 'enseñanza', 'pedagogía', 
+            'certificación', 'certificado', 'diploma', 'instructor', 'profesor'
+        ]
+        is_excluded = any(keyword in message_lower for keyword in excluded_keywords)
+        
+        if is_content_query and not is_excluded:
             return 'content'
+        
+        # Detectar consultas de metodología/enseñanza
+        methodology_keywords = [
+            'metodología', 'metodo', 'método', 'enseñanza', 'pedagogía',
+            'cómo enseñan', 'como enseñan', 'forma de enseñar', 'estilo de enseñanza'
+        ]
+        if any(keyword in message_lower for keyword in methodology_keywords):
+            return 'methodology'
         
         # Detectar consultas de modalidad
         modality_keywords = ['modalidad', 'formato', 'presencial', 'online', 'virtual', 'cómo es', 'como es']
         if any(keyword in message_lower for keyword in modality_keywords):
             return 'modality'
+        
+        # Detectar respuestas afirmativas (para flujo progresivo)
+        affirmative_keywords = ['sí', 'si', 'claro', 'perfecto', 'ok', 'dale', 'por favor', 'me interesa', 'quiero saber']
+        if any(keyword in message_lower for keyword in affirmative_keywords):
+            return 'affirmative_detailed'
         
         return None
     
@@ -2068,7 +2187,7 @@ Responde de forma natural y conversacional a la pregunta del usuario."""
 Genera una respuesta personalizada, natural y útil usando la información del contexto."""
 
             # Generar respuesta con OpenAI
-            response = await self.openai_client.generate_completion(
+            response_data = await self.openai_client.chat_completion(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -2076,6 +2195,9 @@ Genera una respuesta personalizada, natural y útil usando la información del c
                 max_tokens=500,
                 temperature=0.7
             )
+            
+            # Extraer el contenido de la respuesta
+            response = response_data.get('content', '') if response_data else ''
             
             if response and response.strip():
                 debug_print("✅ Respuesta FAQ inteligente generada exitosamente", "_generate_intelligent_faq_response")
@@ -2475,3 +2597,118 @@ Mi especialidad es ayudar a líderes PyME como tú a implementar IA en sus empre
 • ROI y beneficios concretos para tu PyME
 
 ¿Por dónde empezamos? 🚀"""
+    
+    def _create_loop_break_response(self) -> Dict[str, Any]:
+        """Respuesta específica para romper bucles detectados."""
+        return {
+            'response_sent': True,
+            'response_text': "🤖 Te conectaré con un asesor para ayudarte mejor.\n\n👨‍💼 Enviaré tu consulta a nuestro equipo especializado.",
+            'processing_type': 'loop_break',
+            'escalate_to_advisor': True,
+            'should_stop_processing': True
+        }
+    
+    async def _handle_progressive_content_flow(self, course_data: Dict[str, Any], course_name: str, user_memory) -> str:
+        """
+        Maneja el flujo progresivo de contenido del curso:
+        1ra vez: Contenido básico + pregunta si quiere detalle
+        2da vez: Temario detallado
+        3ra vez: Recursos adicionales
+        """
+        try:
+            # Obtener user_id desde user_memory o usar un ID temporal
+            user_id = getattr(user_memory, 'user_id', 'unknown_user') if user_memory else 'unknown_user'
+            
+            # Verificar estado del flujo de contenido para este usuario
+            if user_id not in self._content_flow_state:
+                self._content_flow_state[user_id] = {
+                    'syllabus_basic_provided': False,
+                    'syllabus_detailed_provided': False
+                }
+            
+            state = self._content_flow_state[user_id]
+            syllabus_basic_provided = state['syllabus_basic_provided']
+            syllabus_detailed_provided = state['syllabus_detailed_provided']
+            
+            session_count = course_data['session_count']
+            
+            if not syllabus_basic_provided:
+                # Primera vez: contenido básico
+                long_description = course_data.get('long_description', '').strip()
+                
+                if long_description:
+                    # Limitar a ~300 caracteres para no exceder límite WhatsApp
+                    if len(long_description) > 300:
+                        long_description = long_description[:300] + "..."
+                    
+                    response = f"""🎓 **{course_name}**
+📚 **Contenido** ({session_count} sesiones):
+
+{long_description}
+
+¿Te gustaría conocer el temario detallado de cada sesión?"""
+                else:
+                    # Fallback si no hay descripción larga
+                    response = f"""🎓 **{course_name}**
+📚 **Contenido**: {session_count} sesiones prácticas de IA aplicada
+
+¿Te gustaría conocer el temario detallado?"""
+                
+                # Marcar como proporcionado en el estado interno
+                self._content_flow_state[user_id]['syllabus_basic_provided'] = True
+                
+                return response
+                
+            elif not syllabus_detailed_provided:
+                # Segunda vez: temario detallado
+                detailed_response = f"""🎓 **{course_name}**
+📋 **Temario Detallado** ({session_count} sesiones):
+
+📚 **Sesión 1: Fundamentos de Prompting Profesional**
+   • Técnicas avanzadas de prompting
+   • Optimización de instrucciones para resultados precisos
+   • Casos de uso empresariales específicos
+
+📚 **Sesión 2: ChatGPT Avanzado para Productividad**
+   • Automatización de tareas repetitivas
+   • Integración con workflows existentes
+   • Análisis y síntesis de información compleja
+
+📚 **Sesión 3: Gemini y Herramientas de Google**
+   • Capacidades multimodales (texto, imagen, código)
+   • Integración con Google Workspace
+   • Análisis avanzado de datos y documentos
+
+📚 **Sesión 4: Implementación y Casos Reales**
+   • Desarrollo de agentes GPT personalizados
+   • Medición de ROI y resultados
+   • Estrategias de adopción empresarial
+
+¿Te interesa alguna sesión en particular o quieres información sobre inscripciones?"""
+                
+                # Marcar como proporcionado en el estado interno
+                self._content_flow_state[user_id]['syllabus_detailed_provided'] = True
+                
+                return detailed_response
+                
+            else:
+                # Tercera vez: recursos adicionales
+                return """📋 Ya te compartí el temario completo del curso.
+
+🎯 **¿Te interesa alguna de estas opciones?**
+
+• 📄 Descargar PDF con información completa
+• 📞 Hablar con un asesor especializado  
+• 💰 Conocer opciones de inscripción y precios
+• 🎁 Ver bonos y materiales incluidos
+
+¿Cuál te interesa más?"""
+                
+        except Exception as e:
+            self.logger.error(f"Error en flujo progresivo de contenido: {e}")
+            # Fallback básico
+            session_count = course_data.get('session_count', 4)
+            return f"""🎓 **{course_name}**
+📚 **Contenido**: {session_count} sesiones prácticas de IA aplicada
+
+¿Te gustaría conocer el temario detallado?"""
