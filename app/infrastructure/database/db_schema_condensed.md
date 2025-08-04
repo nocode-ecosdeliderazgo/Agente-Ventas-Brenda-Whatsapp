@@ -2,6 +2,7 @@
 
 > Última actualización: 2025‑08‑03
 
+| Tabla                   | Descripción                                                           | Claves y columnas clave                                                                                                                                                          |
 | ----------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **ai\_courses**         | Catálogo maestro de cursos de IA                                      | **id\_course** (uuid, PK), name, short\_description, *long\_description*, price, currency, session\_count, total\_duration\_min, level, modality, status, start\_date, end\_date |
 | **ai\_course\_session** | Sesiones cronológicas de cada curso                                   | **id\_session** (uuid, PK), session\_index (smallint), title, objective, duration\_minutes, scheduled\_at, **id\_course\_fk** → ai\_courses                                      |
@@ -75,4 +76,6 @@ CREATE INDEX idx_ai_tema_activity_session_fk ON ai_tema_activity (id_session_fk)
 }
 ```
 
+---
 
+¡Listo para adjuntar a Claude o cualquier otra IA como contexto de esquema!
