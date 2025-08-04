@@ -382,7 +382,7 @@ class GenerateIntelligentResponseUseCase:
             # Obtener el nombre del usuario
             user_name = user_memory.name if user_memory and user_memory.name else ""
             
-            # Patrones de saludo a eliminar
+            # Patrones de saludo a eliminar - Expandido
             greeting_patterns = [
                 f"¡Hola, {user_name}!",
                 f"Hola {user_name},",
@@ -390,9 +390,17 @@ class GenerateIntelligentResponseUseCase:
                 f"Hola, {user_name},",
                 f"¡Hola {user_name},",
                 f"Hola {user_name}!",
+                f"¡Hola {user_name}! 😊",
+                f"¡Hola, {user_name}! 😊",
+                f"Hola {user_name}! 😊",
+                f"Hola, {user_name}! 😊",
                 "¡Hola!",
                 "Hola,",
-                "Hola!"
+                "Hola!",
+                "¡Hola! 😊",
+                "Hola! 😊",
+                "¡Hola 😊",
+                "Hola 😊"
             ]
             
             # Patrones de oferta de consulta a eliminar
@@ -1037,9 +1045,7 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
                     
                     courses_text = f"**📚 Tenemos {course_name_text}** para {levels_text}, diseñados específicamente para profesionales como tú." if total_courses == 1 else f"**📚 Tenemos {total_courses} cursos disponibles** para {levels_text}, diseñados específicamente para profesionales como tú."
                     
-                    return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-{role_context}estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
+                    return f"""{role_context}Estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
 
 {courses_text}
 
@@ -1054,9 +1060,7 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
             self.logger.error(f"Error obteniendo información de cursos para respuesta general: {e}")
         
         # Fallback sin información de BD
-        return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-{role_context}estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
+        return f"""{role_context}Estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
 
 **🎯 Puedo ayudarte con:**
 • Información sobre nuestros cursos especializados
@@ -1476,9 +1480,7 @@ Basándome en tus intereses, te recomiendo estos cursos:
                     
                     else:
                         course_name_text = self._get_course_name_text(total_courses, featured_courses)
-                        return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-**📚 Te ayudo con información sobre:**
+                        return f"""**📚 Te ayudo con información sobre:**
 • {course_name_text}
 • Programas de automatización empresarial
 • Capacitación personalizada según tu sector
@@ -1487,17 +1489,13 @@ Basándome en tus intereses, te recomiendo estos cursos:
 ¿En qué área te gustaría especializarte?"""
             
             # Fallback si no hay base de datos
-            return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
+            return f"""**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
 
 ¿En qué área te gustaría especializarte?"""
             
         except Exception as e:
             self.logger.error(f"Error obteniendo información de cursos: {e}")
-            return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
+            return f"""**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
 
 ¿En qué área te gustaría especializarte?"""
     
@@ -1865,9 +1863,36 @@ Mientras tanto, te comento que es una inversión única que incluye:
             elif inquiry_type == 'content':
                 session_count = course_data['session_count']
                 return f"""🎓 **{course_name}**
-📚 **Contenido**: {session_count} sesiones prácticas de IA aplicada
 
-¿Te gustaría conocer el temario detallado?"""
+📚 **CONTENIDO DEL CURSO:**
+
+**📋 Estructura:**
+• {session_count} sesiones prácticas (70% práctica, 30% teoría)
+• Casos reales de empresas
+
+**🛠️ Herramientas:**
+• ChatGPT, Claude, Gemini
+• Zapier/Make para automatización
+• Integración Slack, Teams, CRM
+• Dashboards en Coda.io
+
+**👨‍🏫 Instructor:**
+• +5 años en IA empresarial
+• +200 empresas implementadas
+• Certificaciones OpenAI y Google AI
+
+**📊 Metodología:**
+• Ejercicios hands-on
+• Plantillas reutilizables
+• Proyectos aplicados a tu sector
+
+**🎁 Incluye:**
+• Workbooks por módulo
+• +500 prompts especializados
+• Comunidad exclusiva
+• Soporte 3 meses
+
+¿Quieres detalles de algún módulo específico?"""
             
             elif inquiry_type == 'modality':
                 modality = course_data['modality']
@@ -1912,8 +1937,23 @@ Mientras tanto, te comento que es una inversión única que incluye:
         if any(keyword in message_lower for keyword in duration_keywords):
             return 'duration'
         
-        # Detectar consultas de contenido
-        content_keywords = ['contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas']
+        # Detectar consultas de contenido - Expandido con más keywords
+        content_keywords = [
+            'contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas',
+            'módulos', 'modulos', 'organizan', 'estructura', 'requisitos', 'previos',
+            'instructores', 'profesor', 'metodología', 'metodologia', 'enseñanza',
+            'ejercicio', 'ejercicios', 'práctico', 'practico', 'herramientas', 'plataformas',
+            'sectores', 'industrias', 'casos de éxito', 'casos de exito', 'aplicado',
+            'soporte', 'mentoria', 'mentoría', 'grupos', 'slack', 'telegram', 'recursos extra',
+            'bonos', 'materiales adicionales', 'acceso', 'evaluación', 'evaluacion', 
+            'feedback', 'progreso', 'criterios', 'quizzes', 'retos', 'código', 'codigo',
+            'proyectos finales', 'personaliza', 'ejemplos', 'perfil', 'empresa',
+            'integraciones', 'teams', 'zapier', 'n8n', 'configurar', 'plantillas',
+            'prompts', 'scripts', 'reutilizar', 'comunidad', 'alumnos', 'egresados',
+            'consultar', 'actualizaciones', 'evoluciona', 'certificado', 'badge digital',
+            'completar', 'pruebas', 'testimonios', 'anteriores participantes', 'adaptar',
+            'proyecto real', 'marcha', 'objetivos de aprendizaje', 'sesión', 'sesion'
+        ]
         if any(keyword in message_lower for keyword in content_keywords):
             return 'content'
         
@@ -1995,14 +2035,26 @@ Responde de forma natural y conversacional a la pregunta del usuario."""
 Genera una respuesta personalizada, natural y útil usando la información del contexto."""
 
             # Generar respuesta con OpenAI
-            response = await self.openai_client.generate_completion(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=500,
-                temperature=0.7
-            )
+            if hasattr(self.openai_client, 'generate_completion'):
+                response = await self.openai_client.generate_completion(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    max_tokens=500,
+                    temperature=0.7
+                )
+            else:
+                # Fallback al método chat_completion genérico
+                response_dict = await self.openai_client.chat_completion(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    max_tokens=500,
+                    temperature=0.7
+                )
+                response = response_dict.get('content') if isinstance(response_dict, dict) else response_dict
             
             if response and response.strip():
                 debug_print("✅ Respuesta FAQ inteligente generada exitosamente", "_generate_intelligent_faq_response")
@@ -2038,8 +2090,8 @@ Genera una respuesta personalizada, natural y útil usando la información del c
         category = faq_context['category']
         escalation_needed = faq_context.get('escalation_needed', False)
         
-        # Personalización básica
-        greeting = f"¡Hola {name}! 😊" if name != 'Usuario' else "¡Hola! 😊"
+        # Personalización básica - saludo breve
+        greeting = f"Hola {name}!" if name != 'Usuario' else "Hola!"
         
         if user_role and 'CEO' in user_role:
             role_context = "Como líder de tu organización, "

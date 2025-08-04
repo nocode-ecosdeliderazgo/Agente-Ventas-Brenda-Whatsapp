@@ -19,7 +19,7 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 
 ## ✅ CURRENT STATUS: SISTEMA 100% FUNCIONAL - PURCHASE BONUS SYSTEM WITH BANKING INFO
 
-### **🎉 ÚLTIMA ACTUALIZACIÓN (1 Agosto 2025)**: Sistema completo de bonos de compra con datos bancarios
+### **🎉 ÚLTIMA ACTUALIZACIÓN (5 Agosto 2025)**: Sistema completo de bonos de compra con datos bancarios y mejoras de respuestas
 
 **✅ Componentes Completamente Implementados y Validados:**
 - **Privacy Flow System** ✅ **COMPLETAMENTE FUNCIONAL** - Flujo GDPR obligatorio
@@ -36,7 +36,7 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **Advisor Referral System** ✅ **COMPLETAMENTE FUNCIONAL** - Referencia automática a asesores
 - **🆕 FAQ System** ✅ **NUEVO - COMPLETAMENTE FUNCIONAL** - Sistema de preguntas frecuentes integrado
 
-### **🔧 Últimas Mejoras Críticas Implementadas (4 Agosto 2025)**
+### **🔧 Últimas Mejoras Críticas Implementadas (5 Agosto 2025)**
 - **✅ Purchase Intent Detection**: IMPLEMENTADO - Detección automática de intención de compra
 - **✅ Workbook Bonus Activation**: IMPLEMENTADO - Bonos workbook desde base de datos por compra
 - **✅ Banking Information**: IMPLEMENTADO - Datos bancarios automáticos en respuestas de compra
@@ -48,6 +48,10 @@ This is "Brenda" - an intelligent WhatsApp sales bot for "Aprenda y Aplique IA" 
 - **✅ Concise Specific Responses**: IMPLEMENTADO - Respuestas concisas para consultas específicas con datos de BD
 - **🆕 Enhanced FAQ System**: IMPLEMENTADO - 13 FAQs expandidas con información detallada ($2,990 MXN)
 - **🆕 Conversational Tone Improvement**: IMPLEMENTADO - Eliminadas frases empáticas repetitivas, tono más dinámico
+- **🆕 Greeting Simplification**: IMPLEMENTADO - Eliminado "¡Hola [nombre]!" para evitar duplicaciones
+- **🆕 Instructor Inquiry Fix**: IMPLEMENTADO - Preguntas sobre instructores responden correctamente sin fallar
+- **🆕 Message Duplication Prevention**: IMPLEMENTADO - Respuestas complejas ya no se duplican
+- **🆕 Course Announcement Flag Fix**: IMPLEMENTADO - `course_announcement_sent` solo se marca tras confirmación Twilio
 
 ## Current Architecture
 
@@ -420,5 +424,5 @@ The `legacy/` folder contains the complete Telegram implementation with 35+ conv
 ---
 
 **Current Status**: ✅ **PRODUCTION READY** - Enhanced FAQ system + Improved conversational tone + Concise specific responses
-**Last Updated**: August 4, 2025
-**Version**: 2.3 - Enhanced FAQ System with Improved Conversational Tone
+**Last Updated**: August 5, 2025
+**Version**: 2.4 - Response Fixes and Greeting Simplification

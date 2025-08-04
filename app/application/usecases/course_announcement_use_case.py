@@ -263,19 +263,23 @@ class CourseAnnouncementUseCase:
             
             # Actualizar memoria del usuario
             await self._update_user_memory(user_id, course_code, course_info)
-
-            # Marcar que el anuncio ya se envió (para evitar repetirlo)
-            try:
-                user_memory = self.memory_use_case.get_user_memory(user_id)
-                user_memory.course_announcement_sent = True
-                self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
-            except Exception:
-                pass
             
             # Enviar respuesta completa con resumen, PDF e imagen
             result = await self._send_course_announcement_response(
                 user_id, course_code, course_info
             )
+            
+            # Marcar que el anuncio se envió SOLO si fue exitoso
+            if result.get('success', False):
+                try:
+                    user_memory = self.memory_use_case.get_user_memory(user_id)
+                    user_memory.course_announcement_sent = True
+                    self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+                    logger.info(f"✅ Marcado course_announcement_sent=True para {user_id}")
+                except Exception as e:
+                    logger.error(f"Error marcando anuncio como enviado: {e}")
+            else:
+                logger.warning(f"❌ No se marca course_announcement_sent porque el envío falló para {user_id}")
             
             logger.info(f"✅ Flujo de anuncio completado para {course_code}")
             return result
@@ -739,51 +743,44 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 modality = course_info.get('modality', 'Online')
                 bonuses_from_db = []
             
-            # Crear mensaje principal (VERSIÓN CORTA para evitar límite de 1600 caracteres)
+            # Crear mensaje principal (VERSIÓN ULTRA CORTA para Twilio)
             message_parts = [
-                "🎯 ¡Aquí tienes la información!",
+                "🎯 ¡Información del curso!",
                 "",
                 f"📚 **{course_name}**",
-                f"💰 **Inversión:** ${price} {currency}",
-                f"📊 **Nivel:** {level} | 🗓️ {sessions} sesiones ({duration}h)",
-                f"💻 **Modalidad:** {modality}",
+                f"💰 ${price} {currency} | 📊 {level}",
+                f"🗓️ {sessions} sesiones ({duration}h) | 💻 {modality}",
                 ""
             ]
             
-            # Agregar solo descripción corta si existe
-            if description:
-                message_parts.extend([
-                    f"📝 {description}",
-                    ""
-                ])
+            # Solo descripción MUY corta si existe
+            if description and len(description) < 100:
+                message_parts.append(f"📝 {description[:80]}...")
+                message_parts.append("")
             
             # Usar bonos de la BD primero, fallback a mock data si no hay
             bonuses = bonuses_from_db if bonuses_from_db else course_info.get('bonuses', [])
             
+            # Solo mostrar que incluye bonos, sin listarlos
             if bonuses:
                 message_parts.extend([
-                    f"🎁 **BONOS INCLUIDOS:**"
+                    f"🎁 **Incluye {len(bonuses)} bonos especiales**",
+                    ""
                 ])
-                # Mostrar solo los primeros 3 bonos para ahorrar caracteres
-                for i, bonus in enumerate(bonuses[:3]):
-                    message_parts.append(f"• {bonus}")
-                if len(bonuses) > 3:
-                    message_parts.append(f"• ...y {len(bonuses) - 3} bonos más")
-                message_parts.append("")
             
-            # Agregar ROI personalizado según el rol del usuario (versión corta)
+            # ROI muy corto solo si el rol es específico
             role = user_memory.role if user_memory.role != "No disponible" else ""
-            if role:
-                roi_message = self._get_role_specific_roi_message_short(role, price)
-                if roi_message:
-                    message_parts.extend([roi_message, ""])
+            if role and role in ['Analista de Datos', 'Gerente', 'Director']:
+                message_parts.extend([
+                    f"💡 Ideal para {role}",
+                    ""
+                ])
             
-            # Agregar llamada a la acción
+            # Llamada a la acción muy simple
             message_parts.extend([
-                "📄 Te envío el PDF completo con todos los detalles.",
-                "🖼️ También recibirás la imagen con la estructura del curso.",
+                "📄 PDF y detalles completos en camino...",
                 "",
-                "¿Tienes alguna pregunta específica?"
+                "¿Alguna pregunta específica?"
             ])
             
             return "\n".join(message_parts)
@@ -1029,16 +1026,15 @@ Te enviaremos las imágenes por correo electrónico o las puedes ver directament
             price = course_info.get('price', 0)
             
             follow_up_parts = [
-                f"🚀 **¿Listo para transformar tu PyME con IA?**",
+                f"🚀 **¿Listo para IA en tu empresa?**",
                 "",
-                f"👆 Acabas de recibir toda la información de **{course_name}**",
+                f"📄 Revisa el PDF de **{course_name}**",
                 "",
                 "💬 **Próximos pasos:**",
-                "• Revisa el documento PDF con los detalles completos",
-                "• Analiza cómo aplicarías esto en tu empresa específica",
-                "• Si tienes preguntas específicas, escríbeme aquí mismo",
+                "• Analiza cómo aplicarlo en tu empresa",
+                "• Pregúntame cualquier duda específica",
                 "",
-                f"🎯 **Oferta especial:** Reserva tu lugar ahora con solo $97 (resto antes de iniciar)"
+                f"🎯 **Oferta:** Reserva con $97 (resto antes de iniciar)"
             ]
             
             return "\n".join(follow_up_parts)

@@ -274,38 +274,26 @@ class WelcomeFlowUseCase:
             name_greeting = f"{user_name}, " if user_name else ""
             
             message_parts = [
-                f"¡Hola {name_greeting}me da mucho gusto que te interese la Inteligencia Artificial! 🤖",
+                f"¡Hola {name_greeting}perfecto! Te ayudo a elegir tu curso de IA 🤖",
                 "",
-                "🎯 **Te ayudo a elegir el curso perfecto para tu PyME:**",
-                "",
-                "**📚 NUESTROS CURSOS DISPONIBLES:**",
+                "📚 **CURSOS DISPONIBLES:**",
                 ""
             ]
             
-            # Agregar cada curso
+            # Agregar cada curso de forma MUY concisa
             for i, course in enumerate(available_courses, 1):
                 course_name = course.get('name', course.get('title', 'Curso sin nombre'))
-                course_description = course.get('description', 'Descripción no disponible')
-                course_price = course.get('price', course.get('cost', 'Precio no disponible'))
-                course_level = course.get('level', course.get('difficulty', 'Nivel no disponible'))
-                course_sessions = course.get('sessions', course.get('duration_weeks', 'Duración no disponible'))
-                course_hours = course.get('duration_hours', course.get('total_hours', 'Horas no disponibles'))
+                course_price = course.get('price', course.get('cost', 'N/A'))
+                course_level = course.get('level', course.get('difficulty', 'General'))
                 
-                message_parts.extend([
-                    f"**{i}. {course_name}**",
-                    f"📝 {course_description}",
-                    f"💰 Inversión: ${course_price} USD",
-                    f"📊 Nivel: {course_level}",
-                    f"🗓️ Duración: {course_sessions} sesiones ({course_hours} horas)",
-                    ""
-                ])
+                message_parts.append(f"**{i}. {course_name}** | ${course_price} | {course_level}")
             
             message_parts.extend([
-                "**🎯 ¿CUÁL TE INTERESA MÁS?**",
                 "",
-                "Responde con el número del curso o escribe el nombre del curso que te interese.",
+                "🎯 **¿Cuál prefieres?**",
+                "Responde con el número (ej: 1)",
                 "",
-                "💡 **Recomendación:** Si es tu primera vez con IA, te sugiero empezar con un curso de nivel básico."
+                "💡 Si es tu primera vez, empieza con nivel Básico."
             ])
             
             return "\n".join(message_parts)
