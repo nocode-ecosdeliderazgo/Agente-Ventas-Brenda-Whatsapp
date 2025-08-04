@@ -1,1 +1,1 @@
-web: gunicorn app.presentation.api.webhook:app -w 1 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT 
+web: uvicorn app.presentation.api.webhook:app --host 0.0.0.0 --port $PORT 
