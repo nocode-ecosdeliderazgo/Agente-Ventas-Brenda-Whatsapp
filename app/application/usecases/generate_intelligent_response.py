@@ -65,6 +65,7 @@ class GenerateIntelligentResponseUseCase:
         self.intent_analyzer = intent_analyzer
         self.twilio_client = twilio_client
         self.openai_client = openai_client
+        self.course_repository = course_repository
         self.course_query_use_case = course_query_use_case
         self.course_system_available = course_query_use_case is not None
         
@@ -310,7 +311,7 @@ class GenerateIntelligentResponseUseCase:
                 
                 if inquiry_type:
                     debug_print(f"🎯 Usando respuesta concisa para consulta específica: {inquiry_type} (categoría: {category})", "_generate_contextual_response")
-                    return await self._get_concise_specific_response(inquiry_type, user_name, user_role, user_memory)
+                    return await self._get_concise_specific_response(inquiry_type, user_name, user_role, user_memory, incoming_message.body)
             
             # Fallback para PRICE_INQUIRY que no sea específica
             if category == 'PRICE_INQUIRY':
@@ -1860,7 +1861,7 @@ Mientras tanto, te comento que es una inversión única que incluye:
             months_to_break_even = max(1, round(price_numeric / estimated_monthly_savings, 1))
             return f"**💡 Inversión inteligente:** Recuperas el costo en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'} con automatización de procesos"
     
-    async def _get_concise_specific_response(self, inquiry_type: str, user_name: str, user_role: str, user_memory) -> str:
+    async def _get_concise_specific_response(self, inquiry_type: str, user_name: str, user_role: str, user_memory, message_text: str = "") -> str:
         """
         Genera respuestas concisas para consultas específicas (precio, sesiones, duración, etc.).
         Solo muestra: título del curso + información específica + pregunta final.
@@ -1878,6 +1879,17 @@ Mientras tanto, te comento que es una inversión única que incluye:
 ¿Te gustaría conocer más detalles del curso?"""
             
             elif inquiry_type == 'sessions':
+                # Verificar si la pregunta es realmente sobre instructores
+                instructor_keywords = ['instructor', 'instructores', 'profesor', 'profesores', 'enseñar', 'quien', 'quién']
+                if any(keyword in message_text.lower() for keyword in instructor_keywords):
+                    # Redirigir a descripción detallada sobre instructores
+                    level = self._determine_description_level(message_text)
+                    course_description = await self.course_repository.get_course_description('EXPERTO_IA_GPT_GEMINI', level)
+                    
+                    if course_description:
+                        return course_description
+                
+                # Respuesta normal sobre sesiones
                 session_count = course_data['session_count']
                 duration_formatted = course_data['total_duration_formatted']
                 return f"""🎓 **{course_name}**
@@ -1895,7 +1907,7 @@ Mientras tanto, te comento que es una inversión única que incluye:
             
             elif inquiry_type == 'content':
                 # Determinar si el usuario pide información detallada
-                level = self._determine_description_level(user_memory.last_message_text if user_memory else "")
+                level = self._determine_description_level(message_text)
                 
                 # Obtener descripción del curso usando el nuevo sistema con fallback
                 course_description = await self.course_repository.get_course_description('EXPERTO_IA_GPT_GEMINI', level)
@@ -1955,8 +1967,11 @@ Mientras tanto, te comento que es una inversión única que incluye:
             return 'duration'
         
         # Detectar consultas de contenido
-        content_keywords = ['contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas', 
-                           'módulos', 'sesiones', 'cronograma', 'beneficios', 'incluye', 'material']
+        content_keywords = [
+            'contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas', 
+            'módulos', 'sesiones', 'cronograma', 'beneficios', 'incluye', 'material',
+            'instructor', 'instructores', 'profesor', 'profesores', 'enseñar'
+        ]
         if any(keyword in message_lower for keyword in content_keywords):
             return 'content'
         
@@ -1984,7 +1999,8 @@ Mientras tanto, te comento que es una inversión única que incluye:
             'temario detallado', 'temario a detalle', 'programa completo', 'programa detallado',
             'beneficios completos', 'contenido completo', 'información completa',
             'detalle', 'detalles', 'completo', 'todo sobre', 'todo acerca', 'todo el contenido',
-            'módulos', 'sesiones completas', 'cronograma', 'instructores',
+            'módulos', 'sesiones completas', 'cronograma',
+            'instructor', 'instructores', 'profesor', 'profesores', 'quien enseña', 'quién enseña', 'enseñar',
             'certificación', 'material incluido', 'recursos incluidos'
         ]
         
