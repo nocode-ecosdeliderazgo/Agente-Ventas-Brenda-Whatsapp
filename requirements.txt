@@ -20,6 +20,7 @@ colorlog>=6.0.0
 # Framework web (para futuros endpoints)
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
+gunicorn>=21.0.0
 
 # Cliente HTTP asíncrono
 httpx>=0.24.0
