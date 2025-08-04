@@ -103,6 +103,12 @@ Tu enfoque será consultivo-empresarial, identificando rápidamente dolor espec�
 - **Enfoque en beneficios tangibles**: Destaca resultados específicos sin tanto preámbulo
 - **Tono energético pero profesional**: Menos "terapia empresarial", más valor práctico
 - **Preguntas de acción**: "¿Listo para transformar tu PyME?" en lugar de validación emocional
+**NUEVO - TÉCNICAS DE CONVERSACIÓN DINÁMICAS:**
+- **Comunicación directa y valiosa**: Ve directo al punto con información útil
+- **Respuestas visuales y estructuradas**: Usa emojis, bullets y formato claro como "📄 *GUÍA COMPLETA*"
+- **Enfoque en beneficios tangibles**: Destaca resultados específicos sin tanto preámbulo
+- **Tono energético pero profesional**: Menos "terapia empresarial", más valor práctico
+- **Preguntas de acción**: "¿Listo para transformar tu PyME?" en lugar de validación emocional
 
 CATEGORÍAS DE RESPUESTA ADAPTADAS A BUYER PERSONAS:
 
@@ -214,6 +220,13 @@ Clasifica el mensaje del líder PyME en una de estas CATEGORÍAS ESPECÍFICAS pa
 29. PURCHASE_INTENT_PRICING - Pregunta específicamente por precios, formas de pago, descuentos
 30. PURCHASE_READY_SIGNALS - Señales de estar listo para comprar ("ya decidí", "convencido", "cuándo empiezo")
 
+**CATEGORÍAS DE MENSAJES FUERA DE CONTEXTO:**
+31. OFF_TOPIC_CASUAL - Preguntas casuales fuera del contexto de cursos (ej: "¿cómo está el clima?", "¿qué opinas de X?")
+32. OFF_TOPIC_PERSONAL - Preguntas personales al agente (ej: "¿tienes novio?", "¿dónde vives?")
+33. OFF_TOPIC_UNRELATED - Consultas completamente ajenas a IA/cursos (ej: recetas, deportes, política)
+34. OFF_TOPIC_REPEATED - Intentos reiterados de desviar conversación después de redirección
+35. OFFENSIVE_MESSAGE - Mensajes ofensivos, irrespetuosos o inapropiados hacia el agente
+
 MENSAJE ACTUAL: {user_message}
 
 CONTEXTO EMPRESARIAL DEL USUARIO:
@@ -252,6 +265,12 @@ IMPORTANTE PARA LÍDERES PYME EN WHATSAPP:
 - **NUEVO**: Detecta urgencia y presión temporal para priorizar respuestas
 - **NUEVO**: Identifica señales de decisión temprana para facilitar el proceso
 
+**IMPORTANTE PARA MENSAJES FUERA DE CONTEXTO:**
+- Detecta preguntas casuales, personales o completamente ajenas a cursos de IA
+- Identifica mensajes ofensivos o irrespetuosos hacia el agente
+- Marca intentos repetidos de desviar la conversación del tema principal
+- Prioriza mantener el enfoque en información de cursos y IA empresarial
+
 Responde SOLO con JSON:
 {{
     "category": "CATEGORIA_PRINCIPAL",
@@ -261,11 +280,13 @@ Responde SOLO con JSON:
     "roi_opportunity": "high|medium|low",
     "key_topics": ["tema1", "tema2"],
     "response_focus": "Enfoque específico para líder PyME",
-    "recommended_action": "send_business_resources|provide_roi_info|schedule_demo|escalate_to_executive_advisor|continue_business_conversation",
+    "recommended_action": "send_business_resources|provide_roi_info|schedule_demo|escalate_to_executive_advisor|continue_business_conversation|redirect_to_topic|firm_redirect|escalate_offensive",
     "urgency_level": "low|medium|high",
     "implementation_timeline": "immediate|30_days|90_days|strategic_planning",
-    "conversation_stage": "exploration|consideration|decision|objection_handling",
-    "emotional_state": "curious|concerned|excited|skeptical|ready_to_buy"
+    "conversation_stage": "exploration|consideration|decision|objection_handling|off_topic_redirection",
+    "emotional_state": "curious|concerned|excited|skeptical|ready_to_buy|off_topic|inappropriate",
+    "off_topic_severity": "none|casual|repeated|offensive",
+    "redirection_style": "none|humor|sarcasm|firm|predefined_message"
 }}
 """
 
@@ -527,6 +548,61 @@ La buena noticia: Con IA puedes ver resultados en **30 días**, no en meses.
 • Resultados: desde la primera semana
 
 ¿Te muestro ejemplos específicos de tu industria? 🎯"""
+
+    @staticmethod
+    def off_topic_casual_redirect(name: str = "", topic_mentioned: str = "") -> str:
+        """
+        **NUEVO**: Template para redirigir preguntas casuales fuera de contexto con humor.
+        """
+        name_greeting = f"{name}, " if name else ""
+        
+        humor_responses = [
+            "😅 Esa es una pregunta interesante, pero mi especialidad es la IA empresarial, no las consultas generales.",
+            "🤔 Me temo que no soy Google, pero sí soy experta en IA para PyMEs.",
+            "😊 Mi cerebro está optimizado para IA empresarial, no para esa información.",
+            "🎯 Prefiero mantenerme enfocada en lo que realmente sé: cómo la IA puede transformar tu empresa."
+        ]
+        
+        import random
+        humor_line = random.choice(humor_responses)
+        
+        return f"""{name_greeting}{humor_line}
+
+¿Te gustaría que exploremos cómo la IA puede ayudar específicamente a tu empresa? Puedo contarte sobre nuestros cursos especializados para líderes PyME. 🚀"""
+
+    @staticmethod
+    def off_topic_repeated_predefined(name: str = "") -> str:
+        """
+        **NUEVO**: Mensaje predeterminado para intentos repetidos de desviar la conversación.
+        """
+        name_greeting = f"{name}, " if name else ""
+        
+        return f"""{name_greeting}Noto que estás preguntando sobre temas fuera de mi área de especialidad. 
+
+Mi función principal no es responder ese tipo de preguntas, pero estaré encantada de continuar ofreciendo información sobre nuestros cursos de IA para empresas.
+
+🎓 **¿Te interesa conocer cómo podemos ayudarte a:**
+• Automatizar procesos empresariales
+• Optimizar toma de decisiones con IA  
+• Capacitar a tu equipo en herramientas de IA
+• Implementar soluciones prácticas sin equipo técnico
+
+¿Por cuál empezamos? 🚀"""
+
+    @staticmethod
+    def offensive_message_firm_response(name: str = "") -> str:
+        """
+        **NUEVO**: Respuesta firme pero cortés para mensajes ofensivos o irrespetuosos.
+        """
+        name_greeting = f"{name}, " if name else ""
+        
+        return f"""{name_greeting}Ese tipo de comportamiento no es adecuado en nuestra conversación profesional.
+
+Mantengo un ambiente de respeto mutuo y mi función es únicamente proveer información relevante sobre nuestros cursos de IA empresarial.
+
+Si estás interesado en conocer nuestras soluciones de IA para PyMEs, estaré disponible para ayudarte de manera profesional. 
+
+¿Te gustaría que continuemos con información sobre los cursos? 🎓"""
 
     @staticmethod
     def success_metrics_inquiry(name: str = "", industry: str = "") -> str:

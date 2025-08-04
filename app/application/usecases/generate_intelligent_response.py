@@ -16,6 +16,7 @@ from app.application.usecases.dynamic_course_info_provider import DynamicCourseI
 from app.application.usecases.bonus_activation_use_case import BonusActivationUseCase
 from app.application.usecases.purchase_bonus_use_case import PurchaseBonusUseCase
 from app.infrastructure.faq.faq_knowledge_provider import FAQKnowledgeProvider
+from app.infrastructure.faq.faq_knowledge_provider import FAQKnowledgeProvider
 from uuid import UUID
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.infrastructure.openai.client import OpenAIClient
@@ -1944,3 +1945,273 @@ Mientras tanto, te comento que es una inversión única que incluye:
         # Para otras categorías, detectar si es consulta específica por keywords
         inquiry_type = self._detect_specific_inquiry_type(message_body)
         return inquiry_type is not None
+    
+    async def _generate_intelligent_faq_response(
+        self,
+        user_message: str,
+        faq_context: Dict[str, Any],
+        user_context: Dict[str, Any],
+        intent_analysis: Dict[str, Any]
+    ) -> str:
+        """
+        Genera respuesta inteligente y natural para FAQs usando OpenAI con contexto.
+        
+        Args:
+            user_message: Mensaje original del usuario
+            faq_context: Contexto de la FAQ detectada
+            user_context: Contexto del usuario (rol, empresa, etc.)
+            intent_analysis: Análisis de intención del mensaje
+            
+        Returns:
+            Respuesta inteligente y personalizada
+        """
+        try:
+            debug_print(f"🤖 Generando respuesta FAQ inteligente para: {faq_context['category']}", "_generate_intelligent_faq_response")
+            
+            # Construir prompt para respuesta FAQ inteligente
+            system_prompt = f"""Eres Brenda, asistente inteligente de "Aprenda y Aplique IA".
+
+Responde de forma natural, conversacional y personalizada usando EXACTAMENTE la información proporcionada.
+
+INFORMACIÓN DEL USUARIO:
+- Nombre: {user_context.get('name', 'Usuario')}
+- Rol: {user_context.get('user_role', 'No especificado')}
+- Empresa: {user_context.get('company_size', 'No especificada')}
+- Industria: {user_context.get('industry', 'No especificada')}
+
+{faq_context['context_for_ai']}
+
+REGLAS IMPORTANTES:
+1. Usa SOLO la información proporcionada, no inventes datos
+2. Personaliza la respuesta según el rol y contexto del usuario
+3. Mantén un tono profesional pero amigable
+4. Si la FAQ requiere escalación, menciona que un especialista se contactará
+5. No excedas 1600 caracteres para WhatsApp
+6. Usa emojis moderadamente para hacer el mensaje más amigable
+
+Responde de forma natural y conversacional a la pregunta del usuario."""
+
+            user_prompt = f"""Pregunta del usuario: "{user_message}"
+
+Genera una respuesta personalizada, natural y útil usando la información del contexto."""
+
+            # Generar respuesta con OpenAI
+            response = await self.openai_client.generate_completion(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=500,
+                temperature=0.7
+            )
+            
+            if response and response.strip():
+                debug_print("✅ Respuesta FAQ inteligente generada exitosamente", "_generate_intelligent_faq_response")
+                return response.strip()
+            else:
+                debug_print("⚠️ OpenAI no generó respuesta, usando respuesta base", "_generate_intelligent_faq_response")
+                # Fallback a respuesta base personalizada
+                return self._generate_fallback_faq_response(faq_context, user_context)
+                
+        except Exception as e:
+            debug_print(f"❌ Error generando respuesta FAQ inteligente: {e}", "_generate_intelligent_faq_response")
+            # Fallback a respuesta base
+            return self._generate_fallback_faq_response(faq_context, user_context)
+    
+    def _generate_fallback_faq_response(
+        self,
+        faq_context: Dict[str, Any],
+        user_context: Dict[str, Any]
+    ) -> str:
+        """
+        Genera respuesta FAQ de fallback cuando OpenAI no está disponible.
+        
+        Args:
+            faq_context: Contexto de la FAQ
+            user_context: Contexto del usuario
+            
+        Returns:
+            Respuesta FAQ personalizada básica
+        """
+        name = user_context.get('name', 'Usuario')
+        user_role = user_context.get('user_role', '')
+        base_answer = faq_context['base_answer']
+        category = faq_context['category']
+        escalation_needed = faq_context.get('escalation_needed', False)
+        
+        # Personalización básica
+        greeting = f"¡Hola {name}! 😊" if name != 'Usuario' else "¡Hola! 😊"
+        
+        if user_role and 'CEO' in user_role:
+            role_context = "Como líder de tu organización, "
+        elif user_role and ('Manager' in user_role or 'Gerente' in user_role):
+            role_context = "Como gerente, "
+        else:
+            role_context = ""
+        
+        # Construir respuesta personalizada
+        response = f"{greeting}\n\n{role_context}{base_answer}"
+        
+        # Agregar información de escalación si es necesaria
+        if escalation_needed:
+            response += "\n\n👨‍💼 Para darte información más detallada y personalizada, te conectaré con un especialista que se pondrá en contacto contigo muy pronto."
+        
+        # Agregar contexto adicional según categoría
+        if category == 'precio':
+            response += "\n\n💡 ¿Te gustaría que calcule el ROI específico para tu empresa?"
+        elif category == 'implementación':
+            response += "\n\n🚀 ¿Te interesaría ver casos de éxito similares a tu industria?"
+        
+        return response
+    
+    async def _handle_off_topic_message(
+        self,
+        category: str,
+        user_memory,
+        user_id: str,
+        intent_analysis: Dict[str, Any]
+    ) -> str:
+        """
+        Maneja mensajes fuera de contexto y ofensivos según la severidad.
+        
+        Args:
+            category: Categoría del mensaje off-topic
+            user_memory: Memoria del usuario
+            user_id: ID del usuario
+            intent_analysis: Análisis de intención completo
+            
+        Returns:
+            Respuesta apropiada según el tipo de mensaje off-topic
+        """
+        try:
+            debug_print(f"🚨 Manejando mensaje fuera de contexto: {category}", "_handle_off_topic_message")
+            
+            user_name = getattr(user_memory, 'name', '') if user_memory else ''
+            
+            # Importar templates
+            from prompts.agent_prompts import WhatsAppBusinessTemplates
+            
+            # Obtener información sobre intentos previos de off-topic
+            off_topic_attempts = self._get_off_topic_attempts_count(user_memory)
+            redirection_style = intent_analysis.get('redirection_style', 'humor')
+            
+            if category == 'OFFENSIVE_MESSAGE':
+                debug_print("🚨 Mensaje ofensivo detectado - Respuesta firme", "_handle_off_topic_message")
+                # Actualizar memoria con comportamiento inapropiado
+                await self._update_user_memory_with_offensive_behavior(user_id, user_memory)
+                return WhatsAppBusinessTemplates.offensive_message_firm_response(user_name)
+            
+            elif category == 'OFF_TOPIC_REPEATED' or off_topic_attempts >= 2:
+                debug_print(f"🚨 Intentos repetidos detectados ({off_topic_attempts}) - Mensaje predeterminado", "_handle_off_topic_message")
+                # Actualizar contador de intentos
+                await self._update_user_memory_with_off_topic_attempt(user_id, user_memory)
+                return WhatsAppBusinessTemplates.off_topic_repeated_predefined(user_name)
+            
+            else:
+                debug_print(f"😊 Primer intento off-topic - Redirección con humor/sarcasmo", "_handle_off_topic_message")
+                # Actualizar contador de intentos
+                await self._update_user_memory_with_off_topic_attempt(user_id, user_memory)
+                
+                topic_mentioned = intent_analysis.get('key_topics', [''])[0] if intent_analysis.get('key_topics') else ''
+                return WhatsAppBusinessTemplates.off_topic_casual_redirect(user_name, topic_mentioned)
+            
+        except Exception as e:
+            debug_print(f"❌ Error manejando mensaje off-topic: {e}", "_handle_off_topic_message")
+            # Fallback seguro
+            return WhatsAppBusinessTemplates.off_topic_casual_redirect(user_name)
+    
+    def _get_off_topic_attempts_count(self, user_memory) -> int:
+        """
+        Obtiene el número de intentos previos de mensajes off-topic.
+        
+        Args:
+            user_memory: Memoria del usuario
+            
+        Returns:
+            Número de intentos off-topic previos
+        """
+        if not user_memory:
+            return 0
+        
+        # Si la memoria tiene el atributo off_topic_attempts, usarlo
+        if hasattr(user_memory, 'off_topic_attempts'):
+            return getattr(user_memory, 'off_topic_attempts', 0)
+        
+        # Si no, buscar en pain_points por registros de off-topic
+        pain_points = getattr(user_memory, 'pain_points', [])
+        off_topic_count = len([p for p in pain_points if 'off_topic_attempt' in str(p).lower()])
+        
+        return off_topic_count
+
+    async def _update_user_memory_with_off_topic_attempt(self, user_id: str, user_memory):
+        """
+        Actualiza la memoria del usuario con un nuevo intento off-topic.
+        
+        Args:
+            user_id: ID del usuario
+            user_memory: Memoria actual del usuario
+        """
+        try:
+            from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+            from memory.lead_memory import MemoryManager
+            
+            memory_manager = MemoryManager()
+            memory_use_case = ManageUserMemoryUseCase(memory_manager)
+            
+            if user_memory:
+                # Incrementar contador de intentos off-topic
+                current_attempts = self._get_off_topic_attempts_count(user_memory)
+                user_memory.off_topic_attempts = current_attempts + 1
+                
+                # Agregar a pain_points para tracking
+                if not hasattr(user_memory, 'pain_points'):
+                    user_memory.pain_points = []
+                
+                user_memory.pain_points.append(f"off_topic_attempt_{current_attempts + 1}")
+                
+                # Reducir ligeramente el lead_score por comportamiento off-topic
+                if hasattr(user_memory, 'lead_score'):
+                    user_memory.lead_score = max(0, user_memory.lead_score - 2)
+                
+                memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+                
+            debug_print(f"✅ Memoria actualizada con intento off-topic para usuario {user_id}", "_update_user_memory_with_off_topic_attempt")
+            
+        except Exception as e:
+            debug_print(f"❌ Error actualizando memoria con off-topic: {e}", "_update_user_memory_with_off_topic_attempt")
+
+    async def _update_user_memory_with_offensive_behavior(self, user_id: str, user_memory):
+        """
+        Actualiza la memoria del usuario con comportamiento ofensivo.
+        
+        Args:
+            user_id: ID del usuario
+            user_memory: Memoria actual del usuario
+        """
+        try:
+            from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+            from memory.lead_memory import MemoryManager
+            
+            memory_manager = MemoryManager()
+            memory_use_case = ManageUserMemoryUseCase(memory_manager)
+            
+            if user_memory:
+                # Marcar comportamiento ofensivo
+                if not hasattr(user_memory, 'pain_points'):
+                    user_memory.pain_points = []
+                
+                user_memory.pain_points.append("offensive_behavior_detected")
+                
+                # Reducir significativamente el lead_score
+                if hasattr(user_memory, 'lead_score'):
+                    user_memory.lead_score = max(0, user_memory.lead_score - 10)
+                
+                # Marcar como lead problemático
+                user_memory.stage = 'problematic_lead'
+                
+                memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+                
+            debug_print(f"✅ Memoria actualizada con comportamiento ofensivo para usuario {user_id}", "_update_user_memory_with_offensive_behavior")
+            
+        except Exception as e:
+            debug_print(f"❌ Error actualizando memoria con comportamiento ofensivo: {e}", "_update_user_memory_with_offensive_behavior")

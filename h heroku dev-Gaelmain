@@ -1,0 +1,5 @@
+[33m138e4e0[m[33m ([m[1;36mHEAD -> [m[1;32mdev-Gael[m[33m, [m[1;31morigin/dev-Gael[m[33m)[m Actualización del archivo CLAUDE.md con mejoras en el sistema de FAQ y respuestas específicas. Se implementaron 13 FAQs expandidas, se mejoró el tono conversacional y se optimizaron las respuestas concisas para consultas específicas. Se actualizó la fecha y la versión a 2.3, reflejando el estado de producción listo.
+[33mc467e5b[m[33m ([m[1;31morigin/dev-Fernando[m[33m, [m[1;32mdev-Fernando[m[33m)[m Merge remote-tracking branch 'origin/dev-Israel' into dev-Gael
+[33mcd491e1[m Se implementa un nuevo sistema de FAQ inteligente que mejora la interacción del bot con los usuarios.
+[33m48ac563[m[33m ([m[1;31morigin/dev-Israel[m[33m)[m Solo claude actualizado
+[33m989eb38[m Merge branch 'dev-Israel' of github.com:nocode-ecosdeliderazgo/Agente-Ventas-Brenda-Whatsapp into dev-Israel
