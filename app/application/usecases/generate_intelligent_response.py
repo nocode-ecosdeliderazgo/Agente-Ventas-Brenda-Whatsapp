@@ -1894,8 +1894,19 @@ Mientras tanto, te comento que es una inversión única que incluye:
 ¿Te gustaría saber más sobre el programa?"""
             
             elif inquiry_type == 'content':
-                session_count = course_data['session_count']
-                return f"""🎓 **{course_name}**
+                # Determinar si el usuario pide información detallada
+                level = self._determine_description_level(user_memory.last_message_text if user_memory else "")
+                
+                # Obtener descripción del curso usando el nuevo sistema con fallback
+                course_description = await self.course_repository.get_course_description('EXPERTO_IA_GPT_GEMINI', level)
+                
+                if course_description:
+                    # Si tenemos descripción, usarla directamente
+                    return course_description
+                else:
+                    # Fallback si no hay descripción disponible
+                    session_count = course_data['session_count']
+                    return f"""🎓 **{course_name}**
 📚 **Contenido**: {session_count} sesiones prácticas de IA aplicada
 
 ¿Te gustaría conocer el temario detallado?"""
@@ -1944,7 +1955,8 @@ Mientras tanto, te comento que es una inversión única que incluye:
             return 'duration'
         
         # Detectar consultas de contenido
-        content_keywords = ['contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas']
+        content_keywords = ['contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas', 
+                           'módulos', 'sesiones', 'cronograma', 'beneficios', 'incluye', 'material']
         if any(keyword in message_lower for keyword in content_keywords):
             return 'content'
         
@@ -1954,6 +1966,34 @@ Mientras tanto, te comento que es una inversión única que incluye:
             return 'modality'
         
         return None
+    
+    def _determine_description_level(self, message_text: str) -> str:
+        """
+        Determina si usar descripción 'short' o 'long' basado en las palabras clave del mensaje.
+        
+        Args:
+            message_text: Texto del mensaje del usuario
+            
+        Returns:
+            'short' para preguntas genéricas, 'long' para solicitudes detalladas
+        """
+        message_lower = message_text.lower()
+        
+        # Palabras clave que indican necesidad de descripción detallada/larga
+        detailed_keywords = [
+            'temario detallado', 'temario a detalle', 'programa completo', 'programa detallado',
+            'beneficios completos', 'contenido completo', 'información completa',
+            'detalle', 'detalles', 'completo', 'todo sobre', 'todo acerca', 'todo el contenido',
+            'módulos', 'sesiones completas', 'cronograma', 'instructores',
+            'certificación', 'material incluido', 'recursos incluidos'
+        ]
+        
+        # Si el mensaje contiene palabras clave de detalle, usar descripción larga
+        if any(keyword in message_lower for keyword in detailed_keywords):
+            return 'long'
+        
+        # Por defecto, usar descripción corta para preguntas genéricas
+        return 'short'
     
     def _should_use_concise_response(self, category: str, message_body: str) -> bool:
         """
