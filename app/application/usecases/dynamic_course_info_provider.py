@@ -165,39 +165,147 @@ class DynamicCourseInfoProvider:
     
     def _calculate_roi_examples(self, course_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Calcula ejemplos de ROI basados en el precio real del curso.
-        Reemplaza valores hardcodeados con cálculos dinámicos.
+        Calcula ROI usando la fórmula correcta: ROI = ((Valor Final - Valor Inicial) / Valor Inicial) × 100%
+        
+        - Valor Inicial: Precio del curso (inversión)
+        - Valor Final: Beneficios/ganancias extraídas del campo ROI de BD
+        - ROI: Porcentaje de retorno sobre la inversión
         """
-        price = course_data['price']
+        price = course_data['price']  # Valor Inicial (inversión)
+        total_hours = course_data['total_duration_hours']
+        roi_description = course_data.get('roi', 'Alta productividad')
+        
+        # Extraer valor numérico del campo ROI de la BD (beneficios/ganancias)
+        benefits_from_roi = self._extract_numeric_roi_from_description(roi_description)
+        
+        if benefits_from_roi > 0 and price > 0:
+            # 🆕 FÓRMULA CORRECTA DE ROI:
+            # ROI = ((Valor Final - Valor Inicial) / Valor Inicial) × 100%
+            # ROI = ((Beneficios - Precio_Curso) / Precio_Curso) × 100%
+            
+            roi_percentage = ((benefits_from_roi - price) / price) * 100
+            
+            # Calcular período de recuperación
+            months_to_break_even = max(1, round(price / (benefits_from_roi / 12), 1)) if benefits_from_roi > 0 else 1
+            
+            # Calcular ganancias mensuales y anuales
+            monthly_benefits = benefits_from_roi / 12
+            yearly_benefits = benefits_from_roi
+            
+            logger.info(f"💰 Cálculo ROI desde BD:")
+            logger.info(f"   - Valor Inicial (curso): ${price:,}")
+            logger.info(f"   - Valor Final (beneficios): ${benefits_from_roi:,}")
+            logger.info(f"   - ROI: {roi_percentage:.1f}%")
+            logger.info(f"   - Beneficios mensuales: ${monthly_benefits:,.2f}")
+            
+        else:
+            # Fallback si no hay datos válidos
+            benefits_from_roi = 5000  # $5000 beneficios anuales por defecto
+            roi_percentage = ((benefits_from_roi - price) / price) * 100 if price > 0 else 100
+            monthly_benefits = benefits_from_roi / 12
+            yearly_benefits = benefits_from_roi
+            months_to_break_even = max(1, round(price / monthly_benefits, 1)) if monthly_benefits > 0 else 1
+            
+            logger.warning(f"⚠️ No se pudo extraer beneficios de '{roi_description}', usando fallback")
+            logger.info(f"🔄 ROI fallback: {roi_percentage:.1f}% (${benefits_from_roi:,} beneficios anuales)")
         
         return {
             'roi_examples': {
                 'marketing_manager': {
                     'title': 'Lucía CopyPro (Marketing Digital Manager)',
-                    'before_cost': 400,
-                    'after_cost': 100,
-                    'monthly_savings': 1200,  # 4 campañas/mes * $300
-                    'roi_months_to_break_even': max(1, round(price / 1200, 1)),
-                    'yearly_savings': 14400
+                    'roi_percentage': roi_percentage,
+                    'monthly_benefits': monthly_benefits,
+                    'yearly_benefits': yearly_benefits,
+                    'roi_months_to_break_even': months_to_break_even,
+                    'calculation_basis': f'ROI: (${benefits_from_roi:,} - ${price:,}) ÷ ${price:,} × 100% = {roi_percentage:.1f}%'
                 },
                 'operations_manager': {
                     'title': 'Marcos Multitask (Operations Manager)',
-                    'before_cost': 2400,  # 12 horas * $50/hora * 4 semanas
-                    'after_cost': 400,    # 2 horas * $50/hora * 4 semanas
-                    'monthly_savings': 2000,
-                    'roi_months_to_break_even': max(1, round(price / 2000, 1)),
-                    'yearly_savings': 24000
+                    'roi_percentage': roi_percentage,
+                    'monthly_benefits': monthly_benefits,
+                    'yearly_benefits': yearly_benefits,
+                    'roi_months_to_break_even': months_to_break_even,
+                    'calculation_basis': f'ROI: (${benefits_from_roi:,} - ${price:,}) ÷ ${price:,} × 100% = {roi_percentage:.1f}%'
                 },
                 'ceo_founder': {
                     'title': 'Sofía Visionaria (CEO/Founder)',
-                    'analyst_cost_monthly': 2500,
-                    'course_equivalent_monthly': max(200, round(price / 12, 0)),
-                    'monthly_savings': 2300,
-                    'roi_months_to_break_even': max(1, round(price / 2300, 1)),
-                    'yearly_savings': 27600
+                    'roi_percentage': roi_percentage,
+                    'monthly_benefits': monthly_benefits,
+                    'yearly_benefits': yearly_benefits,
+                    'roi_months_to_break_even': months_to_break_even,
+                    'calculation_basis': f'ROI: (${benefits_from_roi:,} - ${price:,}) ÷ ${price:,} × 100% = {roi_percentage:.1f}%'
                 }
+            },
+            # Información adicional para debugging
+            'roi_calculation': {
+                'roi_from_database': roi_description,
+                'initial_value': price,
+                'final_value': benefits_from_roi,
+                'roi_percentage': roi_percentage,
+                'monthly_benefits': monthly_benefits,
+                'yearly_benefits': yearly_benefits,
+                'formula': 'ROI = ((Valor Final - Valor Inicial) / Valor Inicial) × 100%'
             }
         }
+    
+    def _extract_numeric_roi_from_description(self, roi_description: str) -> float:
+        """
+        Extrae valor numérico del campo ROI de la base de datos.
+        
+        Args:
+            roi_description: Descripción del ROI desde la BD (ej: "Alta productividad", "$5000/mes", "200% ROI")
+            
+        Returns:
+            Valor numérico extraído o 0 si no se encuentra
+        """
+        import re
+        
+        if not roi_description or not isinstance(roi_description, str):
+            return 0
+        
+        # Patrones para extraer números del ROI
+        patterns = [
+            r'\$(\d+(?:,\d{3})*(?:\.\d{2})?)',  # $1,000 o $1000.00
+            r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:dollars?|usd|mxn|pesos?)',  # 1000 dollars
+            r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:\/mes|per\s+month|monthly)',  # 1000/mes
+            r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s*%',  # 200%
+            r'(\d+(?:,\d{3})*(?:\.\d{2})?)',  # Cualquier número
+        ]
+        
+        roi_text = roi_description.lower().replace(',', '')
+        
+        for pattern in patterns:
+            match = re.search(pattern, roi_text)
+            if match:
+                try:
+                    numeric_value = float(match.group(1).replace(',', ''))
+                    logger.info(f"🔍 Extraído ROI numérico: '{roi_description}' → ${numeric_value:,}")
+                    return numeric_value
+                except (ValueError, IndexError):
+                    continue
+        
+        # Si no se encuentra valor numérico, usar mapeo por palabras clave
+        keyword_mapping = {
+            'alta productividad': 2000,
+            'alta': 2000,
+            'productividad': 1500,
+            'eficiencia': 1500,
+            'automatización': 1800,
+            'optimización': 1600,
+            'bajo': 500,
+            'medio': 1000,
+            'alto': 2000,
+            'excelente': 2500,
+            'muy alto': 3000
+        }
+        
+        for keyword, value in keyword_mapping.items():
+            if keyword in roi_text:
+                logger.info(f"🗝️ ROI por palabra clave: '{roi_description}' → ${value:,} (palabra: '{keyword}')")
+                return value
+        
+        logger.warning(f"⚠️ No se pudo extraer ROI de: '{roi_description}', usando 0")
+        return 0
     
     def _get_fallback_course_data(self) -> Dict[str, Any]:
         """

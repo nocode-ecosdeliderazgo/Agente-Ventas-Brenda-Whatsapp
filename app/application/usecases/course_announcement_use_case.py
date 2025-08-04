@@ -11,6 +11,7 @@ from typing import Optional, Dict, Any, Tuple
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
+from app.application.usecases.dynamic_course_info_provider import DynamicCourseInfoProvider
 from app.config.campaign_config import (
     COURSE_HASHTAG_MAPPING, 
     get_course_id_from_hashtag, 
@@ -28,10 +29,12 @@ class CourseAnnouncementUseCase:
         self, 
         course_query_use_case: QueryCourseInformationUseCase,
         memory_use_case: ManageUserMemoryUseCase,
+        dynamic_course_provider: DynamicCourseInfoProvider,
         twilio_client
     ):
         self.course_query_use_case = course_query_use_case
         self.memory_use_case = memory_use_case
+        self.dynamic_course_provider = dynamic_course_provider
         self.twilio_client = twilio_client
         
         # Usar mapeo centralizado desde campaign_config.py
@@ -501,7 +504,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             user_memory = self.memory_use_case.get_user_memory(user_id)
             
             # Crear mensaje principal con resumen del curso
-            main_message = self._create_course_summary_message(course_info, user_memory)
+            main_message = await self._create_course_summary_message(course_info, user_memory)
             
             # Enviar mensaje principal
             outgoing_message = OutgoingMessage(
@@ -568,7 +571,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             logger.error(f"Error enviando respuesta de anuncio: {e}")
             return {'success': False, 'error': str(e)}
     
-    def _create_course_summary_message(
+    async def _create_course_summary_message(
         self, 
         course_info: Dict[str, Any], 
         user_memory: LeadMemory
@@ -652,7 +655,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Agregar ROI personalizado según el rol del usuario (versión corta)
             role = user_memory.role if user_memory.role != "No disponible" else ""
             if role:
-                roi_message = self._get_role_specific_roi_message_short(role, price)
+                roi_message = await self._get_role_specific_roi_message_short(role, price)
                 if roi_message:
                     message_parts.extend([roi_message, ""])
             
@@ -670,9 +673,10 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             logger.error(f"Error creando mensaje de resumen: {e}")
             return f"📚 Información del curso disponible. Precio: {course_info.get('price_formatted', 'Consultar precio')}"
     
-    def _get_role_specific_roi_message(self, role: str, course_price: int) -> str:
+    async def _get_role_specific_roi_message(self, role: str, course_price: int) -> str:
         """
         Genera mensaje de ROI específico según el rol del usuario.
+        Ahora usa datos dinámicos de la base de datos.
         
         Args:
             role: Rol/cargo del usuario
@@ -682,30 +686,58 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             Mensaje de ROI personalizado
         """
         try:
+            # Obtener datos dinámicos de ROI desde la base de datos
+            if self.dynamic_course_provider:
+                course_data = await self.dynamic_course_provider.get_primary_course_info()
+                roi_examples = course_data.get('roi_examples', {})
+            else:
+                # Fallback a valores por defecto si no hay proveedor dinámico
+                roi_examples = {}
+            
             role_lower = role.lower()
             
             if any(keyword in role_lower for keyword in ['marketing', 'digital', 'comercial']):
-                return f"💡 **ROI para Marketing Digital:**\n• Ahorra $300 por campaña automatizada\n• Recuperas la inversión en solo 2 campañas\n• ROI proyectado: 200% en el primer mes"
+                marketing_roi = roi_examples.get('marketing_manager', {})
+                roi_percentage = marketing_roi.get('roi_percentage', 100)
+                monthly_benefits = marketing_roi.get('monthly_benefits', 416.67)
+                break_even = marketing_roi.get('roi_months_to_break_even', 1)
+                calculation_basis = marketing_roi.get('calculation_basis', 'ROI calculado desde BD')
+                return f"💡 **ROI para Marketing Digital:**\n• ROI: {roi_percentage:.1f}%\n• Beneficios mensuales: ${monthly_benefits:,.2f}\n• Recuperas inversión en {break_even} {'mes' if break_even == 1 else 'meses'}\n• Cálculo: {calculation_basis}"
             
             elif any(keyword in role_lower for keyword in ['operaciones', 'operations', 'gerente', 'director']):
-                return f"💡 **ROI para Operaciones:**\n• Ahorra $2,000 mensuales en procesos manuales\n• Incrementa eficiencia operativa en 40%\n• ROI proyectado: 400% en el primer mes"
+                operations_roi = roi_examples.get('operations_manager', {})
+                roi_percentage = operations_roi.get('roi_percentage', 100)
+                monthly_benefits = operations_roi.get('monthly_benefits', 416.67)
+                break_even = operations_roi.get('roi_months_to_break_even', 1)
+                calculation_basis = operations_roi.get('calculation_basis', 'ROI calculado desde BD')
+                return f"💡 **ROI para Operaciones:**\n• ROI: {roi_percentage:.1f}%\n• Beneficios mensuales: ${monthly_benefits:,.2f}\n• Recuperas inversión en {break_even} {'mes' if break_even == 1 else 'meses'}\n• Cálculo: {calculation_basis}"
             
             elif any(keyword in role_lower for keyword in ['ceo', 'founder', 'fundador', 'director general']):
-                return f"💡 **ROI para Liderazgo Ejecutivo:**\n• Ahorra $27,600 anuales vs contratar analista IA\n• Acelera toma de decisiones estratégicas\n• ROI proyectado: 1,380% anual"
+                ceo_roi = roi_examples.get('ceo_founder', {})
+                roi_percentage = ceo_roi.get('roi_percentage', 100)
+                yearly_benefits = ceo_roi.get('yearly_benefits', 5000)
+                break_even = ceo_roi.get('roi_months_to_break_even', 1)
+                calculation_basis = ceo_roi.get('calculation_basis', 'ROI calculado desde BD')
+                return f"💡 **ROI para Liderazgo Ejecutivo:**\n• ROI: {roi_percentage:.1f}%\n• Beneficios anuales: ${yearly_benefits:,.2f}\n• Recuperas inversión en {break_even} {'mes' if break_even == 1 else 'meses'}\n• Cálculo: {calculation_basis}"
             
             elif any(keyword in role_lower for keyword in ['rh', 'recursos humanos', 'hr', 'talent']):
+                # Usar datos generales si no hay específicos para RH
                 return f"💡 **ROI para Recursos Humanos:**\n• Reduce 80% tiempo en procesos de selección\n• Ahorra $1,500 mensuales en reclutamiento\n• ROI proyectado: 300% en el primer trimestre"
             
             else:
-                return f"💡 **ROI General para PyMEs:**\n• Ahorra mínimo $1,000 mensuales en automatización\n• Incrementa productividad del equipo en 35%\n• ROI proyectado: 250% en los primeros 3 meses"
+                # ROI general usando datos dinámicos
+                general_savings = 1000  # Valor base conservador
+                break_even = max(1, round(course_price / general_savings, 1))
+                return f"💡 **ROI General para PyMEs:**\n• Ahorra mínimo ${general_savings:,} mensuales en automatización\n• Incrementa productividad del equipo en 35%\n• ROI proyectado: {int(general_savings * 12 / course_price * 100)}% anual"
                 
         except Exception as e:
             logger.error(f"Error generando ROI específico: {e}")
             return ""
     
-    def _get_role_specific_roi_message_short(self, role: str, course_price: int) -> str:
+    async def _get_role_specific_roi_message_short(self, role: str, course_price: int) -> str:
         """
         Genera mensaje de ROI específico CORTO según el rol del usuario.
+        Ahora usa datos dinámicos de la base de datos.
 
         Args:
             role: Rol/cargo del usuario
@@ -715,22 +747,42 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             Mensaje de ROI personalizado corto
         """
         try:
+            # Obtener datos dinámicos de ROI desde la base de datos
+            if self.dynamic_course_provider:
+                course_data = await self.dynamic_course_provider.get_primary_course_info()
+                roi_examples = course_data.get('roi_examples', {})
+            else:
+                # Fallback a valores por defecto si no hay proveedor dinámico
+                roi_examples = {}
+            
             role_lower = role.lower()
             
             if any(keyword in role_lower for keyword in ['marketing', 'digital', 'comercial']):
-                return f"💡 **ROI Marketing:** Ahorra $300/campaña → ROI 200% primer mes"
+                marketing_roi = roi_examples.get('marketing_manager', {})
+                roi_percentage = marketing_roi.get('roi_percentage', 100)
+                monthly_benefits = marketing_roi.get('monthly_benefits', 416.67)
+                return f"💡 **ROI Marketing:** {roi_percentage:.1f}% → ${monthly_benefits:,.2f}/mes"
             
             elif any(keyword in role_lower for keyword in ['operaciones', 'operations', 'gerente', 'director']):
-                return f"💡 **ROI Operaciones:** Ahorra $2,000/mes → ROI 400% primer mes"
+                operations_roi = roi_examples.get('operations_manager', {})
+                roi_percentage = operations_roi.get('roi_percentage', 100)
+                monthly_benefits = operations_roi.get('monthly_benefits', 416.67)
+                return f"💡 **ROI Operaciones:** {roi_percentage:.1f}% → ${monthly_benefits:,.2f}/mes"
             
             elif any(keyword in role_lower for keyword in ['ceo', 'founder', 'fundador', 'director general']):
-                return f"💡 **ROI Ejecutivo:** Ahorra $27,600/año → ROI 1,380% anual"
+                ceo_roi = roi_examples.get('ceo_founder', {})
+                roi_percentage = ceo_roi.get('roi_percentage', 100)
+                yearly_benefits = ceo_roi.get('yearly_benefits', 5000)
+                return f"💡 **ROI Ejecutivo:** {roi_percentage:.1f}% → ${yearly_benefits:,.2f}/año"
             
             elif any(keyword in role_lower for keyword in ['rh', 'recursos humanos', 'hr', 'talent']):
                 return f"💡 **ROI RH:** Ahorra $1,500/mes → ROI 300% primer trimestre"
             
             else:
-                return f"💡 **ROI PyME:** Ahorra $1,000/mes → ROI 250% primeros 3 meses"
+                # ROI general usando datos dinámicos
+                general_savings = 1000
+                break_even = max(1, round(course_price / general_savings, 1))
+                return f"💡 **ROI PyME:** Ahorra ${general_savings:,}/mes → ROI en {break_even} {'mes' if break_even == 1 else 'meses'}"
                 
         except Exception as e:
             logger.error(f"Error generando ROI corto: {e}")

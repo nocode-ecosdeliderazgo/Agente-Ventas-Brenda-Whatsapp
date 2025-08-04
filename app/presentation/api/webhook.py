@@ -19,6 +19,7 @@ from app.application.usecases.privacy_flow_use_case import PrivacyFlowUseCase
 from app.application.usecases.tool_activation_use_case import ToolActivationUseCase
 from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
 from app.application.usecases.query_course_information import QueryCourseInformationUseCase
+from app.application.usecases.dynamic_course_info_provider import DynamicCourseInfoProvider
 from app.application.usecases.welcome_flow_use_case import WelcomeFlowUseCase
 from memory.lead_memory import MemoryManager
 from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtagsUseCase
@@ -166,11 +167,24 @@ async def startup_event():
             debug_print(f"⚠️ Error con herramientas: {e}", "startup", "webhook.py")
             tool_activation_use_case = None
         
+        # Inicializar proveedor dinámico de información de cursos
+        debug_print("📊 Inicializando proveedor dinámico de cursos...", "startup", "webhook.py")
+        dynamic_course_provider = None
+        if course_repository:
+            try:
+                dynamic_course_provider = DynamicCourseInfoProvider(course_repository)
+                debug_print("✅ Proveedor dinámico de cursos inicializado correctamente", "startup", "webhook.py")
+            except Exception as e:
+                debug_print(f"⚠️ Error inicializando proveedor dinámico: {e}", "startup", "webhook.py")
+        else:
+            debug_print("⚠️ Proveedor dinámico no disponible (sin repositorio)", "startup", "webhook.py")
+        
         # Inicializar sistema de anuncios de cursos
         debug_print("📚 Inicializando sistema de anuncios de cursos...", "startup", "webhook.py")
         course_announcement_use_case = CourseAnnouncementUseCase(
             course_query_use_case, 
             memory_use_case, 
+            dynamic_course_provider,
             twilio_client
         )
         debug_print("✅ Sistema de anuncios de cursos inicializado correctamente", "startup", "webhook.py")
@@ -247,9 +261,11 @@ async def startup_event():
             debug_print(f"⚠️ Error con BD: {db_error}", "startup", "webhook.py")
             course_query_use_case = None
         
-        # Crear sistema de anuncios de cursos básico
+        # Crear sistema de anuncios de cursos básico  
+        # Proveedor dinámico básico (sin repositorio en modo básico)
+        dynamic_course_provider = None
         course_announcement_use_case = CourseAnnouncementUseCase(
-            course_query_use_case, memory_use_case, twilio_client
+            course_query_use_case, memory_use_case, dynamic_course_provider, twilio_client
         )
         
         # Crear flujo de bienvenida básico

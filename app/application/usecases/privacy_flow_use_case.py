@@ -631,6 +631,7 @@ class PrivacyFlowUseCase:
                 course_announcement = CourseAnnouncementUseCase(
                     course_query_use_case=course_query_use_case,
                     memory_use_case=self.memory_use_case,
+                    dynamic_course_provider=None,  # No disponible en este contexto
                     twilio_client=self.twilio_client
                 )
                 

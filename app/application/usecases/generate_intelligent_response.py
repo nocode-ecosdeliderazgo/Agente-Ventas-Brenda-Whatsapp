@@ -4,6 +4,7 @@ Combina análisis de intención, plantillas de mensajes y respuestas de IA con s
 """
 import asyncio
 import logging
+from datetime import datetime
 from typing import Dict, Any, Optional
 
 from app.application.usecases.analyze_message_intent import AnalyzeMessageIntentUseCase
@@ -281,6 +282,27 @@ class GenerateIntelligentResponseUseCase:
                 if inquiry_type:
                     debug_print(f"🎯 Usando respuesta concisa para consulta específica: {inquiry_type} (categoría: {category})", "_generate_contextual_response")
                     return await self._get_concise_specific_response(inquiry_type, user_name, user_role, user_memory)
+            
+            # 🆕 MANEJO ESPECIAL: Escalación gradual para mensajes fuera de contexto
+            off_topic_categories = ['OFF_TOPIC_CASUAL', 'OFF_TOPIC_PERSONAL', 'OFF_TOPIC_UNRELATED']
+            if category in off_topic_categories:
+                user_name = user_memory.name if user_memory and user_memory.name != "Usuario" else ""
+                
+                # Verificar historial de intentos fuera de contexto
+                escalation_level = self._determine_off_topic_escalation_level(user_memory)
+                
+                if escalation_level >= 3:
+                    # Usar respuesta predeterminada para intentos repetidos
+                    debug_print(f"🚫 Escalación nivel {escalation_level}: usando respuesta predeterminada", "_generate_contextual_response")
+                    return self._get_off_topic_repeated_response(user_name)
+                elif escalation_level == 2:
+                    # Respuesta más firme pero aún con algo de humor
+                    debug_print(f"⚠️ Escalación nivel {escalation_level}: respuesta firme con redirección", "_generate_contextual_response")
+                    return self._get_off_topic_firm_redirect(user_name)
+                else:
+                    # Primera vez o pocas veces: humor ligero
+                    debug_print(f"😊 Escalación nivel {escalation_level}: respuesta con humor", "_generate_contextual_response")
+                    return self._get_off_topic_casual_response(user_name, incoming_message.body, user_memory)
             
             # Fallback para PRICE_INQUIRY que no sea específica
             if category == 'PRICE_INQUIRY':
@@ -829,7 +851,7 @@ class GenerateIntelligentResponseUseCase:
             'GENERAL_QUESTION': lambda: self._get_general_response(user_name, user_role),
             # Nuevas categorías PyME específicas
             'EXPLORATION_SECTOR': lambda: asyncio.create_task(self._get_exploration_response(user_name, user_role)),
-            'EXPLORATION_ROI': lambda: self._get_roi_exploration_response(user_name, user_role),
+            'EXPLORATION_ROI': lambda: asyncio.create_task(self._get_roi_exploration_response(user_name, user_role)),
             'PRICE_INQUIRY': lambda: asyncio.create_task(self._get_direct_price_response(user_name, user_role, user_memory)),
             'OBJECTION_BUDGET_PYME': lambda: asyncio.create_task(self._get_dynamic_price_objection_response(user_name, user_role, user_memory)),
             'OBJECTION_TECHNICAL_TEAM': lambda: self._get_technical_objection_response(user_name, user_role),
@@ -838,7 +860,13 @@ class GenerateIntelligentResponseUseCase:
             'BUYING_SIGNALS_EXECUTIVE': lambda: self._get_buying_signals_response(user_name),
             'PILOT_REQUEST': lambda: self._get_pilot_request_response(user_name, user_role),
             'TEAM_TRAINING': lambda: asyncio.create_task(self._get_team_training_response(user_name, user_role)),
-            'STRATEGIC_CONSULTATION': lambda: self._get_strategic_consultation_response(user_name, user_role)
+            'STRATEGIC_CONSULTATION': lambda: self._get_strategic_consultation_response(user_name, user_role),
+            # Nuevas categorías para mensajes fuera de contexto
+            'OFF_TOPIC_CASUAL': lambda: self._get_off_topic_casual_response(user_name, incoming_message.body, user_memory),
+            'OFF_TOPIC_PERSONAL': lambda: self._get_off_topic_casual_response(user_name, incoming_message.body, user_memory),
+            'OFF_TOPIC_UNRELATED': lambda: self._get_off_topic_casual_response(user_name, incoming_message.body, user_memory),
+            'OFF_TOPIC_REPEATED': lambda: self._get_off_topic_repeated_response(user_name),
+            'OFFENSIVE_MESSAGE': lambda: self._get_offensive_message_response(user_name)
         }
         
         # Manejar casos especiales según estado del usuario
@@ -1067,22 +1095,56 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
 
 ¿En qué puedo asistirte específicamente?"""
     
-    def _get_roi_exploration_response(self, user_name: str, user_role: str) -> str:
-        """Respuesta para exploración de ROI específica por rol."""
-        name_part = f"{user_name}, " if user_name else ""
-        role_context = f"Como {user_role}, " if user_role else ""
-        
-        # ROI específico por buyer persona
-        roi_examples = {
-            'Marketing': f"• 80% menos tiempo creando contenido\n• $300 ahorro por campaña → Recuperas inversión en 2 campañas",
-            'Operaciones': f"• 30% reducción en procesos manuales\n• ROI calculado según tu empresa específica",
-            'CEO': f"• 40% más productividad del equipo\n• $27,600 ahorro anual vs contratar analista → ROI del 1,380% anual",
-            'Recursos Humanos': f"• 70% más eficiencia en capacitaciones\n• $1,500 ahorro mensual → ROI del 300% primer trimestre"
-        }
-        
-        roi_text = roi_examples.get(user_role, "• 50% más eficiencia en procesos\n• $1,000 ahorro mensual → ROI del 250% primeros 3 meses")
-        
-        return f"""¡Excelente pregunta sobre ROI{', ' + name_part if name_part else ''}! 📊
+    async def _get_roi_exploration_response(self, user_name: str, user_role: str) -> str:
+        """
+        Respuesta para exploración de ROI específica por rol.
+        Usa datos dinámicos de la base de datos para cálculos de ROI.
+        """
+        try:
+            # Obtener información dinámica del curso desde BD
+            course_data = await self.dynamic_course_provider.get_primary_course_info()
+            
+            name_part = f"{user_name}, " if user_name else ""
+            role_context = f"Como {user_role}, " if user_role else ""
+            course_price = course_data['price']
+            currency = course_data['currency']
+            currency_symbol = "$" if currency in ["USD", "MXN"] else currency + " "
+            
+            # ROI específico por buyer persona usando datos reales de BD
+            roi_data = course_data.get('roi_examples', {})
+            
+            # Generar ROI basado en rol y precio real del curso
+            if any(keyword in user_role.lower() for keyword in ['marketing', 'digital', 'comercial']):
+                marketing_roi = roi_data.get('marketing_manager', {})
+                monthly_savings = marketing_roi.get('monthly_savings', 1200)
+                break_even = marketing_roi.get('roi_months_to_break_even', max(1, round(course_price / monthly_savings, 1)))
+                roi_text = f"• 80% menos tiempo creando contenido\n• {currency_symbol}{monthly_savings:,}/mes ahorro → Recuperas inversión en {break_even} {'mes' if break_even == 1 else 'meses'}"
+            
+            elif any(keyword in user_role.lower() for keyword in ['operaciones', 'operations', 'gerente', 'director']):
+                operations_roi = roi_data.get('operations_manager', {})
+                monthly_savings = operations_roi.get('monthly_savings', 2000)
+                break_even = operations_roi.get('roi_months_to_break_even', max(1, round(course_price / monthly_savings, 1)))
+                roi_text = f"• 30% reducción en procesos manuales\n• {currency_symbol}{monthly_savings:,}/mes ahorro → Recuperas inversión en {break_even} {'mes' if break_even == 1 else 'meses'}"
+            
+            elif any(keyword in user_role.lower() for keyword in ['ceo', 'founder', 'fundador', 'director general']):
+                ceo_roi = roi_data.get('ceo_founder', {})
+                yearly_savings = ceo_roi.get('yearly_savings', 27600)
+                roi_percentage = round((yearly_savings / course_price) * 100) if course_price > 0 else 500
+                roi_text = f"• 40% más productividad del equipo\n• {currency_symbol}{yearly_savings:,} ahorro anual vs contratar analista → ROI del {roi_percentage}% anual"
+            
+            elif any(keyword in user_role.lower() for keyword in ['rh', 'recursos humanos', 'hr', 'talent']):
+                monthly_savings = 1500
+                break_even = max(1, round(course_price / monthly_savings, 1))
+                roi_text = f"• 70% más eficiencia en capacitaciones\n• {currency_symbol}{monthly_savings:,} ahorro mensual → ROI del 300% primer trimestre"
+            
+            else:
+                # ROI general basado en precio del curso
+                estimated_monthly_savings = max(1000, course_price // 3)
+                break_even = max(1, round(course_price / estimated_monthly_savings, 1))
+                roi_percentage = round((estimated_monthly_savings * 3 / course_price) * 100) if course_price > 0 else 250
+                roi_text = f"• 50% más eficiencia en procesos\n• {currency_symbol}{estimated_monthly_savings:,} ahorro mensual → ROI del {roi_percentage}% primeros 3 meses"
+            
+            return f"""¡Excelente pregunta sobre ROI{', ' + name_part if name_part else ''}! 📊
 
 {role_context}te muestro resultados reales de profesionales como tú:
 
@@ -1095,6 +1157,16 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
 • Más tiempo para actividades estratégicas
 
 ¿Te gustaría ver casos específicos de tu sector?"""
+
+        except Exception as e:
+            self.logger.error(f"Error generando respuesta de ROI exploration: {e}")
+            # Fallback con valores genéricos
+            name_part = f"{user_name}, " if user_name else ""
+            return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
+
+El ROI típico es de 300-500% en los primeros 6 meses. Esto incluye ahorros en tiempo, mejora en productividad y reducción de costos operativos.
+
+👨‍💼 Para darte información más detallada y personalizada, te conectaré con un especialista que se pondrá en contacto contigo muy pronto."""
     
     def _get_technical_objection_response(self, user_name: str, user_role: str) -> str:
         """Respuesta para objeciones técnicas (falta de equipo técnico)."""
@@ -2215,3 +2287,191 @@ Genera una respuesta personalizada, natural y útil usando la información del c
             
         except Exception as e:
             debug_print(f"❌ Error actualizando memoria con comportamiento ofensivo: {e}", "_update_user_memory_with_offensive_behavior")
+    
+    def _get_off_topic_casual_response(self, user_name: str, message_body: str, user_memory) -> str:
+        """
+        Maneja mensajes casuales fuera de contexto con redirección amable y humor.
+        
+        Args:
+            user_name: Nombre del usuario
+            message_body: Contenido del mensaje fuera de contexto
+            user_memory: Memoria del usuario para tracking
+            
+        Returns:
+            Respuesta con humor sutil redirigiendo al tema principal
+        """
+        try:
+            # Importar templates después de asegurar que están disponibles
+            from prompts.agent_prompts import BusinessPromptTemplates
+            
+            # Trackear mensaje fuera de contexto en memoria
+            if user_memory:
+                self._track_off_topic_attempt(user_memory, 'casual')
+            
+            # Usar template con humor para redirección
+            response = BusinessPromptTemplates.off_topic_casual_redirect(
+                name=user_name,
+                topic_mentioned=message_body[:50] + "..." if len(message_body) > 50 else message_body
+            )
+            
+            self.logger.info(f"✅ Respuesta casual fuera de contexto enviada para: {user_name}")
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error generando respuesta casual fuera de contexto: {e}")
+            # Fallback directo
+            name_greeting = f"{user_name}, " if user_name else ""
+            return f"""{name_greeting}😊 Mi especialidad es la IA empresarial, no esas consultas generales.
+
+¿Te gustaría que exploremos cómo la IA puede ayudar específicamente a tu empresa? Puedo contarte sobre nuestros cursos especializados para líderes PyME. 🚀"""
+    
+    def _get_off_topic_repeated_response(self, user_name: str) -> str:
+        """
+        Maneja intentos repetidos de desviar la conversación con mensaje predeterminado.
+        
+        Args:
+            user_name: Nombre del usuario
+            
+        Returns:
+            Respuesta predeterminada firme pero cortés
+        """
+        try:
+            # Importar templates después de asegurar que están disponibles
+            from prompts.agent_prompts import BusinessPromptTemplates
+            
+            # Usar template predeterminado para intentos repetidos
+            response = BusinessPromptTemplates.off_topic_repeated_predefined(name=user_name)
+            
+            self.logger.info(f"✅ Respuesta predeterminada para intentos repetidos enviada para: {user_name}")
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error generando respuesta para intentos repetidos: {e}")
+            # Fallback directo
+            name_greeting = f"{user_name}, " if user_name else ""
+            return f"""{name_greeting}Noto que estás preguntando sobre temas fuera de mi área de especialidad. 
+
+Mi función principal no es responder ese tipo de preguntas, pero estaré encantada de continuar ofreciendo información sobre nuestros cursos de IA para empresas.
+
+🎓 **¿Te interesa conocer cómo podemos ayudarte a:**
+• Automatizar procesos empresariales
+• Optimizar toma de decisiones con IA  
+• Capacitar a tu equipo en herramientas de IA
+• Implementar soluciones prácticas sin equipo técnico
+
+¿Por cuál empezamos? 🚀"""
+    
+    def _get_offensive_message_response(self, user_name: str) -> str:
+        """
+        Maneja mensajes ofensivos con respuesta firme pero profesional.
+        
+        Args:
+            user_name: Nombre del usuario
+            
+        Returns:
+            Respuesta firme estableciendo límites profesionales
+        """
+        try:
+            # Importar templates después de asegurar que están disponibles
+            from prompts.agent_prompts import BusinessPromptTemplates
+            
+            # Usar template firme para mensajes ofensivos
+            response = BusinessPromptTemplates.offensive_message_firm_response(name=user_name)
+            
+            self.logger.info(f"✅ Respuesta firme para mensaje ofensivo enviada para: {user_name}")
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error generando respuesta para mensaje ofensivo: {e}")
+            # Fallback directo
+            name_greeting = f"{user_name}, " if user_name else ""
+            return f"""{name_greeting}Ese tipo de comportamiento no es adecuado en nuestra conversación profesional.
+
+Mantengo un ambiente de respeto mutuo y mi función es únicamente proveer información relevante sobre nuestros cursos de IA empresarial.
+
+Si estás interesado en conocer nuestras soluciones de IA para PyMEs, estaré disponible para ayudarte de manera profesional. 
+
+¿Te gustaría que continuemos con información sobre los cursos? 🎓"""
+    
+    def _track_off_topic_attempt(self, user_memory, attempt_type: str) -> None:
+        """
+        Rastrea intentos de mensajes fuera de contexto en la memoria del usuario.
+        
+        Args:
+            user_memory: Memoria del usuario
+            attempt_type: Tipo de intento (casual, personal, unrelated)
+        """
+        try:
+            if not hasattr(user_memory, 'off_topic_attempts'):
+                user_memory.off_topic_attempts = []
+            
+            user_memory.off_topic_attempts.append({
+                'type': attempt_type,
+                'timestamp': datetime.now().isoformat(),
+                'count': len(user_memory.off_topic_attempts) + 1
+            })
+            
+            # Si hay demasiados intentos, marcar para escalación
+            if len(user_memory.off_topic_attempts) >= 3:
+                if not hasattr(user_memory, 'pain_points'):
+                    user_memory.pain_points = []
+                user_memory.pain_points.append("repeated_off_topic_attempts")
+            
+            debug_print(f"✅ Intento fuera de contexto trackeado: {attempt_type}", "_track_off_topic_attempt")
+            
+        except Exception as e:
+            debug_print(f"❌ Error trackeando intento fuera de contexto: {e}", "_track_off_topic_attempt")
+    
+    def _determine_off_topic_escalation_level(self, user_memory) -> int:
+        """
+        Determina el nivel de escalación basado en el historial de intentos fuera de contexto.
+        
+        Args:
+            user_memory: Memoria del usuario
+            
+        Returns:
+            Nivel de escalación (0: primera vez, 1: pocas veces, 2: firme, 3+: predeterminado)
+        """
+        try:
+            if not user_memory or not hasattr(user_memory, 'off_topic_attempts'):
+                return 0
+            
+            attempts_count = len(user_memory.off_topic_attempts)
+            
+            # Determinar nivel basado en número de intentos
+            if attempts_count == 0:
+                return 0  # Primera vez
+            elif attempts_count == 1:
+                return 1  # Segunda vez - humor ligero
+            elif attempts_count == 2:
+                return 2  # Tercera vez - más firme
+            else:
+                return 3  # Cuarta vez o más - predeterminado
+                
+        except Exception as e:
+            debug_print(f"❌ Error determinando nivel de escalación: {e}", "_determine_off_topic_escalation_level")
+            return 0  # Default: primera vez
+    
+    def _get_off_topic_firm_redirect(self, user_name: str) -> str:
+        """
+        Respuesta más firme para el segundo nivel de escalación.
+        
+        Args:
+            user_name: Nombre del usuario
+            
+        Returns:
+            Respuesta firme pero aún amable redirigiendo al tema
+        """
+        name_greeting = f"{user_name}, " if user_name else ""
+        
+        return f"""{name_greeting}🎯 Noto que sigues preguntando sobre temas que no están relacionados con nuestros cursos de IA empresarial.
+
+Mi especialidad es ayudar a líderes PyME como tú a implementar IA en sus empresas de manera práctica y efectiva.
+
+**¿Te gustaría que enfoquemos la conversación en:**
+• Cómo la IA puede resolver problemas específicos de tu empresa
+• Qué curso se adapta mejor a tu situación actual
+• Casos de éxito en tu industria
+• ROI y beneficios concretos para tu PyME
+
+¿Por dónde empezamos? 🚀"""
