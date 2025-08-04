@@ -27,6 +27,8 @@ class LeadMemory:
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     brenda_introduced: bool = False
+    # Indica si ya se envió el anuncio completo de curso en esta conversación
+    course_announcement_sent: bool = False
     
     # Nuevos campos para flujos personalizados
     current_flow: str = "none"  # none, privacy, course_selection, sales_conversation

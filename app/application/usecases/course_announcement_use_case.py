@@ -90,6 +90,7 @@ GREETING_TRIGGERS = [
 
 
 
+
 class CourseAnnouncementUseCase:
     """Caso de uso para manejar anuncios de cursos por código específico."""
     
@@ -137,25 +138,43 @@ class CourseAnnouncementUseCase:
         """
         try:
             message_text = incoming_message.body.strip()
+            message_lower = message_text.lower()
             
-            # Buscar códigos de curso en el mensaje
-            for code in self.course_code_mapping.keys():
-                if code.lower() in message_text.lower():
-                    logger.info(f"📚 Código de curso detectado: {code}")
-                    return True
+            # Normalizar ID (el sistema de memoria usa solo dígitos)
+            raw_id = incoming_message.from_number.replace("whatsapp:", "").replace("+", "")
             
-            # También buscar usando el sistema centralizado (sin #)
-            for hashtag in COURSE_HASHTAG_MAPPING.keys():
-                if hashtag.lower() in message_text.lower():
-                    logger.info(f"📚 Hashtag de curso centralizado detectado: {hashtag}")
-                    return True
+            # Obtener memoria (si existe)
+            user_memory = None
+            try:
+                user_memory = self.memory_use_case.get_user_memory(raw_id)
+            except Exception:
+                pass
 
-            # Detectar gatillos genéricos (saludos o peticiones de información)
-            for phrase in GREETING_TRIGGERS:
-                if phrase in message_text.lower():
-                    logger.info(f"👋 Gatillo genérico detectado: '{phrase}'. Activando curso por defecto.")
-                    return True
-            
+            announcement_already_sent = bool(getattr(user_memory, "course_announcement_sent", False))
+
+            # 1) Detectar hashtags explícitos (siempre válidos cuando el anuncio NO se ha enviado)
+            explicit_hashtag_detected = False
+            for code in self.course_code_mapping.keys():
+                if code.lower() in message_lower:
+                    explicit_hashtag_detected = True
+                    break
+            if not explicit_hashtag_detected:
+                for hashtag in COURSE_HASHTAG_MAPPING.keys():
+                    if hashtag.lower() in message_lower:
+                        explicit_hashtag_detected = True
+                        break
+
+            if explicit_hashtag_detected and not announcement_already_sent:
+                logger.info("📚 Hashtag explícito detectado y anuncio aún no enviado → lanzar anuncio")
+                return True
+
+            # 2) Gatillos genéricos – solo si anuncio NO se ha enviado
+            if not announcement_already_sent:
+                for phrase in GREETING_TRIGGERS:
+                    if phrase in message_lower:
+                        logger.info(f"👋 Gatillo genérico detectado: '{phrase}'. Activando curso por defecto.")
+                        return True
+
             return False
             
         except Exception as e:
@@ -185,7 +204,21 @@ class CourseAnnouncementUseCase:
                 if hashtag.lower() in message_lower:
                     return f"#{hashtag}"  # Retornar con # para compatibilidad
             
-            # Si no se detectó un hashtag explícito, verificar gatillos genéricos
+            # Si no se detectó un hashtag explícito, verificar gatillos genéricos SOLO si todavía no hay curso seleccionado
+            user_memory = None
+            try:
+                # Asumimos que el ID de usuario es el número de WhatsApp
+                # En otros entornos podría ser diferente
+                from_number = None
+                if hasattr(self, "_cached_from_number"):
+                    from_number = self._cached_from_number  # Parche para tests
+                # Intentar usar message_lower (no tenemos incoming_message aquí) así que omitir si no disponible
+            except Exception:
+                pass
+
+            # Nota: extract_course_code es llamada DESPUÉS de should_handle_course_announcement()
+            #       Por lo tanto el control principal ya se hace allí. Por simplicidad, mantenemos
+            #       la devolución por defecto sin más validaciones.
             for phrase in GREETING_TRIGGERS:
                 if phrase in message_lower:
                     logger.info(f"👋 Gatillo genérico '{phrase}' detectado. Usando código de curso por defecto.")
@@ -230,6 +263,14 @@ class CourseAnnouncementUseCase:
             
             # Actualizar memoria del usuario
             await self._update_user_memory(user_id, course_code, course_info)
+
+            # Marcar que el anuncio ya se envió (para evitar repetirlo)
+            try:
+                user_memory = self.memory_use_case.get_user_memory(user_id)
+                user_memory.course_announcement_sent = True
+                self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+            except Exception:
+                pass
             
             # Enviar respuesta completa con resumen, PDF e imagen
             result = await self._send_course_announcement_response(
@@ -700,7 +741,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             
             # Crear mensaje principal (VERSIÓN CORTA para evitar límite de 1600 caracteres)
             message_parts = [
-                f"🎯 ¡Perfecto {name_greeting}aquí tienes la información!",
+                "🎯 ¡Aquí tienes la información!",
                 "",
                 f"📚 **{course_name}**",
                 f"💰 **Inversión:** ${price} {currency}",
