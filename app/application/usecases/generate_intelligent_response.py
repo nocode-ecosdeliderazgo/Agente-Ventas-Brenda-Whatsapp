@@ -87,8 +87,11 @@ class GenerateIntelligentResponseUseCase:
                 debug_print(f"✅ Análisis completado - Intención: {analysis_result.get('intent_analysis', {}).get('category', 'N/A')}", "execute")
                 
                 # 2. Generar respuesta basada en el contexto hardcodeado
+                user_memory = self.memory_use_case.get_user_memory(user_id)
+                category = analysis_result.get('intent_analysis', {}).get('category', 'GENERAL_QUESTION')
+                intent_analysis = analysis_result.get('intent_analysis', {})
                 response_text = await self._generate_contextual_response(
-                    analysis_result, incoming_message, user_id
+                    category, user_memory, user_id, incoming_message.body, intent_analysis
                 )
                 debug_print(f"✅ Respuesta generada: {response_text[:150]}...", "execute")
 
@@ -162,72 +165,46 @@ class GenerateIntelligentResponseUseCase:
         context_str += "--- FIN DEL CONTEXTO ---\n"
         return context_str
 
-    async def _generate_contextual_response(
-        self,
-        analysis_result: Dict[str, Any],
-        incoming_message: IncomingMessage,
-        user_id: str
-    ) -> str:
+    async def _generate_contextual_response(self, category: str, user_memory: Any, user_id: str, incoming_message: str, intent_analysis: Dict[str, Any]) -> str:
         """
-        Genera la respuesta forzando a la IA a usar el contexto hardcodeado.
+        Genera una respuesta contextual basada en la categoría detectada y la memoria del usuario.
         """
         try:
-            user_memory = self.memory_use_case.get_user_memory(user_id)
-            user_name = user_memory.name if user_memory and user_memory.name else "Cliente"
-            intent_analysis = analysis_result.get('intent_analysis', {})
-            category = intent_analysis.get('category', '').lower()
-
-            # --- Lógica para evitar respuestas repetitivas (MEJORADA) ---
-            if 'exploration_sector' in category and user_memory.sector_info_sent:
-                debug_print("INFO: El usuario ya recibió la info del sector. Dando respuesta corta.", "_generate_contextual_response")
-                return (
-                    f"¡Claro, {user_name}! Ya hemos cubierto cómo el curso puede ayudar en tu área. "
-                    "¿Te gustaría explorar otro tema, o tienes alguna pregunta más específica sobre esto?"
-                )
-
-            # --- Lógica de contexto específico vs. general ---
+            debug_print(f"Generando respuesta contextual para categoría: {category}", "_generate_contextual_response")
+            
+            # ELIMINADO: Lógica restrictiva de sector_info_sent que causaba respuestas demasiado cortas
+            # La IA ahora siempre generará respuestas completas e inteligentes
+            
+            # Buscar contexto específico en nuestra configuración
             specific_context = self._get_specific_context_for_intent(category)
             
             if specific_context:
-                debug_print(f"INFO: Usando contexto específico para la categoría '{category}'.", "_generate_contextual_response")
+                debug_print(f"✅ Contexto específico encontrado para {category}", "_generate_contextual_response")
                 context_to_use = specific_context
             else:
-                debug_print(f"INFO: Usando contexto general.", "_generate_contextual_response")
+                debug_print("INFO: Usando contexto general completo.", "_generate_contextual_response")
+                # Usar todo el contexto disponible para generar respuestas ricas
+                user_name = user_memory.name if user_memory.name else "Usuario"
                 context_to_use = self._build_hardcoded_context_for_prompt(user_name)
 
-
-            # 1. Construir el contexto de conocimiento a partir del archivo de config
-            # hardcoded_context = self._build_hardcoded_context_for_prompt(user_name) - REEMPLAZADO
-            
-            # 2. Generar la respuesta con OpenAI, pasando el contexto seleccionado
             debug_print("🤖 Llamando a OpenAI con contexto seleccionado...", "_generate_contextual_response")
             
-            # NOTA: La función 'generate_response' en el cliente de OpenAI es la que internamente
-            # construye el prompt final. Le pasamos el contexto como 'context_info'.
+            # Generar respuesta con OpenAI usando la firma correcta
             generated_response = await self.openai_client.generate_response(
-                user_message=incoming_message.body,
+                user_message=incoming_message,
                 user_memory=user_memory,
                 intent_analysis=intent_analysis,
-                context_info=context_to_use # Usamos el contexto seleccionado
+                context_info=context_to_use
             )
-
-            if not generated_response:
-                raise ValueError("OpenAI no generó respuesta.")
             
             debug_print(f"✅ Respuesta cruda de OpenAI: {generated_response[:150]}...", "_generate_contextual_response")
             
-            # --- Marcar que la información ha sido enviada ---
-            if 'exploration_sector' in category:
-                user_memory.sector_info_sent = True
-                self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
-                debug_print("INFO: Marcado 'sector_info_sent = True' en la memoria.", "_generate_contextual_response")
-            # --- Fin de la lógica de marcado ---
-
             return generated_response
-
+            
         except Exception as e:
-            self.logger.error(f"❌ Error en _generate_contextual_response: {e}", exc_info=True)
-            return WhatsAppMessageTemplates.business_error_fallback()
+            debug_print(f"💥 Error en _generate_contextual_response: {e}", "_generate_contextual_response")
+            user_name = user_memory.name if user_memory and user_memory.name else "Usuario"
+            return f"Disculpa, {user_name}, estoy teniendo algunos problemas técnicos. ¿Podrías repetir tu pregunta?"
 
     async def _send_response(self, to_number: str, response_text: str) -> Dict[str, Any]:
         """Envía la respuesta al usuario."""
