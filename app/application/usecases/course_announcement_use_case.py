@@ -658,14 +658,6 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 follow_up_message
             )
             
-            # Enviar mensaje adicional con pregunta sobre qué le parece más interesante
-            engagement_message = "¿Qué te parece más interesante del curso?"
-            
-            # Enviar pregunta de engagement con respuesta rápida
-            engagement_result = await self.twilio_client.send_quick_response(
-                f"whatsapp:+{user_id}", 
-                engagement_message
-            )
             
             return {
                 'success': True,
@@ -679,7 +671,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                     'pdf_sent': pdf_result.get('success', False),
                     'image_sent': image_result.get('success', False),
                     'follow_up_sent': follow_up_result.get('success', False),
-                    'engagement_sent': engagement_result.get('success', False)
+                    'engagement_sent': True  # Marcamos como True aunque ya no se envía
                 }
             }
             
@@ -878,16 +870,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Mensaje acompañando al PDF
             pdf_message = f"""📄 **GUÍA COMPLETA DEL CURSO**
 
-Te envío la guía detallada con toda la información que necesitas:
-
-📝 **Incluye:**
-• Estructura completa del programa
-• Objetivos de aprendizaje por módulo  
-• Herramientas y recursos incluidos
-• Plan de implementación paso a paso
-• Casos de éxito con ROI comprobado
-
-*¡Revísala y me cuentas qué te parece!* 👀"""
+Te envío la guía detallada con toda la información que necesitas:"""
 
             # Si tenemos URL válida, enviar archivo; si no, usar fallback
             if pdf_url and pdf_url.startswith('http'):

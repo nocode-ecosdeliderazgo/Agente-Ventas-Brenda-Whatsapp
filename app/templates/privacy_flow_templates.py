@@ -76,11 +76,7 @@ _Para reactivar esta conversación en el futuro, simplemente envía cualquier me
         """
         return f"""¡Perfecto, **{user_name}**! 🎉
 
-Es un placer conocerte. A partir de ahora me dirigiré a ti como {user_name}.
-
-**Para ofrecerte la mejor asesoría, ¿podrías decirme en qué área de tu empresa te desempeñas?**
-
-Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector específico. 😊"""
+**Para ofrecerte la mejor asesoría, ¿podrías decirme en qué área de tu empresa te desempeñas?**"""
 
     @staticmethod
     def privacy_consent_reminder() -> str:
