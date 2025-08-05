@@ -93,14 +93,6 @@ Es un placer conocerte. A partir de ahora me dirigiré a ti como {user_name}.
 
 **Para ofrecerte la mejor asesoría, ¿podrías decirme en qué área de tu empresa te desempeñas?**
 
-Por ejemplo:
-• **Marketing Digital** (agencias, e-commerce)
-• **Operaciones** (manufactura, logística)
-• **Ventas** (B2B, consultoría)
-• **Recursos Humanos** (reclutamiento, capacitación)
-• **Innovación/Transformación Digital** (CEO, fundadores)
-• **Análisis de Datos** (BI, analytics)
-
 Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector específico. 😊"""
 
     @staticmethod

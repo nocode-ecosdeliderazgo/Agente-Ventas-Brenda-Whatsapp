@@ -263,14 +263,11 @@ class WelcomeFlowUseCase:
             # Crear mensaje con cursos disponibles
             courses_message = self._create_courses_offer_message(user_memory, available_courses)
             
-            # Enviar mensaje
-            outgoing_message = OutgoingMessage(
-                to_number=f"whatsapp:+{user_id}",
-                body=courses_message,
-                message_type=MessageType.TEXT
+            # Enviar mensaje con typing (es una explicación elaborada)
+            result = await self.twilio_client.send_thoughtful_response(
+                f"whatsapp:+{user_id}",
+                courses_message
             )
-            
-            result = await self.twilio_client.send_message(outgoing_message)
             
             if result.get('success'):
                 # Actualizar memoria para esperar selección de curso
@@ -416,16 +413,13 @@ class WelcomeFlowUseCase:
                 
                 self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
                 
-                # Enviar confirmación de selección
+                # Enviar confirmación de selección con respuesta rápida
                 confirmation_message = self._create_course_confirmation_message(selected_course, user_memory)
                 
-                outgoing_message = OutgoingMessage(
-                    to_number=f"whatsapp:+{user_id}",
-                    body=confirmation_message,
-                    message_type=MessageType.TEXT
+                result = await self.twilio_client.send_quick_response(
+                    f"whatsapp:+{user_id}",
+                    confirmation_message
                 )
-                
-                result = await self.twilio_client.send_message(outgoing_message)
                 
                 return {
                     'success': True,

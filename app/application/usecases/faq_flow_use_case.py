@@ -154,7 +154,7 @@ class FAQFlowUseCase:
     
     async def detect_faq_intent(self, message: str) -> bool:
         """
-        Detecta si el mensaje indica intención de FAQ.
+        Detecta si el mensaje indica intención de FAQ con análisis de relaciones inteligente.
         
         Args:
             message: Mensaje del usuario
@@ -162,29 +162,108 @@ class FAQFlowUseCase:
         Returns:
             True si hay intención de FAQ
         """
-        faq_keywords = [
-            'pregunta', 'duda', 'cómo', 'qué', 'cuándo', 'dónde', 'por qué',
-            'información', 'ayuda', 'soporte', 'problema', 'error', 'funciona',
-            'precio', 'costo', 'duración', 'tiempo', 'horario', 'fecha',
-            'requisitos', 'necesito', 'busco', 'encontrar', 'saber'
-        ]
-        
         message_lower = message.lower()
         
-        # Verificar palabras clave
-        for keyword in faq_keywords:
-            if keyword in message_lower:
-                return True
-        
-        # Verificar patrones de pregunta
-        question_patterns = [
-            '¿', '?', 'como', 'que', 'cuando', 'donde', 'por que',
-            'cual', 'quien', 'cuanto', 'donde', 'cuando'
+        # Palabras clave expandidas con sinónimos y relaciones
+        faq_keywords = [
+            # Preguntas directas
+            'pregunta', 'duda', 'consulta', 'cuestión', 'interrogante',
+            
+            # Palabras interrogativas
+            'cómo', 'como', 'qué', 'que', 'cuándo', 'cuando', 'dónde', 'donde', 
+            'por qué', 'porque', 'para qué', 'para que', 'cuál', 'cual', 'cuales',
+            'quién', 'quien', 'quienes', 'cuánto', 'cuanto', 'cuanta', 'cuantos',
+            
+            # Solicitudes de información
+            'información', 'info', 'detalles', 'datos', 'especificaciones',
+            'características', 'contenido', 'temario', 'programa', 'curriculum',
+            
+            # Ayuda y soporte
+            'ayuda', 'apoyo', 'soporte', 'asistencia', 'orientación', 'guía',
+            'problema', 'error', 'falla', 'inconveniente', 'dificultad',
+            
+            # Funcionamiento
+            'funciona', 'funcionar', 'funcionamiento', 'opera', 'trabaja',
+            'sirve', 'utiliza', 'usa', 'emplea', 'aplica',
+            
+            # Aspectos comerciales
+            'precio', 'costo', 'cuesta', 'valor', 'tarifa', 'inversión',
+            'duración', 'tiempo', 'horario', 'fecha', 'calendario', 'cronograma',
+            'modalidad', 'formato', 'metodología',
+            
+            # Requisitos y condiciones
+            'requisitos', 'condiciones', 'necesario', 'requerimientos',
+            'prerrequisitos', 'necesito', 'requiero', 'debo',
+            
+            # Búsqueda de información
+            'busco', 'encuentro', 'localizar', 'saber', 'conocer', 'entender',
+            'comprender', 'averiguar', 'investigar', 'indagar',
+            
+            # Términos específicos del curso
+            'instructor', 'profesor', 'docente', 'maestro', 'tutor',
+            'certificado', 'diploma', 'acreditación', 'título',
+            'sesiones', 'clases', 'módulos', 'lecciones', 'capítulos',
+            'material', 'recursos', 'herramientas', 'plataforma',
+            'acceso', 'disponibilidad', 'soporte técnico'
         ]
         
+        # Verificar palabras clave con análisis de contexto
+        keyword_matches = 0
+        for keyword in faq_keywords:
+            if keyword in message_lower:
+                keyword_matches += 1
+        
+        # Patrones de pregunta más sofisticados
+        question_patterns = [
+            '¿', '?',  # Signos de pregunta obvios
+            'como puedo', 'como hago', 'como se', 'de que manera',
+            'que tal si', 'que pasa si', 'que sucede si',
+            'donde puedo', 'donde encuentro', 'donde está', 'donde se',
+            'cuando puedo', 'cuando es', 'cuando será', 'cuando empieza',
+            'por que no', 'por que si', 'para que sirve',
+            'cuanto cuesta', 'cuanto vale', 'cuanto tiempo', 'cuanto dura',
+            'cual es', 'cual sería', 'cuales son',
+            'quien es', 'quien puede', 'quienes son',
+            'me podrias', 'me puedes', 'podrías decirme', 'puedes explicar',
+            'me interesa saber', 'quiero saber', 'necesito saber',
+            'tengo una duda', 'tengo una pregunta',
+            'no entiendo', 'no comprendo', 'no sé',
+            'explícame', 'explicame', 'cuéntame', 'cuentame', 'dime'
+        ]
+        
+        pattern_matches = 0
         for pattern in question_patterns:
             if pattern in message_lower:
-                return True
+                pattern_matches += 1
+        
+        # Análisis de estructura de pregunta
+        is_question_structure = (
+            '¿' in message or '?' in message or
+            message_lower.startswith(('cómo', 'como', 'qué', 'que', 'cuándo', 'cuando', 
+                                     'dónde', 'donde', 'por qué', 'porque', 'cuál', 'cual',
+                                     'quién', 'quien', 'cuánto', 'cuanto', 'me puedes',
+                                     'me podrías', 'podrías', 'puedes', 'necesito', 'quiero'))
+        )
+        
+        # Criterios de decisión más inteligentes
+        if is_question_structure:
+            return True
+        
+        if keyword_matches >= 2:  # Múltiples palabras clave relacionadas
+            return True
+            
+        if pattern_matches >= 1 and keyword_matches >= 1:  # Patrón + keyword
+            return True
+        
+        # Preguntas sobre instructores específicamente (caso del usuario)
+        instructor_questions = [
+            'instructor', 'profesor', 'docente', 'maestro', 'tutor', 'enseña', 'imparte',
+            'experiencia', 'trayectoria', 'perfil', 'background', 'formación'
+        ]
+        
+        instructor_matches = sum(1 for word in instructor_questions if word in message_lower)
+        if instructor_matches >= 1 and ('quien' in message_lower or 'quienes' in message_lower or '?' in message):
+            return True
         
         return False
     

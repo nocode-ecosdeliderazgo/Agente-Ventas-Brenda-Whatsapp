@@ -331,8 +331,29 @@ class AnalyzeMessageIntentUseCase:
             'fundador', 'founder', 'coordinador', 'supervisor', 'jefe',
             'analista', 'especialista', 'consultor', 'asesor', 'ejecutivo',
             'líder', 'lider', 'responsable', 'encargado', 'administrador',
-            'marketing', 'ventas', 'operaciones', 'recursos humanos', 'rh',
-            'tecnología', 'innovación', 'desarrollo', 'producción', 'calidad'
+            # Marketing y términos relacionados
+            'marketing', 'marketing digital', 'publicidad', 'comunicación', 'branding',
+            'campañas', 'content', 'social media', 'sem', 'seo', 'growth marketing',
+            
+            # Ventas y términos relacionados
+            'ventas', 'sales', 'comercial', 'compras', 'procurement', 'adquisiciones',
+            'business development', 'account manager', 'negociación', 'b2b', 'b2c',
+            
+            # Operaciones y términos relacionados
+            'operaciones', 'operations', 'producción', 'manufactura', 'logística',
+            'supply chain', 'procesos', 'calidad', 'lean', 'six sigma', 'industrial',
+            
+            # Recursos Humanos y términos relacionados
+            'recursos humanos', 'rh', 'hr', 'human resources', 'people operations',
+            'reclutamiento', 'talent', 'capacitación', 'training', 'nómina', 'payroll',
+            
+            # Innovación y tecnología
+            'innovación', 'innovation', 'transformación digital', 'digital transformation',
+            'tecnología', 'it', 'sistemas', 'digital', 'tech', 'startup', 'cto', 'desarrollo',
+            
+            # Análisis de datos y términos relacionados
+            'análisis de datos', 'data analysis', 'analytics', 'bi', 'business intelligence',
+            'data science', 'reporting', 'insights', 'métricas', 'kpi', 'dashboard'
         }
         
         # Verificar si contiene al menos una palabra clave de rol profesional

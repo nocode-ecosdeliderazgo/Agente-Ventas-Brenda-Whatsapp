@@ -629,14 +629,11 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Crear mensaje principal con resumen del curso
             main_message = self._create_course_summary_message(course_info, user_memory)
             
-            # Enviar mensaje principal
-            outgoing_message = OutgoingMessage(
-                to_number=user_id,
-                body=main_message,
-                message_type=MessageType.TEXT
+            # Enviar mensaje principal con typing (es contenido elaborado)
+            main_result = await self.twilio_client.send_thoughtful_response(
+                f"whatsapp:+{user_id}", 
+                main_message
             )
-            
-            main_result = await self.twilio_client.send_message(outgoing_message)
             
             if not main_result.get('success'):
                 logger.error(f"Error enviando mensaje principal: {main_result}")
@@ -648,31 +645,27 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Enviar imagen (simulado por ahora)
             image_result = await self._send_course_image(user_id, course_info)
             
-            # Esperar 13 segundos para que los archivos se carguen antes de enviar los mensajes de texto
-            logger.info("⏳ Esperando 13 segundos para que los archivos se carguen...")
-            await asyncio.sleep(13)
+            # Esperar solo 3 segundos optimizado para mejor UX
+            logger.info("⏳ Esperando 3 segundos para optimizar entrega...")
+            await asyncio.sleep(3)
             
             # Enviar mensaje de seguimiento
             follow_up_message = self._create_follow_up_message(course_info, user_memory)
             
-            follow_up_outgoing = OutgoingMessage(
-                to_number=user_id,
-                body=follow_up_message,
-                message_type=MessageType.TEXT
+            # Enviar mensaje de seguimiento con typing normal
+            follow_up_result = await self.twilio_client.send_text_with_typing(
+                f"whatsapp:+{user_id}", 
+                follow_up_message
             )
-            
-            follow_up_result = await self.twilio_client.send_message(follow_up_outgoing)
             
             # Enviar mensaje adicional con pregunta sobre qué le parece más interesante
             engagement_message = "¿Qué te parece más interesante del curso?"
             
-            engagement_outgoing = OutgoingMessage(
-                to_number=user_id,
-                body=engagement_message,
-                message_type=MessageType.TEXT
+            # Enviar pregunta de engagement con respuesta rápida
+            engagement_result = await self.twilio_client.send_quick_response(
+                f"whatsapp:+{user_id}", 
+                engagement_message
             )
-            
-            engagement_result = await self.twilio_client.send_message(engagement_outgoing)
             
             return {
                 'success': True,

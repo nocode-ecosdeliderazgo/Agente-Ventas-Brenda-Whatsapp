@@ -542,7 +542,7 @@ class PrivacyFlowUseCase:
     
     def _extract_user_role(self, message_text: str) -> Optional[str]:
         """
-        Extrae el rol/cargo del usuario del mensaje.
+        Extrae el rol/cargo del usuario del mensaje con detección inteligente de roles relacionados.
         
         Args:
             message_text: Texto del mensaje del usuario
@@ -554,32 +554,78 @@ class PrivacyFlowUseCase:
             # Limpiar y normalizar el texto
             text = message_text.strip().lower()
             
-            # Mapeo de roles comunes
+            # Mapeo inteligente de roles con sinónimos y términos relacionados
             role_mapping = {
-                'marketing': 'Marketing Digital',
-                'marketing digital': 'Marketing Digital',
-                'operaciones': 'Operaciones',
-                'ventas': 'Ventas',
-                'recursos humanos': 'Recursos Humanos',
-                'rh': 'Recursos Humanos',
-                'ceo': 'CEO/Founder',
-                'founder': 'CEO/Founder',
-                'fundador': 'CEO/Founder',
-                'innovación': 'Innovación/Transformación Digital',
-                'transformación digital': 'Innovación/Transformación Digital',
-                'análisis de datos': 'Análisis de Datos',
-                'bi': 'Análisis de Datos',
-                'analytics': 'Análisis de Datos'
+                # Marketing Digital y términos relacionados
+                'Marketing Digital': [
+                    'marketing', 'marketing digital', 'mercadotecnia', 'publicidad', 'comunicación',
+                    'community manager', 'social media', 'content manager', 'brand manager',
+                    'digital marketing', 'growth marketing', 'performance marketing', 'sem', 'seo',
+                    'creative director', 'diseño gráfico', 'copywriter', 'content creator',
+                    'agencia', 'medios digitales', 'campañas', 'branding'
+                ],
+                
+                # Ventas y términos relacionados
+                'Ventas': [
+                    'ventas', 'vendedor', 'vendedora', 'sales', 'comercial', 'business development',
+                    'account manager', 'key account', 'inside sales', 'field sales', 'compras',
+                    'procurement', 'adquisiciones', 'buyer', 'purchasing', 'negociación',
+                    'b2b', 'b2c', 'consultoría comercial', 'representante comercial'
+                ],
+                
+                # Operaciones y términos relacionados
+                'Operaciones': [
+                    'operaciones', 'operations', 'producción', 'manufactura', 'plant manager',
+                    'supervisor', 'jefe de planta', 'logística', 'supply chain', 'cadena suministro',
+                    'almacén', 'inventarios', 'quality manager', 'calidad', 'procesos',
+                    'industrial', 'fábrica', 'facility manager', 'lean', 'six sigma'
+                ],
+                
+                # Recursos Humanos y términos relacionados  
+                'Recursos Humanos': [
+                    'recursos humanos', 'rh', 'hr', 'human resources', 'people operations',
+                    'talent acquisition', 'reclutamiento', 'selección', 'capacitación',
+                    'training', 'desarrollo organizacional', 'culture', 'nómina', 'payroll',
+                    'compensaciones', 'beneficios', 'employee experience', 'people analytics'
+                ],
+                
+                # CEO/Founder y términos relacionados
+                'CEO/Founder': [
+                    'ceo', 'chief executive', 'director general', 'gerente general', 'founder',
+                    'fundador', 'cofundador', 'co-founder', 'presidente', 'dueño', 'propietario',
+                    'empresario', 'emprendedor', 'managing director', 'executive director',
+                    'country manager', 'regional director'
+                ],
+                
+                # Innovación/Transformación Digital y términos relacionados
+                'Innovación/Transformación Digital': [
+                    'innovación', 'innovation', 'transformación digital', 'digital transformation',
+                    'cto', 'chief technology', 'it manager', 'sistemas', 'tecnología',
+                    'digital', 'tech lead', 'product manager', 'project manager',
+                    'scrum master', 'agile coach', 'digital strategy', 'startup'
+                ],
+                
+                # Análisis de Datos y términos relacionados
+                'Análisis de Datos': [
+                    'análisis de datos', 'data analysis', 'data analytics', 'data scientist',
+                    'data analyst', 'business intelligence', 'bi', 'analytics', 'reporting',
+                    'insights', 'métricas', 'kpi', 'dashboard', 'tableau', 'power bi',
+                    'sql', 'python', 'estadística', 'machine learning', 'data mining'
+                ]
             }
             
-            # Buscar coincidencias
-            for key, role in role_mapping.items():
-                if key in text:
-                    return role
+            # Buscar coincidencias inteligentes
+            for target_role, keywords in role_mapping.items():
+                for keyword in keywords:
+                    if keyword in text:
+                        debug_print(f"✅ Rol detectado: '{target_role}' por keyword: '{keyword}'", "_extract_user_role")
+                        return target_role
             
-            # Si no hay coincidencia exacta, devolver el texto original capitalizado
+            # Si no hay coincidencia exacta, devolver el texto original capitalizado si es válido
             if len(text) > 2:  # Al menos 3 caracteres
-                return message_text.strip().title()
+                capitalized_role = message_text.strip().title()
+                debug_print(f"🔄 Rol genérico detectado: '{capitalized_role}'", "_extract_user_role")
+                return capitalized_role
             
             return None
             
@@ -714,14 +760,6 @@ class PrivacyFlowUseCase:
             # Enviar mensaje de recordatorio
             reminder_message = """Por favor, ¿podrías decirme en qué área de tu empresa te desempeñas?
 
-Por ejemplo:
-• **Marketing Digital** (agencias, e-commerce)
-• **Operaciones** (manufactura, logística)
-• **Ventas** (B2B, consultoría)
-• **Recursos Humanos** (reclutamiento, capacitación)
-• **Innovación/Transformación Digital** (CEO, fundadores)
-• **Análisis de Datos** (BI, analytics)
-
 Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector específico. 😊"""
             
             send_result = await self._send_message(user_number, reminder_message)
@@ -762,7 +800,14 @@ Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector esp
                 message_type=MessageType.TEXT
             )
             
-            result = await self.twilio_client.send_message(outgoing_message)
+            # Determinar tipo de mensaje para privacy flow
+            if len(message_text) < 100:
+                # Mensajes cortos del privacy flow
+                result = await self.twilio_client.send_quick_response(to_number, message_text)
+            else:
+                # Mensajes largos (explicaciones de privacidad)
+                result = await self.twilio_client.send_text_with_typing(to_number, message_text)
+            
             return result.get('success', False)
         
         except Exception as e:

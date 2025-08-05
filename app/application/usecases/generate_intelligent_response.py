@@ -518,13 +518,54 @@ class GenerateIntelligentResponseUseCase:
             'AUTOMATION_CONTENT', 'TEAM_TRAINING', 'STRATEGIC_CONSULTATION'
         ]
         
-        # Keywords que indican necesidad de información específica
+        # Keywords expandidos que indican necesidad de información específica
         specific_keywords = [
-            'cuánto cuesta', 'precio exacto', 'duración específica', 'contenido detallado',
-            'módulos incluye', 'certificado', 'cuando empieza', 'requisitos técnicos',
-            'de que trata', 'que trata', 'temario', 'programa', 'contenido',
-            'qué aprendo', 'que aprendo', 'incluye', 'abarca', 'curso', 'sesiones',
-            'nivel', 'modalidad', 'horarios', 'fechas', 'instructor', 'profesor'
+            # Precios y costos
+            'cuánto cuesta', 'cuanto cuesta', 'precio exacto', 'precio', 'costo', 'valor',
+            'tarifa', 'inversión', 'pagar', 'presupuesto', 'financiamiento',
+            
+            # Duración y tiempo
+            'duración específica', 'duración', 'tiempo', 'dura', 'largo', 'cronograma',
+            'calendario', 'horarios', 'fechas', 'schedule', 'timing',
+            
+            # Contenido y curriculum
+            'contenido detallado', 'contenido', 'temario', 'programa', 'curriculum',
+            'módulos incluye', 'módulos', 'capítulos', 'lecciones', 'sesiones',
+            'de que trata', 'que trata', 'trata sobre', 'abarca', 'cubre',
+            'qué aprendo', 'que aprendo', 'enseña', 'aprenderé', 'incluye',
+            
+            # Certificación y acreditación
+            'certificado', 'diploma', 'acreditación', 'título', 'reconocimiento',
+            'validez', 'respaldo', 'avalado',
+            
+            # Inicio y disponibilidad
+            'cuando empieza', 'cuando inicia', 'cuando comienza', 'fecha inicio',
+            'próxima fecha', 'disponible', 'disponibilidad', 'cupos',
+            
+            # Requisitos
+            'requisitos técnicos', 'requisitos', 'prerrequisitos', 'necesito',
+            'conocimientos previos', 'experiencia previa', 'condiciones',
+            
+            # Modalidad y formato
+            'nivel', 'modalidad', 'formato', 'metodología', 'presencial',
+            'online', 'virtual', 'híbrido', 'sincrónico', 'asincrónico',
+            
+            # Instructores y personal
+            'instructor', 'profesor', 'docente', 'maestro', 'tutor',
+            'quién enseña', 'quien enseña', 'experiencia instructor',
+            'perfil instructor', 'biografía', 'currículum instructor',
+            
+            # Características del curso
+            'curso', 'programa', 'capacitación', 'entrenamiento', 'formación',
+            'workshop', 'seminario', 'bootcamp', 'masterclass',
+            
+            # Soporte y recursos
+            'material', 'recursos', 'herramientas', 'plataforma', 'acceso',
+            'soporte', 'ayuda', 'asistencia', 'acompañamiento',
+            
+            # Resultados y beneficios
+            'resultados', 'beneficios', 'ventajas', 'logros', 'objetivos',
+            'metas', 'competencias', 'habilidades', 'skills'
         ]
         
         message_lower = message_text.lower()
@@ -1238,7 +1279,7 @@ Una agencia redujo 80% el tiempo de creación de contenido, pasando de 8 horas/d
     
     async def _send_response(self, to_number: str, response_text: str) -> Dict[str, Any]:
         """
-        Envía respuesta al usuario.
+        Envía respuesta al usuario con typing simulation inteligente.
         
         Args:
             to_number: Número de WhatsApp del usuario
@@ -1248,17 +1289,56 @@ Una agencia redujo 80% el tiempo de creación de contenido, pasando de 8 horas/d
             Resultado del envío
         """
         try:
-            response_message = OutgoingMessage(
-                to_number=to_number,
-                body=response_text,
-                message_type=MessageType.TEXT
-            )
+            # Determinar tipo de respuesta para typing apropiado
+            response_type = self._classify_response_type(response_text)
             
-            return await self.twilio_client.send_message(response_message)
+            if response_type == "quick":
+                # Respuestas rápidas (confirmaciones, saludos cortos)
+                return await self.twilio_client.send_quick_response(to_number, response_text)
+            elif response_type == "thoughtful":
+                # Respuestas elaboradas (análisis, explicaciones técnicas)
+                return await self.twilio_client.send_thoughtful_response(to_number, response_text)
+            else:
+                # Respuestas normales con typing automático
+                return await self.twilio_client.send_text_with_typing(to_number, response_text)
             
         except Exception as e:
             self.logger.error(f"❌ Error enviando respuesta: {e}")
             return {'success': False, 'error': str(e)}
+    
+    def _classify_response_type(self, response_text: str) -> str:
+        """
+        Clasifica el tipo de respuesta para determinar el timing de typing apropiado.
+        
+        Args:
+            response_text: Texto de la respuesta
+            
+        Returns:
+            Tipo de respuesta: "quick", "thoughtful", "normal"
+        """
+        text_lower = response_text.lower()
+        text_length = len(response_text)
+        
+        # Respuestas rápidas (confirmaciones, saludos)
+        quick_indicators = [
+            "perfecto", "entendido", "claro", "ok", "correcto", "¡excelente!",
+            "gracias", "te ayudo", "por supuesto", "¡hola", "bienvenido"
+        ]
+        
+        # Respuestas elaboradas (análisis, explicaciones técnicas)
+        thoughtful_indicators = [
+            "analicemos", "específicamente", "detalladamente", "implementación",
+            "estrategia", "proceso completo", "paso a paso", "considerando",
+            "evaluación", "diagnóstico", "recomendaciones"
+        ]
+        
+        # Clasificar por contenido
+        if any(indicator in text_lower for indicator in quick_indicators) and text_length < 100:
+            return "quick"
+        elif any(indicator in text_lower for indicator in thoughtful_indicators) or text_length > 400:
+            return "thoughtful"
+        else:
+            return "normal"
     
     async def _execute_additional_actions(
         self,
