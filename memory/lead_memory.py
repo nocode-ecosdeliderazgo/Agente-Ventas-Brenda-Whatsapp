@@ -60,6 +60,35 @@ class LeadMemory:
     communication_frequency: str = "standard"  # low, standard, high
     preferred_examples: Optional[List[str]] = None  # types of examples that resonate
     
+    # 🆕 SISTEMA DE EMOCIONES Y PATRONES
+    emotion_history: Optional[List[Dict]] = None  # historial de emociones detectadas
+    current_emotion: str = 'neutral'  # emoción actual detectada
+    emotion_confidence: float = 0.0  # confianza en la detección emocional
+    pattern_history: Optional[List[Dict]] = None  # patrones de comportamiento detectados
+    
+    # 🆕 SISTEMA DE FEEDBACK Y EXPERIENCIA
+    feedback_history: Optional[List[Dict]] = None  # historial de feedback del usuario
+    last_feedback_date: Optional[str] = None  # fecha del último feedback
+    latest_satisfaction_rating: int = 0  # última calificación de satisfacción
+    
+    # 🆕 ASSESSMENTS Y DIAGNÓSTICOS
+    assessment_history: Optional[List[Dict]] = None  # historial de assessments completados
+    last_assessment: Optional[str] = None  # tipo del último assessment
+    last_assessment_date: Optional[str] = None  # fecha del último assessment
+    digital_maturity_score: int = 0  # puntuación de madurez digital
+    ai_readiness_level: str = 'low'  # nivel de preparación para IA
+    
+    # 🆕 PERSONALIZACIÓN DINÁMICA
+    historical_preferences: Optional[Dict[str, Any]] = None  # preferencias históricas
+    interaction_patterns: Optional[Dict[str, Any]] = None  # patrones de interacción
+    conversion_indicators: Optional[List[str]] = None  # indicadores de conversión
+    
+    # 🆕 CAMPOS ADICIONALES DE CONTEXTO
+    first_interaction: Optional[str] = None  # timestamp primera interacción
+    company_info: Optional[Dict[str, Any]] = None  # información de la empresa del usuario
+    purchase_completed: bool = False  # si completó una compra
+    problem_resolved: bool = False  # si se resolvió algún problema
+    
     def is_first_interaction(self) -> bool:
         """Verifica si es la primera interacción del usuario."""
         return self.interaction_count <= 1 and self.stage == "first_contact"

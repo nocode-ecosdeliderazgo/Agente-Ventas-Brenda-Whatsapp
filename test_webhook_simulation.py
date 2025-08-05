@@ -149,7 +149,8 @@ class WebhookSimulation:
                 self.privacy_flow_use_case, 
                 self.course_query_use_case, 
                 self.memory_use_case, 
-                self.twilio_client
+                self.twilio_client,
+                self.course_announcement_use_case
             )
             debug_print("✅ Flujo de bienvenida genérico inicializado correctamente", "initialize_system", "webhook_simulation.py")
             
