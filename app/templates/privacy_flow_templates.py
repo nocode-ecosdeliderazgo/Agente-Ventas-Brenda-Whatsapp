@@ -28,21 +28,14 @@ class PrivacyFlowTemplates:
 
 Soy **Brenda**, tu asesora especializada en cursos de Inteligencia Artificial. ¡Me alegra mucho que estemos conectando!
 
-Para ofrecerte la mejor experiencia posible, necesito tu consentimiento para procesar tus datos personales y contactarte con información relevante sobre nuestros cursos.
-
-**Antes de continuar, necesito que revises nuestro aviso de privacidad:**
+**Para continuar con nuestra conversación, necesito que revises nuestro aviso de privacidad:**
 
 📋 **Aviso de Privacidad:**
 https://aviso-privacidad-ecos-b6b7ad47fe00.herokuapp.com/
+https ://aviso-privacidad-ecos-b6b7ad47fe00.herokuapp.com/
 
-
-**¿Estás de acuerdo con continuar?** ¡Te aseguro que valdrá la pena! 😊
-
-_Responde con:_
-✅ **"ACEPTO"** para continuar
-❌ **"NO ACEPTO"** si prefieres no continuar
-
-_O simplemente escribe "Sí" o "No" si lo prefieres._"""
+**Al continuar, estás aceptando nuestro aviso de privacidad y autorizas el procesamiento de tus datos personales para brindarte la mejor asesoría.**
+"""
 
     @staticmethod
     def privacy_accepted_name_request() -> str:
