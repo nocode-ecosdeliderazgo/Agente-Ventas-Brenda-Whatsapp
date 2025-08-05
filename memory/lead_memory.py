@@ -35,6 +35,9 @@ class LeadMemory:
     flow_step: int = 0  # paso actual dentro del flujo
     waiting_for_response: str = ""  # qué tipo de respuesta espera (name, privacy_acceptance, course_choice, etc.)
     
+    # Campo para tracking de envío de datos bancarios
+    purchase_bonus_sent: bool = False  # True si ya se enviaron datos bancarios + bonus
+    
     # 🆕 CAMPOS PARA MENSAJE ORIGINAL (para activación automática de flujo de anuncios)
     original_message_body: Optional[str] = None  # Cuerpo del mensaje original que inició el flujo
     original_message_sid: Optional[str] = None   # SID del mensaje original
@@ -366,6 +369,8 @@ class MemoryManager:
             data['flow_step'] = 0
         if 'waiting_for_response' not in data:
             data['waiting_for_response'] = ""
+        if 'purchase_bonus_sent' not in data:
+            data['purchase_bonus_sent'] = False
         
         # Migrar stage antiguo a nuevo sistema
         if data.get('stage') == 'initial':

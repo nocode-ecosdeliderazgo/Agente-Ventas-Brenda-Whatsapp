@@ -722,6 +722,10 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 duration = getattr(db_course, 'total_duration_min', 12) or 12
                 modality = getattr(db_course, 'modality', 'Online')
                 
+                # Crear una descripción ultra-corta para el anuncio
+                announcement_description = f"Domina ChatGPT + Gemini para PyMEs en un programa intensivo de {duration}h. Aprende a implementar IA en tu empresa y obtén resultados medibles."
+                description = announcement_description
+
                 # Obtener bonos de la BD
                 bonuses_from_db = course_info.get('bonuses', [])
                 logger.info(f"📦 Bonos desde BD: {len(bonuses_from_db)} bonos encontrados")

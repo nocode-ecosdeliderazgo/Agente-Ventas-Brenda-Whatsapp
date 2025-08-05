@@ -227,6 +227,11 @@ Clasifica el mensaje del líder PyME en una de estas CATEGORÍAS ESPECÍFICAS pa
 34. OFF_TOPIC_REPEATED - Intentos reiterados de desviar conversación después de redirección
 35. OFFENSIVE_MESSAGE - Mensajes ofensivos, irrespetuosos o inapropiados hacia el agente
 
+**CATEGORÍAS POST-COMPRA:**
+36. PAYMENT_CONFIRMATION - Usuario confirma que procederá con el pago (ej: "si", "ya voy a pagar", "procedo", "está bien")
+37. PAYMENT_COMPLETED - Usuario indica que realizó el pago (ej: "ya pagué", "hice la transferencia", "envío comprobante")
+38. COMPROBANTE_UPLOAD - Usuario menciona enviar comprobante/evidencia (ej: "aquí está el comprobante", "te envío evidencia")
+
 MENSAJE ACTUAL: {user_message}
 
 CONTEXTO EMPRESARIAL DEL USUARIO:
@@ -620,6 +625,80 @@ Si estás interesado en conocer nuestras soluciones de IA para PyMEs, estaré di
 🎯 **Mejora del 25-40%** en eficiencia operativa
 
 ¿Te gustaría que exploremos juntos qué métricas serían más relevantes para tu empresa específica? 🤔"""
+
+    @staticmethod
+    def payment_confirmation_advisor_contact(name: str = "") -> str:
+        """
+        **NUEVO**: Mensaje cuando el usuario confirma que procederá con el pago.
+        Evita enviar datos bancarios nuevamente y confirma contacto con asesor.
+        """
+        name_greeting = f"¡Perfecto, {name}!" if name else "¡Perfecto!"
+        
+        return f"""{name_greeting} 
+
+Una vez que se refleje tu transferencia, nuestro asesor comercial te contactará en el siguiente horario laboral para activar inmediatamente:
+
+✅ Tu acceso completo al curso
+🎁 Todos tus bonos exclusivos  
+📚 Los recursos adicionales
+
+⏰ **Horario de contacto**: 9:00 AM - 6:00 PM (México)
+📞 **Tiempo estimado**: Dentro de las siguientes 2 horas hábiles tras confirmarse el pago
+
+🎁 **Bonos activos incluidos:**
+{bonuses_block}
+
+¡Gracias por confiar en nosotros para tu transformación con IA! 🚀"""
+
+    @staticmethod
+    def payment_completed_advisor_contact(name: str = "") -> str:
+        """
+        **NUEVO**: Mensaje cuando el usuario indica que ya realizó el pago.
+        """
+        name_greeting = f"¡Excelente, {name}!" if name else "¡Excelente!"
+        
+        return f"""{name_greeting} 
+
+He recibido tu confirmación de pago. Nuestro asesor comercial verificará la transferencia y te contactará muy pronto para:
+
+🎯 **Activar inmediatamente tu acceso completo**
+🎁 **Entregar todos tus bonos exclusivos**
+📋 **Coordinar tus primeros pasos en el curso**
+
+⏰ **Contacto estimado**: Dentro de las próximas 2 horas en horario laboral (9 AM - 6 PM México)
+
+🎁 **Bonos activos incluidos:**
+{bonuses_block}
+
+Si enviaste comprobante, será procesado de inmediato. ¡Bienvenido al mundo de la IA práctica! 🎓✨"""
+
+    @staticmethod
+    def comprobante_received_advisor_contact(name: str = "") -> str:
+        """
+        **NUEVO**: Mensaje cuando el usuario menciona enviar comprobante/evidencia.
+        """
+        name_greeting = f"Perfecto, {name}!" if name else "¡Perfecto!"
+        
+        return f"""{name_greeting} 
+
+He recibido tu comprobante de pago. Nuestro equipo lo procesará inmediatamente.
+
+🚀 **Próximos pasos automáticos:**
+1️⃣ Verificación de pago (próximos 30 minutos)
+2️⃣ Activación de tu acceso completo
+3️⃣ Contacto de nuestro asesor para entregar bonos
+
+📞 **Nuestro asesor te contactará dentro de las próximas 2 horas** para:
+✅ Confirmar activación exitosa
+🎁 Entregar bonos workbook exclusivos
+📚 Orientarte en tus primeros pasos
+
+⏰ **Horario**: 9:00 AM - 6:00 PM (México)
+
+🎁 **Bonos activos incluidos:**
+{bonuses_block}
+
+¡Gracias por unirte! Tu transformación con IA comienza ahora 🎯"""
 
 # ============================================================================
 # 5. CONFIGURACIÓN DE PROMPTS
