@@ -1221,7 +1221,13 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
 • Más tiempo actividades estratégicas
 
 ¿Te gustaría casos específicos de tu sector?"""
-    
+        except Exception as e:
+            debug_print(f"Error al obtener info de curso para ROI: {e}", "_get_roi_response")
+            course_price = 5000  # Precio base si falla la consulta
+            course_currency = 'MXN'
+            
+        # ... resto del código ...
+
     def _get_technical_objection_response(self, user_name: str, user_role: str) -> str:
         """Respuesta para objeciones técnicas (falta de equipo técnico)."""
         name_part = f"{user_name}, " if user_name else ""
