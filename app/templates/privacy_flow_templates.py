@@ -28,13 +28,13 @@ class PrivacyFlowTemplates:
 
 Soy **Brenda**, tu asesora especializada en cursos de Inteligencia Artificial. ¡Me alegra mucho que estemos conectando!
 
-Para ofrecerte la mejor experiencia posible, necesito tu consentimiento para:
+Para ofrecerte la mejor experiencia posible, necesito tu consentimiento para procesar tus datos personales y contactarte con información relevante sobre nuestros cursos.
 
-📋 **Procesar tus datos personales** (nombre, preferencias de comunicación)
-📞 **Contactarte** con información relevante sobre nuestros cursos
-📊 **Personalizar las recomendaciones** según tus intereses
+**Antes de continuar, necesito que revises nuestro aviso de privacidad:**
 
-🔒 **Tu privacidad es muy importante para nosotros.** Cumplimos con todas las normativas vigentes de protección de datos y nunca compartiremos tu información con terceros.
+📋 **Aviso de Privacidad:**
+https://aviso-privacidad-ecos-b6b7ad47fe00.herokuapp.com/
+
 
 **¿Estás de acuerdo con continuar?** ¡Te aseguro que valdrá la pena! 😊
 
