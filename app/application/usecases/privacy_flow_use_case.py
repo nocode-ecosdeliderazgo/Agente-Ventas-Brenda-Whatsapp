@@ -41,7 +41,7 @@ class PrivacyFlowUseCase:
         self,
         memory_use_case: ManageUserMemoryUseCase,
         twilio_client: TwilioWhatsAppClient,
-        course_announcement_use_case: CourseAnnouncementUseCase = None
+        course_announcement_use_case: Optional[CourseAnnouncementUseCase] = None
     ):
         """
         Inicializa el caso de uso de flujo de privacidad.
@@ -534,12 +534,10 @@ class PrivacyFlowUseCase:
                 self.memory_use_case.update_user_role(user_id, user_role)
                 debug_print(f"💾 Rol '{user_role}' guardado en memoria", "_handle_role_response")
 
-                # ✍️ --- ¡CORRECCIÓN CLAVE! ---
+                # --- ¡CORRECCIÓN CLAVE! ---
                 # Finaliza el flujo de privacidad aquí y delega al procesador principal
                 debug_print("✅ Rol guardado. Finalizando flujo de privacidad y activando agente.", "_handle_role_response")
-                #IMPORTANTE
-                self.memory_use_case.update_user_stage(user_id, "sales_agent") # Transición al agente inteligente
-                self.memory_use_case.set_waiting_for_response(user_id, "") # Ya no esperamos nada específico
+                self.memory_use_case.complete_privacy_flow(user_id) # Usar el método centralizado
                 
                 return {
                     'success': True,
@@ -548,7 +546,7 @@ class PrivacyFlowUseCase:
                     'stage': 'privacy_flow_completed',
                     'message_sent': False # No enviamos mensaje aquí
                 }
-                # ✍️ --- FIN DE LA CORRECCIÓN ---
+                # --- FIN DE LA CORRECIÓN ---
             else:
                 debug_print("❌ Rol no válido - pidiendo rol nuevamente", "_handle_role_response")
                 return await self._request_role_again(user_id, incoming_message.from_number)

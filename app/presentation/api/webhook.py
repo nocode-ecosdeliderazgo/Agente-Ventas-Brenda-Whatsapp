@@ -143,6 +143,7 @@ async def startup_event():
                 intent_analyzer, 
                 twilio_client, 
                 openai_client, 
+                memory_use_case, # Añadido
                 db_client,
                 course_repository,
                 course_query_use_case

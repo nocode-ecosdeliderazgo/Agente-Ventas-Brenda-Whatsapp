@@ -29,6 +29,7 @@ class LeadMemory:
     brenda_introduced: bool = False
     # Indica si ya se envió el anuncio completo de curso en esta conversación
     course_announcement_sent: bool = False
+    sector_info_sent: bool = False  # True si ya se envió la info del sector
     
     # Nuevos campos para flujos personalizados
     current_flow: str = "none"  # none, privacy, course_selection, sales_conversation
@@ -371,6 +372,8 @@ class MemoryManager:
             data['waiting_for_response'] = ""
         if 'purchase_bonus_sent' not in data:
             data['purchase_bonus_sent'] = False
+        if 'sector_info_sent' not in data:
+            data['sector_info_sent'] = False
         
         # Migrar stage antiguo a nuevo sistema
         if data.get('stage') == 'initial':

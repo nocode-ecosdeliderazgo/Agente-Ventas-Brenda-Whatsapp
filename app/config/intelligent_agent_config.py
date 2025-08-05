@@ -29,9 +29,15 @@ COURSE_CONTEXT = {
 }
 
 FAQ_CONTEXT = {
-    "instructor_profile": {
-        "keywords": ["enseñar", "enseñe", "capacitado", "instructor", "profesor", "quien da el curso"],
-        "answer": "El curso es impartido por un equipo de expertos en IA y marketing digital, liderados por nuestro instructor principal, un profesional con más de 10 años de experiencia aplicando estas tecnologías en empresas de alto crecimiento. Todos nuestros instructores están certificados y tienen experiencia práctica real en el campo."
+    "team_readiness": {
+        "keywords": ["enseñar", "enseñe", "capacitado", "instructor", "profesor", "quien da el curso", "Ernesto", "Ale"],
+        "answer": (
+            "El curso es impartido por dos expertos con perfiles complementarios que garantizan una formación integral:\n\n"
+            "👨‍🏫 **Ernesto H. Martínez** - *\"El Pastor Cibernético\"*\n"
+            "Es Ingeniero en Sistemas con más de 15 años de experiencia en transformación digital. Ha implementado más de 200 proyectos de automatización e IA y es consultor certificado en Google Cloud AI y Microsoft AI. Él aporta la visión estratégica y técnica.\n\n"
+            "👩‍🎨 **Ale Rodríguez Escobar** - *\"La Arquitecta Audiovisual\"*\n"
+            "Es Maestra en Diseño Multimedia y experta en comunicación visual y experiencia de usuario. Ha optimizado más de 50 proyectos de contenido digital con IA, especializándose en prompting creativo y storytelling. Ella aporta la visión práctica y creativa."
+        )
     },
     "advisor_contact": {
         "keywords": ["asesor", "contacto", "persona", "humano", "ayuda", "llamar", "telefono"],

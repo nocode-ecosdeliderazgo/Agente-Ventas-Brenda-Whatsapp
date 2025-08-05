@@ -19,6 +19,7 @@ from app.infrastructure.database.repositories.course_repository import CourseRep
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
 from prompts.agent_prompts import WhatsAppMessageTemplates
 from app.config.intelligent_agent_config import INTELLIGENT_AGENT_CONFIG
+from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class GenerateIntelligentResponseUseCase:
         intent_analyzer: AnalyzeMessageIntentUseCase,
         twilio_client: TwilioWhatsAppClient,
         openai_client: OpenAIClient,
+        memory_use_case: ManageUserMemoryUseCase, # Añadido
         db_client: Optional[DatabaseClient] = None, 
         course_repository: Optional[CourseRepository] = None,
         course_query_use_case: Optional[Any] = None
@@ -46,6 +48,7 @@ class GenerateIntelligentResponseUseCase:
         self.intent_analyzer = intent_analyzer
         self.twilio_client = twilio_client
         self.openai_client = openai_client
+        self.memory_use_case = memory_use_case # Añadido
         
         # Casos de uso de validación y personalización
         self.validate_response_use_case = None
@@ -115,6 +118,18 @@ class GenerateIntelligentResponseUseCase:
                 'response_sent': fallback_result['success'], 'response_sid': fallback_result.get('message_sid')
             }
 
+    def _get_specific_context_for_intent(self, category: str) -> Optional[str]:
+        """
+        Busca en la configuración el contexto específico para una intención de FAQ.
+        """
+        faq_context = INTELLIGENT_AGENT_CONFIG.get("faq", {})
+        for key, value in faq_context.items():
+            # Asumimos que la categoría de la intención coincide con la clave en el FAQ_CONTEXT
+            # Ej: 'instructor_profile'
+            if key.lower() in category.lower():
+                return value.get("answer")
+        return None
+
     def _build_hardcoded_context_for_prompt(self, user_name: str) -> str:
         """
         Construye una cadena de texto con todo el conocimiento del negocio
@@ -157,23 +172,43 @@ class GenerateIntelligentResponseUseCase:
         Genera la respuesta forzando a la IA a usar el contexto hardcodeado.
         """
         try:
-            user_memory = analysis_result.get('updated_memory')
+            user_memory = self.memory_use_case.get_user_memory(user_id)
             user_name = user_memory.name if user_memory and user_memory.name else "Cliente"
             intent_analysis = analysis_result.get('intent_analysis', {})
+            category = intent_analysis.get('category', '').lower()
+
+            # --- Lógica para evitar respuestas repetitivas (MEJORADA) ---
+            if 'exploration_sector' in category and user_memory.sector_info_sent:
+                debug_print("INFO: El usuario ya recibió la info del sector. Dando respuesta corta.", "_generate_contextual_response")
+                return (
+                    f"¡Claro, {user_name}! Ya hemos cubierto cómo el curso puede ayudar en tu área. "
+                    "¿Te gustaría explorar otro tema, o tienes alguna pregunta más específica sobre esto?"
+                )
+
+            # --- Lógica de contexto específico vs. general ---
+            specific_context = self._get_specific_context_for_intent(category)
+            
+            if specific_context:
+                debug_print(f"INFO: Usando contexto específico para la categoría '{category}'.", "_generate_contextual_response")
+                context_to_use = specific_context
+            else:
+                debug_print(f"INFO: Usando contexto general.", "_generate_contextual_response")
+                context_to_use = self._build_hardcoded_context_for_prompt(user_name)
+
 
             # 1. Construir el contexto de conocimiento a partir del archivo de config
-            hardcoded_context = self._build_hardcoded_context_for_prompt(user_name)
+            # hardcoded_context = self._build_hardcoded_context_for_prompt(user_name) - REEMPLAZADO
             
-            # 2. Generar la respuesta con OpenAI, pasando todos los parámetros necesarios
-            debug_print("🤖 Llamando a OpenAI con contexto hardcodeado...", "_generate_contextual_response")
+            # 2. Generar la respuesta con OpenAI, pasando el contexto seleccionado
+            debug_print("🤖 Llamando a OpenAI con contexto seleccionado...", "_generate_contextual_response")
             
             # NOTA: La función 'generate_response' en el cliente de OpenAI es la que internamente
-            # construye el prompt final. Le pasamos el contexto hardcodeado como 'context_info'.
+            # construye el prompt final. Le pasamos el contexto como 'context_info'.
             generated_response = await self.openai_client.generate_response(
                 user_message=incoming_message.body,
                 user_memory=user_memory,
                 intent_analysis=intent_analysis,
-                context_info=hardcoded_context
+                context_info=context_to_use # Usamos el contexto seleccionado
             )
 
             if not generated_response:
@@ -181,6 +216,13 @@ class GenerateIntelligentResponseUseCase:
             
             debug_print(f"✅ Respuesta cruda de OpenAI: {generated_response[:150]}...", "_generate_contextual_response")
             
+            # --- Marcar que la información ha sido enviada ---
+            if 'exploration_sector' in category:
+                user_memory.sector_info_sent = True
+                self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+                debug_print("INFO: Marcado 'sector_info_sent = True' en la memoria.", "_generate_contextual_response")
+            # --- Fin de la lógica de marcado ---
+
             return generated_response
 
         except Exception as e:
