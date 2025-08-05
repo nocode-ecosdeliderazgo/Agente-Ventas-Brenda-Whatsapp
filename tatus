@@ -1,0 +1,10 @@
+[33m7f615f6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mFernando-Heroku[m[33m)[m Remove .env.backup file containing sensitive credentials and application settings to enhance security and prevent accidental exposure.
+[33mab3736f[m Add Twilio and OpenAI integration with enhanced caching and memory management. Introduced a new AI response cache system to optimize performance, improved user memory handling with context enrichment, and implemented structured logging throughout the application. Updated webhook handling to support asynchronous processing and added security middleware for Twilio requests. Enhanced error handling and logging for better traceability.
+[33m307ed46[m[33m ([m[1;31morigin/Fernando-Heroku[m[33m)[m Refactor webhook server and enhance logging capabilities. Updated server description to reflect full AI integration, added structured logging with rotation, and improved message handling with sanitization. Implemented shutdown event for resource cleanup and enhanced error handling in Twilio service. Legacy components maintained for compatibility.
+[33mf2dbee7[m Add advanced sales agent prompt with structured communication techniques and objection handling strategies
+[33mfe0c84b[m Merge branch 'dev-gael-test-ferHeroku' into dev-Gael
+[33m676467b[m[33m ([m[1;31morigin/dev-gael-test-ferHeroku[m[33m)[m NO PROBADO: guardar en memoria el selected_course
+[33mc6e14b3[m PETICION DE ERNESTO Eliminar el envío de mensaje de engagement en CourseAnnouncementUseCase y ajustar el manejo de la respuesta para marcarlo como enviado. Simplificar el mensaje de introducción en privacy_flow_templates.py para mejorar la claridad en la interacción con el usuario.
+[33m5619983[m nombre->anuncio->rol o area
+[33m66d7cc1[m Implementar aceptación automática de privacidad en el flujo de usuario. Se modifica el manejo de respuestas para ignorar la aceptación de privacidad y continuar con la solicitud del nombre del usuario. Además, se corrige un enlace en el aviso de privacidad y se simplifica el mensaje de solicitud de nombre.
+[33m1c62b5f[m aviso de privacidad mas corto
