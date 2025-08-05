@@ -708,7 +708,6 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
         try:
             # Obtener nombre del usuario para personalización
             user_name = user_memory.name if user_memory.name != "Usuario" else ""
-            name_greeting = f"{user_name}, " if user_name else ""
             
             # Información básica del curso
             # Si viene de BD, extraer de la estructura anidada
@@ -739,22 +738,27 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 modality = course_info.get('modality', 'Online')
                 bonuses_from_db = []
             
-            # Crear mensaje principal (VERSIÓN CORTA para evitar límite de 1600 caracteres)
+            # Crear mensaje principal (VERSIÓN SÚPER COMPACTA - máximo 1200 caracteres)
+            greeting = f"¡Hola {user_name}! 😊" if user_name else "¡Hola! 😊"
+            
+            # Acortar el nombre del curso si es muy largo
+            display_name = course_name
+            if len(course_name) > 50:
+                display_name = "Experto en IA para Profesionales"
+            
             message_parts = [
-                "🎯 ¡Aquí tienes la información!",
+                greeting,
                 "",
-                f"📚 **{course_name}**",
-                f"💰 **Inversión:** ${price} {currency}",
-                f"📊 **Nivel:** {level} | 🗓️ {sessions} sesiones ({duration}h)",
-                f"💻 **Modalidad:** {modality}",
+                f"🎓 **{display_name}**",
+                f"💰 ${price} {currency} | {sessions} sesiones ({duration}h)",
+                f"📊 {level} | 💻 {modality}",
                 ""
             ]
             
-            # Agregar solo descripción corta si existe
-            if description:
+            # Solo agregar descripción muy corta si existe y es breve
+            if description and len(description) < 100:
                 message_parts.extend([
-                    f"📝 {description}",
-                    ""
+                    f"📝 {description[:80]}...",
                 ])
             
             # Usar bonos de la BD primero, fallback a mock data si no hay
@@ -762,31 +766,53 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             
             if bonuses:
                 message_parts.extend([
-                    f"🎁 **BONOS INCLUIDOS:**"
+                    "",
+                    "🎁 **BONOS:**"
                 ])
-                # Mostrar solo los primeros 3 bonos para ahorrar caracteres
-                for i, bonus in enumerate(bonuses[:3]):
-                    message_parts.append(f"• {bonus}")
-                if len(bonuses) > 3:
-                    message_parts.append(f"• ...y {len(bonuses) - 3} bonos más")
-                message_parts.append("")
+                # Mostrar solo los primeros 2 bonos para ahorrar caracteres
+                for i, bonus in enumerate(bonuses[:2]):
+                    # Acortar cada bono a máximo 40 caracteres
+                    short_bonus = bonus[:37] + "..." if len(bonus) > 40 else bonus
+                    message_parts.append(f"• {short_bonus}")
+                if len(bonuses) > 2:
+                    message_parts.append(f"• +{len(bonuses) - 2} bonos más")
             
             # Agregar ROI personalizado según el rol del usuario (versión corta)
             role = user_memory.role if user_memory.role != "No disponible" else ""
             if role:
                 roi_message = self._get_role_specific_roi_message_short(role, price)
                 if roi_message:
-                    message_parts.extend([roi_message, ""])
+                    message_parts.extend(["", roi_message])
             
-            # Agregar llamada a la acción
+            # Agregar llamada a la acción compacta
             message_parts.extend([
-                "📄 Te envío el PDF completo con todos los detalles.",
-                "🖼️ También recibirás la imagen con la estructura del curso.",
                 "",
-                "¿Tienes alguna pregunta específica?"
+                "📄 Te envío PDF completo + imagen del curso",
+                "",
+                "¿Preguntas específicas?"
             ])
             
-            return "\n".join(message_parts)
+            final_message = "\n".join(message_parts)
+            
+            # Verificar longitud y truncar si es necesario
+            if len(final_message) > 1500:
+                logger.warning(f"Mensaje muy largo ({len(final_message)} chars), aplicando truncamiento de emergencia")
+                # Versión de emergencia súper compacta
+                emergency_parts = [
+                    greeting,
+                    "",
+                    f"🎓 **{display_name}**",
+                    f"💰 ${price} {currency} | {sessions} sesiones",
+                    "",
+                    "🎁 Incluye bonos premium",
+                    "",
+                    "📄 Te envío PDF + imagen",
+                    "¿Preguntas?"
+                ]
+                final_message = "\n".join(emergency_parts)
+            
+            logger.info(f"📏 Mensaje final: {len(final_message)} caracteres")
+            return final_message
             
         except Exception as e:
             logger.error(f"Error creando mensaje de resumen: {e}")
@@ -840,19 +866,19 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             role_lower = role.lower()
             
             if any(keyword in role_lower for keyword in ['marketing', 'digital', 'comercial']):
-                return f"💡 **ROI Marketing:** Ahorra $300/campaña → ROI 200% primer mes"
+                return f"💡 Ahorra $300/campaña (ROI 200%)"
             
             elif any(keyword in role_lower for keyword in ['operaciones', 'operations', 'gerente', 'director']):
-                return f"💡 **ROI Operaciones:** Ahorra $2,000/mes → ROI 400% primer mes"
+                return f"💡 Ahorra $2,000/mes (ROI 400%)"
             
             elif any(keyword in role_lower for keyword in ['ceo', 'founder', 'fundador', 'director general']):
-                return f"💡 **ROI Ejecutivo:** Ahorra $27,600/año → ROI 1,380% anual"
+                return f"💡 Ahorra $27,600/año (ROI 1,380%)"
             
             elif any(keyword in role_lower for keyword in ['rh', 'recursos humanos', 'hr', 'talent']):
-                return f"💡 **ROI RH:** Ahorra $1,500/mes → ROI 300% primer trimestre"
+                return f"💡 Ahorra $1,500/mes (ROI 300%)"
             
             else:
-                return f"💡 **ROI PyME:** Ahorra $1,000/mes → ROI 250% primeros 3 meses"
+                return f"💡 Ahorra $1,000/mes (ROI 250%)"
                 
         except Exception as e:
             logger.error(f"Error generando ROI corto: {e}")
@@ -1026,19 +1052,17 @@ Te enviaremos las imágenes por correo electrónico o las puedes ver directament
         """
         try:
             course_name = course_info.get('name', 'este curso')
-            price = course_info.get('price', 0)
             
+            # Versión compacta del seguimiento
             follow_up_parts = [
-                f"🚀 **¿Listo para transformar tu PyME con IA?**",
+                f"🚀 **¿Listo para transformar tu empresa con IA?**",
                 "",
-                f"👆 Acabas de recibir toda la información de **{course_name}**",
+                "📋 **Pasos siguientes:**",
+                "• Revisa el PDF completo",
+                "• Evalúa aplicación en tu empresa",
+                "• Escríbeme cualquier pregunta",
                 "",
-                "💬 **Próximos pasos:**",
-                "• Revisa el documento PDF con los detalles completos",
-                "• Analiza cómo aplicarías esto en tu empresa específica",
-                "• Si tienes preguntas específicas, escríbeme aquí mismo",
-                "",
-                f"🎯 **Oferta especial:** Reserva tu lugar ahora con solo $97 (resto antes de iniciar)"
+                f"🎯 Reserva tu lugar con $97 (resto antes de iniciar)"
             ]
             
             return "\n".join(follow_up_parts)
