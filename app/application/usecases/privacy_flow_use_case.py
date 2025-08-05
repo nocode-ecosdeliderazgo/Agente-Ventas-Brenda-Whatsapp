@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
+from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.templates.privacy_flow_templates import PrivacyFlowTemplates
@@ -39,7 +40,8 @@ class PrivacyFlowUseCase:
     def __init__(
         self,
         memory_use_case: ManageUserMemoryUseCase,
-        twilio_client: TwilioWhatsAppClient
+        twilio_client: TwilioWhatsAppClient,
+        course_announcement_use_case: CourseAnnouncementUseCase = None
     ):
         """
         Inicializa el caso de uso de flujo de privacidad.
@@ -52,6 +54,7 @@ class PrivacyFlowUseCase:
         self.twilio_client = twilio_client
         self.templates = PrivacyFlowTemplates()
         self.logger = logging.getLogger(__name__)
+        self.course_announcement_use_case = course_announcement_use_case
     
     async def handle_privacy_flow(
         self,
@@ -83,8 +86,15 @@ class PrivacyFlowUseCase:
             
             # Si está esperando respuesta de consentimiento de privacidad
             elif user_memory.waiting_for_response == "privacy_acceptance":
-                debug_print("⏳ Esperando respuesta de consentimiento")
-                return await self._handle_privacy_response(user_id, incoming_message, user_memory)
+                debug_print("⏳ Esperando respuesta de consentimiento - IGNORANDO (hardcodeado)")
+                # 🆕 IGNORAR RESPUESTA DE PRIVACIDAD - YA ESTÁ ACEPTADA AUTOMÁTICAMENTE
+                # Simplemente continuar con el flujo normal
+                return {
+                    'success': True,
+                    'in_privacy_flow': False,
+                    'should_continue_normal_flow': True,
+                    'stage': 'privacy_flow_completed'
+                }
             
             # Si está esperando nombre del usuario
             elif user_memory.waiting_for_response == "user_name":
@@ -155,9 +165,16 @@ class PrivacyFlowUseCase:
             
             self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
             
-            # Iniciar flujo de privacidad
-            self.memory_use_case.start_privacy_flow(user_id)
-            debug_print("📝 Flujo iniciado - Stage: privacy_flow, Esperando: privacy_acceptance", "_initiate_privacy_flow")
+            # 🆕 HARDCODEAR ACEPTACIÓN DE PRIVACIDAD - NO ESPERAR RESPUESTA
+            debug_print("🔐 ACEPTACIÓN AUTOMÁTICA DE PRIVACIDAD - Hardcodeada", "_initiate_privacy_flow")
+            
+            # Marcar privacidad como aceptada automáticamente
+            updated_memory = self.memory_use_case.accept_privacy(user_id)
+            updated_memory.stage = "privacy_flow"
+            
+            # Establecer que esperamos el nombre del usuario
+            self.memory_use_case.set_waiting_for_response(user_id, "user_name")
+            debug_print("⏳ Establecido esperando nombre del usuario", "_initiate_privacy_flow")
             
             # Enviar mensaje de consentimiento
             consent_message = self.templates.privacy_consent_request(whatsapp_name)
@@ -165,14 +182,28 @@ class PrivacyFlowUseCase:
             
             if send_result:
                 debug_print("✅ Mensaje de consentimiento enviado exitosamente", "_initiate_privacy_flow")
-                return {
-                    'success': True,
-                    'in_privacy_flow': True,
-                    'stage': 'privacy_consent_requested',
-                    'privacy_accepted': False,
-                    'message_sent': True,
-                    'waiting_for': 'privacy_acceptance'
-                }
+                
+                # 🆕 ENVIAR INMEDIATAMENTE EL MENSAJE PIDIENDO EL NOMBRE
+                name_request_message = self.templates.privacy_accepted_name_request()
+                name_send_result = await self._send_message(incoming_message.from_number, name_request_message)
+                
+                if name_send_result:
+                    debug_print("✅ Mensaje de solicitud de nombre enviado automáticamente", "_initiate_privacy_flow")
+                    return {
+                        'success': True,
+                        'in_privacy_flow': True,
+                        'stage': 'name_requested',
+                        'privacy_accepted': True,
+                        'message_sent': True,
+                        'waiting_for': 'user_name'
+                    }
+                else:
+                    debug_print("❌ Error enviando solicitud de nombre", "_initiate_privacy_flow")
+                    return {
+                        'success': False,
+                        'in_privacy_flow': True,
+                        'error': 'Failed to send name request message'
+                    }
             else:
                 debug_print("❌ Error enviando mensaje de consentimiento", "_initiate_privacy_flow")
                 return {
@@ -389,7 +420,39 @@ class PrivacyFlowUseCase:
             
             if user_name:
                 debug_print(f"✅ Nombre válido recibido: {user_name}", "_handle_name_response")
-                return await self._complete_privacy_flow(user_id, incoming_message.from_number, user_name)
+                
+                # 🆕 PASO 1: Actualizar el nombre en la memoria
+                self.memory_use_case.update_user_name(user_id, user_name)
+                debug_print(f"💾 Nombre '{user_name}' guardado en memoria", "_handle_name_response")
+
+                # 🆕 PASO 2: Activar el anuncio del curso automáticamente
+                debug_print("🚀 Activando flujo de anuncio de curso...", "_handle_name_response")
+                
+                if self.course_announcement_use_case:
+                    # Crear un "mensaje falso" para activar el anuncio por defecto
+                    fake_message_for_announcement = IncomingMessage(
+                        from_number=incoming_message.from_number,
+                        body="#Experto_IA_GPT_Gemini",  # Hashtag por defecto
+                        message_sid=incoming_message.message_sid,
+                        to_number=incoming_message.to_number,
+                        timestamp=datetime.now(),
+                        raw_data={}
+                    )
+                    
+                    announcement_result = await self.course_announcement_use_case.handle_course_announcement(
+                        user_id, fake_message_for_announcement
+                    )
+                    
+                    if announcement_result.get('success'):
+                        debug_print("✅ Anuncio de curso enviado exitosamente", "_handle_name_response")
+                        # Ahora, después del anuncio, pedimos el rol
+                        return await self._request_user_role_after_announcement(user_id, incoming_message.from_number, user_name)
+                    else:
+                        debug_print("⚠️ Falló el envío del anuncio, pidiendo rol de todas formas", "_handle_name_response")
+                        return await self._request_user_role_after_announcement(user_id, incoming_message.from_number, user_name)
+                else:
+                    debug_print("❌ CourseAnnouncementUseCase no disponible, saltando al siguiente paso.", "_handle_name_response")
+                    return await self._request_user_role_after_announcement(user_id, incoming_message.from_number, user_name)
             else:
                 debug_print("❌ Nombre no válido - pidiendo nombre nuevamente", "_handle_name_response")
                 return await self._request_name_again(user_id, incoming_message.from_number)
@@ -398,6 +461,45 @@ class PrivacyFlowUseCase:
             debug_print(f"💥 ERROR PROCESANDO NOMBRE: {e}", "_handle_name_response")
             raise
     
+    
+    async def _request_user_role_after_announcement(
+        self,
+        user_id: str,
+        user_number: str,
+        user_name: str
+    ) -> Dict[str, Any]:
+        """
+        Después de enviar el anuncio, solicita el rol del usuario.
+        """
+        debug_print(f"👋 Solicitando rol para {user_name} después del anuncio.", "_request_user_role_after_announcement")
+        
+        # Configurar para esperar respuesta del rol
+        self.memory_use_case.set_waiting_for_response(user_id, "user_role")
+        debug_print("⏳ Configurado para esperar rol del usuario", "_request_user_role_after_announcement")
+        
+        # Enviar mensaje de confirmación y solicitud de rol
+        confirmation_message = self.templates.name_confirmed(user_name)
+        send_result = await self._send_message(user_number, confirmation_message)
+        
+        if send_result:
+            debug_print("✅ Mensaje de solicitud de rol enviado", "_request_user_role_after_announcement")
+            return {
+                'success': True,
+                'in_privacy_flow': True,
+                'stage': 'waiting_for_role',
+                'user_name': user_name,
+                'privacy_accepted': True,
+                'waiting_for_response': 'user_role',
+                'message_sent': True
+            }
+        else:
+            debug_print("❌ Error enviando solicitud de rol", "_request_user_role_after_announcement")
+            return {
+                'success': False,
+                'in_privacy_flow': True,
+                'error': 'Failed to send role request message'
+            }
+
     async def _handle_role_response(
         self,
         user_id: str,
@@ -428,23 +530,24 @@ class PrivacyFlowUseCase:
             if user_role:
                 debug_print(f"✅ Rol válido recibido: {user_role}", "_handle_role_response")
                 
-                # Crear mensaje original si está almacenado en memoria
-                original_message = None
-                if user_memory.original_message_body and user_memory.original_message_sid:
-                    from app.domain.entities.message import IncomingMessage
-                    original_message = IncomingMessage(
-                        from_number=incoming_message.from_number,
-                        body=user_memory.original_message_body,
-                        message_sid=user_memory.original_message_sid,
-                        to_number=incoming_message.to_number,
-                        timestamp=incoming_message.timestamp,
-                        raw_data=incoming_message.raw_data
-                    )
-                    debug_print(f"📝 Mensaje original recuperado: {user_memory.original_message_body}", "_handle_role_response")
-                else:
-                    debug_print(f"⚠️ No hay mensaje original almacenado en memoria", "_handle_role_response")
+                # Guardar el rol en memoria
+                self.memory_use_case.update_user_role(user_id, user_role)
+                debug_print(f"💾 Rol '{user_role}' guardado en memoria", "_handle_role_response")
+
+                # ✍️ --- ¡CORRECCIÓN CLAVE! ---
+                # Finaliza el flujo de privacidad aquí y delega al procesador principal
+                debug_print("✅ Rol guardado. Finalizando flujo de privacidad y activando agente.", "_handle_role_response")
+                self.memory_use_case.set_stage(user_id, "sales_agent") # Transición al agente inteligente
+                self.memory_use_case.set_waiting_for_response(user_id, "") # Ya no esperamos nada específico
                 
-                return await self._complete_role_collection(user_id, incoming_message.from_number, user_role, original_message)
+                return {
+                    'success': True,
+                    'in_privacy_flow': False,
+                    'should_continue_normal_flow': True, # Indica al procesador que continúe
+                    'stage': 'privacy_flow_completed',
+                    'message_sent': False # No enviamos mensaje aquí
+                }
+                # ✍️ --- FIN DE LA CORRECCIÓN ---
             else:
                 debug_print("❌ Rol no válido - pidiendo rol nuevamente", "_handle_role_response")
                 return await self._request_role_again(user_id, incoming_message.from_number)
@@ -542,7 +645,7 @@ class PrivacyFlowUseCase:
     
     def _extract_user_role(self, message_text: str) -> Optional[str]:
         """
-        Extrae el rol/cargo del usuario del mensaje.
+        Extrae el rol/cargo del usuario del mensaje con detección inteligente de roles relacionados.
         
         Args:
             message_text: Texto del mensaje del usuario
@@ -554,32 +657,78 @@ class PrivacyFlowUseCase:
             # Limpiar y normalizar el texto
             text = message_text.strip().lower()
             
-            # Mapeo de roles comunes
+            # Mapeo inteligente de roles con sinónimos y términos relacionados
             role_mapping = {
-                'marketing': 'Marketing Digital',
-                'marketing digital': 'Marketing Digital',
-                'operaciones': 'Operaciones',
-                'ventas': 'Ventas',
-                'recursos humanos': 'Recursos Humanos',
-                'rh': 'Recursos Humanos',
-                'ceo': 'CEO/Founder',
-                'founder': 'CEO/Founder',
-                'fundador': 'CEO/Founder',
-                'innovación': 'Innovación/Transformación Digital',
-                'transformación digital': 'Innovación/Transformación Digital',
-                'análisis de datos': 'Análisis de Datos',
-                'bi': 'Análisis de Datos',
-                'analytics': 'Análisis de Datos'
+                # Marketing Digital y términos relacionados
+                'Marketing Digital': [
+                    'marketing', 'marketing digital', 'mercadotecnia', 'publicidad', 'comunicación',
+                    'community manager', 'social media', 'content manager', 'brand manager',
+                    'digital marketing', 'growth marketing', 'performance marketing', 'sem', 'seo',
+                    'creative director', 'diseño gráfico', 'copywriter', 'content creator',
+                    'agencia', 'medios digitales', 'campañas', 'branding'
+                ],
+                
+                # Ventas y términos relacionados
+                'Ventas': [
+                    'ventas', 'vendedor', 'vendedora', 'sales', 'comercial', 'business development',
+                    'account manager', 'key account', 'inside sales', 'field sales', 'compras',
+                    'procurement', 'adquisiciones', 'buyer', 'purchasing', 'negociación',
+                    'b2b', 'b2c', 'consultoría comercial', 'representante comercial'
+                ],
+                
+                # Operaciones y términos relacionados
+                'Operaciones': [
+                    'operaciones', 'operations', 'producción', 'manufactura', 'plant manager',
+                    'supervisor', 'jefe de planta', 'logística', 'supply chain', 'cadena suministro',
+                    'almacén', 'inventarios', 'quality manager', 'calidad', 'procesos',
+                    'industrial', 'fábrica', 'facility manager', 'lean', 'six sigma'
+                ],
+                
+                # Recursos Humanos y términos relacionados  
+                'Recursos Humanos': [
+                    'recursos humanos', 'rh', 'hr', 'human resources', 'people operations',
+                    'talent acquisition', 'reclutamiento', 'selección', 'capacitación',
+                    'training', 'desarrollo organizacional', 'culture', 'nómina', 'payroll',
+                    'compensaciones', 'beneficios', 'employee experience', 'people analytics'
+                ],
+                
+                # CEO/Founder y términos relacionados
+                'CEO/Founder': [
+                    'ceo', 'chief executive', 'director general', 'gerente general', 'founder',
+                    'fundador', 'cofundador', 'co-founder', 'presidente', 'dueño', 'propietario',
+                    'empresario', 'emprendedor', 'managing director', 'executive director',
+                    'country manager', 'regional director'
+                ],
+                
+                # Innovación/Transformación Digital y términos relacionados
+                'Innovación/Transformación Digital': [
+                    'innovación', 'innovation', 'transformación digital', 'digital transformation',
+                    'cto', 'chief technology', 'it manager', 'sistemas', 'tecnología',
+                    'digital', 'tech lead', 'product manager', 'project manager',
+                    'scrum master', 'agile coach', 'digital strategy', 'startup'
+                ],
+                
+                # Análisis de Datos y términos relacionados
+                'Análisis de Datos': [
+                    'análisis de datos', 'data analysis', 'data analytics', 'data scientist',
+                    'data analyst', 'business intelligence', 'bi', 'analytics', 'reporting',
+                    'insights', 'métricas', 'kpi', 'dashboard', 'tableau', 'power bi',
+                    'sql', 'python', 'estadística', 'machine learning', 'data mining'
+                ]
             }
             
-            # Buscar coincidencias
-            for key, role in role_mapping.items():
-                if key in text:
-                    return role
+            # Buscar coincidencias inteligentes
+            for target_role, keywords in role_mapping.items():
+                for keyword in keywords:
+                    if keyword in text:
+                        debug_print(f"✅ Rol detectado: '{target_role}' por keyword: '{keyword}'", "_extract_user_role")
+                        return target_role
             
-            # Si no hay coincidencia exacta, devolver el texto original capitalizado
+            # Si no hay coincidencia exacta, devolver el texto original capitalizado si es válido
             if len(text) > 2:  # Al menos 3 caracteres
-                return message_text.strip().title()
+                capitalized_role = message_text.strip().title()
+                debug_print(f"🔄 Rol genérico detectado: '{capitalized_role}'", "_extract_user_role")
+                return capitalized_role
             
             return None
             
@@ -714,14 +863,6 @@ class PrivacyFlowUseCase:
             # Enviar mensaje de recordatorio
             reminder_message = """Por favor, ¿podrías decirme en qué área de tu empresa te desempeñas?
 
-Por ejemplo:
-• **Marketing Digital** (agencias, e-commerce)
-• **Operaciones** (manufactura, logística)
-• **Ventas** (B2B, consultoría)
-• **Recursos Humanos** (reclutamiento, capacitación)
-• **Innovación/Transformación Digital** (CEO, fundadores)
-• **Análisis de Datos** (BI, analytics)
-
 Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector específico. 😊"""
             
             send_result = await self._send_message(user_number, reminder_message)
@@ -762,7 +903,14 @@ Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector esp
                 message_type=MessageType.TEXT
             )
             
-            result = await self.twilio_client.send_message(outgoing_message)
+            # Determinar tipo de mensaje para privacy flow
+            if len(message_text) < 100:
+                # Mensajes cortos del privacy flow
+                result = await self.twilio_client.send_quick_response(to_number, message_text)
+            else:
+                # Mensajes largos (explicaciones de privacidad)
+                result = await self.twilio_client.send_text_with_typing(to_number, message_text)
+            
             return result.get('success', False)
         
         except Exception as e:

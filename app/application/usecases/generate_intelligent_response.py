@@ -414,7 +414,7 @@ class GenerateIntelligentResponseUseCase:
             # Obtener el nombre del usuario
             user_name = user_memory.name if user_memory and user_memory.name else ""
             
-            # Patrones de saludo a eliminar
+            # Patrones de saludo a eliminar - Expandido
             greeting_patterns = [
                 f"¡Hola, {user_name}!",
                 f"Hola {user_name},",
@@ -422,9 +422,17 @@ class GenerateIntelligentResponseUseCase:
                 f"Hola, {user_name},",
                 f"¡Hola {user_name},",
                 f"Hola {user_name}!",
+                f"¡Hola {user_name}! 😊",
+                f"¡Hola, {user_name}! 😊",
+                f"Hola {user_name}! 😊",
+                f"Hola, {user_name}! 😊",
                 "¡Hola!",
                 "Hola,",
-                "Hola!"
+                "Hola!",
+                "¡Hola! 😊",
+                "Hola! 😊",
+                "¡Hola 😊",
+                "Hola 😊"
             ]
             
             # Patrones de oferta de consulta a eliminar
@@ -542,13 +550,54 @@ class GenerateIntelligentResponseUseCase:
             'AUTOMATION_CONTENT', 'TEAM_TRAINING', 'STRATEGIC_CONSULTATION'
         ]
         
-        # Keywords que indican necesidad de información específica
+        # Keywords expandidos que indican necesidad de información específica
         specific_keywords = [
-            'cuánto cuesta', 'precio exacto', 'duración específica', 'contenido detallado',
-            'módulos incluye', 'certificado', 'cuando empieza', 'requisitos técnicos',
-            'de que trata', 'que trata', 'temario', 'programa', 'contenido',
-            'qué aprendo', 'que aprendo', 'incluye', 'abarca', 'curso', 'sesiones',
-            'nivel', 'modalidad', 'horarios', 'fechas', 'instructor', 'profesor'
+            # Precios y costos
+            'cuánto cuesta', 'cuanto cuesta', 'precio exacto', 'precio', 'costo', 'valor',
+            'tarifa', 'inversión', 'pagar', 'presupuesto', 'financiamiento',
+            
+            # Duración y tiempo
+            'duración específica', 'duración', 'tiempo', 'dura', 'largo', 'cronograma',
+            'calendario', 'horarios', 'fechas', 'schedule', 'timing',
+            
+            # Contenido y curriculum
+            'contenido detallado', 'contenido', 'temario', 'programa', 'curriculum',
+            'módulos incluye', 'módulos', 'capítulos', 'lecciones', 'sesiones',
+            'de que trata', 'que trata', 'trata sobre', 'abarca', 'cubre',
+            'qué aprendo', 'que aprendo', 'enseña', 'aprenderé', 'incluye',
+            
+            # Certificación y acreditación
+            'certificado', 'diploma', 'acreditación', 'título', 'reconocimiento',
+            'validez', 'respaldo', 'avalado',
+            
+            # Inicio y disponibilidad
+            'cuando empieza', 'cuando inicia', 'cuando comienza', 'fecha inicio',
+            'próxima fecha', 'disponible', 'disponibilidad', 'cupos',
+            
+            # Requisitos
+            'requisitos técnicos', 'requisitos', 'prerrequisitos', 'necesito',
+            'conocimientos previos', 'experiencia previa', 'condiciones',
+            
+            # Modalidad y formato
+            'nivel', 'modalidad', 'formato', 'metodología', 'presencial',
+            'online', 'virtual', 'híbrido', 'sincrónico', 'asincrónico',
+            
+            # Instructores y personal
+            'instructor', 'profesor', 'docente', 'maestro', 'tutor',
+            'quién enseña', 'quien enseña', 'experiencia instructor',
+            'perfil instructor', 'biografía', 'currículum instructor',
+            
+            # Características del curso
+            'curso', 'programa', 'capacitación', 'entrenamiento', 'formación',
+            'workshop', 'seminario', 'bootcamp', 'masterclass',
+            
+            # Soporte y recursos
+            'material', 'recursos', 'herramientas', 'plataforma', 'acceso',
+            'soporte', 'ayuda', 'asistencia', 'acompañamiento',
+            
+            # Resultados y beneficios
+            'resultados', 'beneficios', 'ventajas', 'logros', 'objetivos',
+            'metas', 'competencias', 'habilidades', 'skills'
         ]
         
         message_lower = message_text.lower()
@@ -1069,9 +1118,7 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
                     
                     courses_text = f"**📚 Tenemos {course_name_text}** para {levels_text}, diseñados específicamente para profesionales como tú." if total_courses == 1 else f"**📚 Tenemos {total_courses} cursos disponibles** para {levels_text}, diseñados específicamente para profesionales como tú."
                     
-                    return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-{role_context}estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
+                    return f"""{role_context}Estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
 
 {courses_text}
 
@@ -1086,9 +1133,7 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
             self.logger.error(f"Error obteniendo información de cursos para respuesta general: {e}")
         
         # Fallback sin información de BD
-        return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-{role_context}estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
+        return f"""{role_context}Estoy aquí para ayudarte a descubrir cómo la IA puede transformar tu trabajo.
 
 **🎯 Puedo ayudarte con:**
 • Información sobre nuestros cursos especializados
@@ -1115,34 +1160,34 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
         
         return f"""¡Excelente pregunta sobre ROI{', ' + name_part if name_part else ''}! 📊
 
-{role_context}te muestro resultados reales de profesionales como tú:
+{role_context}resultados reales de profesionales como tú:
 
 **💰 RESULTADOS COMPROBADOS:**
 {roi_text}
 
 **⚡ Beneficios inmediatos:**
-• Automatización de tareas repetitivas desde día 1
-• Mejora en calidad y consistencia del trabajo
-• Más tiempo para actividades estratégicas
+• Automatización tareas desde día 1
+• ↑ Calidad y consistencia
+• Más tiempo actividades estratégicas
 
-¿Te gustaría ver casos específicos de tu sector?"""
+¿Te gustaría casos específicos de tu sector?"""
     
     def _get_technical_objection_response(self, user_name: str, user_role: str) -> str:
         """Respuesta para objeciones técnicas (falta de equipo técnico)."""
         name_part = f"{user_name}, " if user_name else ""
         
-        return f"""Entiendo perfectamente tu preocupación{', ' + name_part if name_part else ''}! 🔧
+        return f"""Entiendo tu preocupación{', ' + name_part if name_part else ''}! 🔧
 
-**🎯 Nuestro enfoque está diseñado ESPECÍFICAMENTE para PyMEs sin equipo técnico:**
+**🎯 Diseñado para PyMEs SIN equipo técnico:**
 
-• **Sin programación**: Herramientas con interfaz visual
-• **Sin infraestructura**: Todo en la nube, listo para usar
-• **Sin mantenimiento**: Automatizado y escalable
-• **Soporte incluido**: Acompañamiento técnico completo
+• **Sin programación**: Interfaz visual
+• **Sin infraestructura**: Todo en la nube
+• **Sin mantenimiento**: Automatizado
+• **Soporte incluido**: Acompañamiento completo
 
-**📊 El 90% de nuestros estudiantes NO tienen background técnico** y obtienen resultados desde la primera semana.
+**📊 90% estudiantes SIN background técnico** obtienen resultados desde semana 1.
 
-¿Te gustaría ver ejemplos específicos de tu área sin complejidad técnica?"""
+¿Te gustaría ejemplos específicos de tu área?"""
     
     def _get_content_automation_response(self, user_name: str, user_role: str) -> str:
         """Respuesta específica para automatización de contenido."""
@@ -1266,7 +1311,7 @@ Una agencia redujo 80% el tiempo de creación de contenido, pasando de 8 horas/d
     
     async def _send_response(self, to_number: str, response_text: str) -> Dict[str, Any]:
         """
-        Envía respuesta al usuario.
+        Envía respuesta al usuario con typing simulation inteligente.
         
         Args:
             to_number: Número de WhatsApp del usuario
@@ -1276,17 +1321,56 @@ Una agencia redujo 80% el tiempo de creación de contenido, pasando de 8 horas/d
             Resultado del envío
         """
         try:
-            response_message = OutgoingMessage(
-                to_number=to_number,
-                body=response_text,
-                message_type=MessageType.TEXT
-            )
+            # Determinar tipo de respuesta para typing apropiado
+            response_type = self._classify_response_type(response_text)
             
-            return await self.twilio_client.send_message(response_message)
+            if response_type == "quick":
+                # Respuestas rápidas (confirmaciones, saludos cortos)
+                return await self.twilio_client.send_quick_response(to_number, response_text)
+            elif response_type == "thoughtful":
+                # Respuestas elaboradas (análisis, explicaciones técnicas)
+                return await self.twilio_client.send_thoughtful_response(to_number, response_text)
+            else:
+                # Respuestas normales con typing automático
+                return await self.twilio_client.send_text_with_typing(to_number, response_text)
             
         except Exception as e:
             self.logger.error(f"❌ Error enviando respuesta: {e}")
             return {'success': False, 'error': str(e)}
+    
+    def _classify_response_type(self, response_text: str) -> str:
+        """
+        Clasifica el tipo de respuesta para determinar el timing de typing apropiado.
+        
+        Args:
+            response_text: Texto de la respuesta
+            
+        Returns:
+            Tipo de respuesta: "quick", "thoughtful", "normal"
+        """
+        text_lower = response_text.lower()
+        text_length = len(response_text)
+        
+        # Respuestas rápidas (confirmaciones, saludos)
+        quick_indicators = [
+            "perfecto", "entendido", "claro", "ok", "correcto", "¡excelente!",
+            "gracias", "te ayudo", "por supuesto", "¡hola", "bienvenido"
+        ]
+        
+        # Respuestas elaboradas (análisis, explicaciones técnicas)
+        thoughtful_indicators = [
+            "analicemos", "específicamente", "detalladamente", "implementación",
+            "estrategia", "proceso completo", "paso a paso", "considerando",
+            "evaluación", "diagnóstico", "recomendaciones"
+        ]
+        
+        # Clasificar por contenido
+        if any(indicator in text_lower for indicator in quick_indicators) and text_length < 100:
+            return "quick"
+        elif any(indicator in text_lower for indicator in thoughtful_indicators) or text_length > 400:
+            return "thoughtful"
+        else:
+            return "normal"
     
     async def _execute_additional_actions(
         self,
@@ -1508,9 +1592,7 @@ Basándome en tus intereses, te recomiendo estos cursos:
                     
                     else:
                         course_name_text = self._get_course_name_text(total_courses, featured_courses)
-                        return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-**📚 Te ayudo con información sobre:**
+                        return f"""**📚 Te ayudo con información sobre:**
 • {course_name_text}
 • Programas de automatización empresarial
 • Capacitación personalizada según tu sector
@@ -1519,17 +1601,13 @@ Basándome en tus intereses, te recomiendo estos cursos:
 ¿En qué área te gustaría especializarte?"""
             
             # Fallback si no hay base de datos
-            return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
+            return f"""**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
 
 ¿En qué área te gustaría especializarte?"""
             
         except Exception as e:
             self.logger.error(f"Error obteniendo información de cursos: {e}")
-            return f"""¡Hola{', ' + name_part if name_part else ''}! 😊
-
-**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
+            return f"""**📚 Te ayudo con información sobre nuestros cursos de IA aplicada.**
 
 ¿En qué área te gustaría especializarte?"""
     
@@ -1906,22 +1984,38 @@ Mientras tanto, te comento que es una inversión única que incluye:
 ¿Te gustaría saber más sobre el programa?"""
             
             elif inquiry_type == 'content':
-                # Determinar si el usuario pide información detallada
-                level = self._determine_description_level(message_text)
-                
-                # Obtener descripción del curso usando el nuevo sistema con fallback
-                course_description = await self.course_repository.get_course_description('EXPERTO_IA_GPT_GEMINI', level)
-                
-                if course_description:
-                    # Si tenemos descripción, usarla directamente
-                    return course_description
-                else:
-                    # Fallback si no hay descripción disponible
-                    session_count = course_data['session_count']
-                    return f"""🎓 **{course_name}**
-📚 **Contenido**: {session_count} sesiones prácticas de IA aplicada
+                session_count = course_data['session_count']
+                return f"""🎓 **{course_name}**
 
-¿Te gustaría conocer el temario detallado?"""
+📚 **CONTENIDO DEL CURSO:**
+
+**📋 Estructura:**
+• {session_count} sesiones prácticas (70% práctica, 30% teoría)
+• Casos reales de empresas
+
+**🛠️ Herramientas:**
+• ChatGPT, Claude, Gemini
+• Zapier/Make para automatización
+• Integración Slack, Teams, CRM
+• Dashboards en Coda.io
+
+**👨‍🏫 Instructor:**
+• +5 años en IA empresarial
+• +200 empresas implementadas
+• Certificaciones OpenAI y Google AI
+
+**📊 Metodología:**
+• Ejercicios hands-on
+• Plantillas reutilizables
+• Proyectos aplicados a tu sector
+
+**🎁 Incluye:**
+• Workbooks por módulo
+• +500 prompts especializados
+• Comunidad exclusiva
+• Soporte 3 meses
+
+¿Quieres detalles de algún módulo específico?"""
             
             elif inquiry_type == 'modality':
                 modality = course_data['modality']
@@ -1966,11 +2060,22 @@ Mientras tanto, te comento que es una inversión única que incluye:
         if any(keyword in message_lower for keyword in duration_keywords):
             return 'duration'
         
-        # Detectar consultas de contenido
+        # Detectar consultas de contenido - Expandido con más keywords
         content_keywords = [
-            'contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas', 
-            'módulos', 'sesiones', 'cronograma', 'beneficios', 'incluye', 'material',
-            'instructor', 'instructores', 'profesor', 'profesores', 'enseñar'
+            'contenido', 'temario', 'programa', 'qué aprendo', 'que aprendo', 'temas',
+            'módulos', 'modulos', 'organizan', 'estructura', 'requisitos', 'previos',
+            'instructores', 'profesor', 'metodología', 'metodologia', 'enseñanza',
+            'ejercicio', 'ejercicios', 'práctico', 'practico', 'herramientas', 'plataformas',
+            'sectores', 'industrias', 'casos de éxito', 'casos de exito', 'aplicado',
+            'soporte', 'mentoria', 'mentoría', 'grupos', 'slack', 'telegram', 'recursos extra',
+            'bonos', 'materiales adicionales', 'acceso', 'evaluación', 'evaluacion', 
+            'feedback', 'progreso', 'criterios', 'quizzes', 'retos', 'código', 'codigo',
+            'proyectos finales', 'personaliza', 'ejemplos', 'perfil', 'empresa',
+            'integraciones', 'teams', 'zapier', 'n8n', 'configurar', 'plantillas',
+            'prompts', 'scripts', 'reutilizar', 'comunidad', 'alumnos', 'egresados',
+            'consultar', 'actualizaciones', 'evoluciona', 'certificado', 'badge digital',
+            'completar', 'pruebas', 'testimonios', 'anteriores participantes', 'adaptar',
+            'proyecto real', 'marcha', 'objetivos de aprendizaje', 'sesión', 'sesion'
         ]
         if any(keyword in message_lower for keyword in content_keywords):
             return 'content'
@@ -2055,41 +2160,51 @@ Mientras tanto, te comento que es una inversión única que incluye:
             debug_print(f"🤖 Generando respuesta FAQ inteligente para: {faq_context['category']}", "_generate_intelligent_faq_response")
             
             # Construir prompt para respuesta FAQ inteligente
-            system_prompt = f"""Eres Brenda, asistente inteligente de "Aprenda y Aplique IA".
+            system_prompt = f"""Eres Brenda, asistente de "Aprenda y Aplique IA".
 
-Responde de forma natural, conversacional y personalizada usando EXACTAMENTE la información proporcionada.
+Responde natural y personalizada usando SOLO la información proporcionada.
 
-INFORMACIÓN DEL USUARIO:
+USUARIO:
 - Nombre: {user_context.get('name', 'Usuario')}
 - Rol: {user_context.get('user_role', 'No especificado')}
 - Empresa: {user_context.get('company_size', 'No especificada')}
-- Industria: {user_context.get('industry', 'No especificada')}
 
 {faq_context['context_for_ai']}
 
-REGLAS IMPORTANTES:
-1. Usa SOLO la información proporcionada, no inventes datos
-2. Personaliza la respuesta según el rol y contexto del usuario
-3. Mantén un tono profesional pero amigable
-4. Si la FAQ requiere escalación, menciona que un especialista se contactará
-5. No excedas 1600 caracteres para WhatsApp
-6. Usa emojis moderadamente para hacer el mensaje más amigable
+REGLAS:
+1. Usa SOLO información proporcionada
+2. Personaliza según rol del usuario  
+3. Tono profesional pero amigable
+4. Máximo 1200 caracteres
+5. Emojis moderados
 
-Responde de forma natural y conversacional a la pregunta del usuario."""
+Responde natural y conversacional."""
 
-            user_prompt = f"""Pregunta del usuario: "{user_message}"
+            user_prompt = f"""Pregunta: "{user_message}"
 
-Genera una respuesta personalizada, natural y útil usando la información del contexto."""
+Respuesta personalizada y útil usando contexto."""
 
             # Generar respuesta con OpenAI
-            response = await self.openai_client.generate_completion(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=500,
-                temperature=0.7
-            )
+            if hasattr(self.openai_client, 'generate_completion'):
+                response = await self.openai_client.generate_completion(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    max_tokens=500,
+                    temperature=0.7
+                )
+            else:
+                # Fallback al método chat_completion genérico
+                response_dict = await self.openai_client.chat_completion(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    max_tokens=500,
+                    temperature=0.7
+                )
+                response = response_dict.get('content') if isinstance(response_dict, dict) else response_dict
             
             if response and response.strip():
                 debug_print("✅ Respuesta FAQ inteligente generada exitosamente", "_generate_intelligent_faq_response")
@@ -2125,8 +2240,8 @@ Genera una respuesta personalizada, natural y útil usando la información del c
         category = faq_context['category']
         escalation_needed = faq_context.get('escalation_needed', False)
         
-        # Personalización básica
-        greeting = f"¡Hola {name}! 😊" if name != 'Usuario' else "¡Hola! 😊"
+        # Personalización básica - saludo breve
+        greeting = f"Hola {name}!" if name != 'Usuario' else "Hola!"
         
         if user_role and 'CEO' in user_role:
             role_context = "Como líder de tu organización, "

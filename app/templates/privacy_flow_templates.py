@@ -28,21 +28,14 @@ class PrivacyFlowTemplates:
 
 Soy **Brenda**, tu asesora especializada en cursos de Inteligencia Artificial. ¡Me alegra mucho que estemos conectando!
 
-Para ofrecerte la mejor experiencia posible, necesito tu consentimiento para:
+**Para continuar con nuestra conversación, necesito que revises nuestro aviso de privacidad:**
 
-📋 **Procesar tus datos personales** (nombre, preferencias de comunicación)
-📞 **Contactarte** con información relevante sobre nuestros cursos
-📊 **Personalizar las recomendaciones** según tus intereses
+📋 **Aviso de Privacidad:**
+https://aviso-privacidad-ecos-b6b7ad47fe00.herokuapp.com/
+https://aviso-privacidad -ecos-b6b7ad47fe00.herokuapp.com/
 
-🔒 **Tu privacidad es muy importante para nosotros.** Cumplimos con todas las normativas vigentes de protección de datos y nunca compartiremos tu información con terceros.
-
-**¿Estás de acuerdo con continuar?** ¡Te aseguro que valdrá la pena! 😊
-
-_Responde con:_
-✅ **"ACEPTO"** para continuar
-❌ **"NO ACEPTO"** si prefieres no continuar
-
-_O simplemente escribe "Sí" o "No" si lo prefieres._"""
+**Al continuar, estás aceptando nuestro aviso de privacidad y autorizas el procesamiento de tus datos personales para brindarte la mejor asesoría.**
+"""
 
     @staticmethod
     def privacy_accepted_name_request() -> str:
@@ -52,13 +45,7 @@ _O simplemente escribe "Sí" o "No" si lo prefieres._"""
         Returns:
             Mensaje solicitando nombre preferido
         """
-        return """¡Gracias por aceptar! 😊
-
-**¿Cómo te gustaría que te llamemos?**
-
-_Puedes escribir tu nombre como prefieres que nos dirijamos a ti (ejemplo: "Juan", "Dr. García", "María José", etc.)_
-
-Esto me ayudará a personalizar nuestras conversaciones y hacer que te sientas más cómodo/a."""
+        return """¿Con quién tengo el gusto de hablar? 😊"""
 
     @staticmethod
     def privacy_rejected() -> str:
@@ -89,19 +76,7 @@ _Para reactivar esta conversación en el futuro, simplemente envía cualquier me
         """
         return f"""¡Perfecto, **{user_name}**! 🎉
 
-Es un placer conocerte. A partir de ahora me dirigiré a ti como {user_name}.
-
-**Para ofrecerte la mejor asesoría, ¿podrías decirme en qué área de tu empresa te desempeñas?**
-
-Por ejemplo:
-• **Marketing Digital** (agencias, e-commerce)
-• **Operaciones** (manufactura, logística)
-• **Ventas** (B2B, consultoría)
-• **Recursos Humanos** (reclutamiento, capacitación)
-• **Innovación/Transformación Digital** (CEO, fundadores)
-• **Análisis de Datos** (BI, analytics)
-
-Esto me ayudará a recomendarte las mejores estrategias de IA para tu sector específico. 😊"""
+**Para ofrecerte la mejor asesoría, ¿podrías decirme en qué área de tu empresa te desempeñas?**"""
 
     @staticmethod
     def privacy_consent_reminder() -> str:

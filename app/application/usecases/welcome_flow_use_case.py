@@ -33,12 +33,14 @@ class WelcomeFlowUseCase:
         privacy_flow_use_case: PrivacyFlowUseCase,
         course_query_use_case: QueryCourseInformationUseCase,
         memory_use_case: ManageUserMemoryUseCase,
-        twilio_client
+        twilio_client,
+        course_announcement_use_case=None
     ):
         self.privacy_flow_use_case = privacy_flow_use_case
         self.course_query_use_case = course_query_use_case
         self.memory_use_case = memory_use_case
         self.twilio_client = twilio_client
+        self.course_announcement_use_case = course_announcement_use_case
         
         # Cursos disponibles para ofrecer
         self.available_courses = [
@@ -170,7 +172,7 @@ class WelcomeFlowUseCase:
         user_memory: LeadMemory
     ) -> Dict[str, Any]:
         """
-        Ofrece los cursos disponibles al usuario.
+        Ofrece los cursos disponibles al usuario y activa automáticamente el course announcement.
         
         Args:
             user_id: ID del usuario
@@ -189,7 +191,69 @@ class WelcomeFlowUseCase:
                 user_memory.selected_course = None
                 self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
             
-            # OBTENER CURSOS DE LA BASE DE DATOS
+            # 🆕 ACTIVAR AUTOMÁTICAMENTE COURSE ANNOUNCEMENT PARA TODAS LAS ÁREAS
+            course_announcement_sent = getattr(user_memory, 'course_announcement_sent', False)
+            user_role = getattr(user_memory, 'role', 'sin área')
+            
+            # Lista de todas las áreas que deben activar course announcement
+            areas_validas = [
+                'Marketing Digital', 'Operaciones', 'Ventas', 'Recursos Humanos', 
+                'CEO/Founder', 'Innovación/Transformación Digital', 'Análisis de Datos'
+            ]
+            
+            # Verificar si el usuario tiene un área válida y no se ha enviado el anuncio
+            area_valida = any(area.lower() in user_role.lower() for area in areas_validas) if user_role != 'sin área' else False
+            
+            if not course_announcement_sent and area_valida and hasattr(self, 'course_announcement_use_case') and self.course_announcement_use_case:
+                logger.info(f"🎯 ACTIVANDO AUTOMÁTICAMENTE course announcement para {user_id} (área: {user_role})")
+                
+                try:
+                    # Crear mensaje simulado con saludo genérico que active el anuncio
+                    from app.domain.models.message import IncomingMessage
+                    simulated_message = IncomingMessage(
+                        from_number=incoming_message.from_number,
+                        body="hola",  # Saludo que activa los GREETING_TRIGGERS
+                        message_sid=incoming_message.message_sid,
+                        timestamp=incoming_message.timestamp,
+                        media_url=incoming_message.media_url,
+                        media_content_type=incoming_message.media_content_type
+                    )
+                    
+                    # Verificar si debe activar course announcement
+                    if self.course_announcement_use_case.should_handle_course_announcement(simulated_message):
+                        logger.info(f"✅ Activando course announcement automáticamente para área: {user_role}")
+                        
+                        course_announcement_result = await self.course_announcement_use_case.handle_course_announcement(
+                            user_id, simulated_message
+                        )
+                        
+                        if course_announcement_result.get('success'):
+                            logger.info(f"🎉 Course announcement activado exitosamente para {user_id} - área: {user_role}")
+                            return {
+                                'success': True,
+                                'course_announcement_activated': True,
+                                'response_text': course_announcement_result.get('response_text', ''),
+                                'response_sid': course_announcement_result.get('response_sid', ''),
+                                'ready_for_intelligent_agent': True,
+                                'area_detected': user_role
+                            }
+                        else:
+                            logger.warning(f"⚠️ Course announcement falló para {user_role}, continuando con oferta de cursos normal")
+                    else:
+                        logger.info(f"ℹ️ Course announcement no se activó para {user_role}, continuando con oferta normal")
+                        
+                except Exception as e:
+                    logger.error(f"❌ Error activando course announcement automático para {user_role}: {e}")
+                    # Continuar con flujo normal si falla
+            else:
+                if course_announcement_sent:
+                    logger.info(f"ℹ️ Course announcement ya fue enviado previamente para {user_id}")
+                elif not area_valida:
+                    logger.info(f"ℹ️ Área '{user_role}' no requiere course announcement automático")
+                else:
+                    logger.info(f"ℹ️ Course announcement use case no disponible")
+            
+            # OBTENER CURSOS DE LA BASE DE DATOS (flujo normal como fallback)
             available_courses = await self._get_courses_from_database()
             
             if not available_courses:
@@ -199,14 +263,11 @@ class WelcomeFlowUseCase:
             # Crear mensaje con cursos disponibles
             courses_message = self._create_courses_offer_message(user_memory, available_courses)
             
-            # Enviar mensaje
-            outgoing_message = OutgoingMessage(
-                to_number=f"whatsapp:+{user_id}",
-                body=courses_message,
-                message_type=MessageType.TEXT
+            # Enviar mensaje con typing (es una explicación elaborada)
+            result = await self.twilio_client.send_thoughtful_response(
+                f"whatsapp:+{user_id}",
+                courses_message
             )
-            
-            result = await self.twilio_client.send_message(outgoing_message)
             
             if result.get('success'):
                 # Actualizar memoria para esperar selección de curso
@@ -274,38 +335,26 @@ class WelcomeFlowUseCase:
             name_greeting = f"{user_name}, " if user_name else ""
             
             message_parts = [
-                f"¡Hola {name_greeting}me da mucho gusto que te interese la Inteligencia Artificial! 🤖",
+                f"¡Hola {name_greeting}perfecto! Te ayudo a elegir tu curso de IA 🤖",
                 "",
-                "🎯 **Te ayudo a elegir el curso perfecto para tu PyME:**",
-                "",
-                "**📚 NUESTROS CURSOS DISPONIBLES:**",
+                "📚 **CURSOS DISPONIBLES:**",
                 ""
             ]
             
-            # Agregar cada curso
+            # Agregar cada curso de forma MUY concisa
             for i, course in enumerate(available_courses, 1):
                 course_name = course.get('name', course.get('title', 'Curso sin nombre'))
-                course_description = course.get('description', 'Descripción no disponible')
-                course_price = course.get('price', course.get('cost', 'Precio no disponible'))
-                course_level = course.get('level', course.get('difficulty', 'Nivel no disponible'))
-                course_sessions = course.get('sessions', course.get('duration_weeks', 'Duración no disponible'))
-                course_hours = course.get('duration_hours', course.get('total_hours', 'Horas no disponibles'))
+                course_price = course.get('price', course.get('cost', 'N/A'))
+                course_level = course.get('level', course.get('difficulty', 'General'))
                 
-                message_parts.extend([
-                    f"**{i}. {course_name}**",
-                    f"📝 {course_description}",
-                    f"💰 Inversión: ${course_price} USD",
-                    f"📊 Nivel: {course_level}",
-                    f"🗓️ Duración: {course_sessions} sesiones ({course_hours} horas)",
-                    ""
-                ])
+                message_parts.append(f"**{i}. {course_name}** | ${course_price} | {course_level}")
             
             message_parts.extend([
-                "**🎯 ¿CUÁL TE INTERESA MÁS?**",
                 "",
-                "Responde con el número del curso o escribe el nombre del curso que te interese.",
+                "🎯 **¿Cuál prefieres?**",
+                "Responde con el número (ej: 1)",
                 "",
-                "💡 **Recomendación:** Si es tu primera vez con IA, te sugiero empezar con un curso de nivel básico."
+                "💡 Si es tu primera vez, empieza con nivel Básico."
             ])
             
             return "\n".join(message_parts)
@@ -364,16 +413,13 @@ class WelcomeFlowUseCase:
                 
                 self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
                 
-                # Enviar confirmación de selección
+                # Enviar confirmación de selección con respuesta rápida
                 confirmation_message = self._create_course_confirmation_message(selected_course, user_memory)
                 
-                outgoing_message = OutgoingMessage(
-                    to_number=f"whatsapp:+{user_id}",
-                    body=confirmation_message,
-                    message_type=MessageType.TEXT
+                result = await self.twilio_client.send_quick_response(
+                    f"whatsapp:+{user_id}",
+                    confirmation_message
                 )
-                
-                result = await self.twilio_client.send_message(outgoing_message)
                 
                 return {
                     'success': True,
