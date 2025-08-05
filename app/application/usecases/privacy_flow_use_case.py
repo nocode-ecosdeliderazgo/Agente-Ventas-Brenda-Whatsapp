@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
+from app.application.usecases.course_announcement_use_case import CourseAnnouncementUseCase
 from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
 from app.templates.privacy_flow_templates import PrivacyFlowTemplates
@@ -39,7 +40,8 @@ class PrivacyFlowUseCase:
     def __init__(
         self,
         memory_use_case: ManageUserMemoryUseCase,
-        twilio_client: TwilioWhatsAppClient
+        twilio_client: TwilioWhatsAppClient,
+        course_announcement_use_case: CourseAnnouncementUseCase = None
     ):
         """
         Inicializa el caso de uso de flujo de privacidad.
@@ -52,6 +54,7 @@ class PrivacyFlowUseCase:
         self.twilio_client = twilio_client
         self.templates = PrivacyFlowTemplates()
         self.logger = logging.getLogger(__name__)
+        self.course_announcement_use_case = course_announcement_use_case
     
     async def handle_privacy_flow(
         self,
@@ -417,7 +420,39 @@ class PrivacyFlowUseCase:
             
             if user_name:
                 debug_print(f"✅ Nombre válido recibido: {user_name}", "_handle_name_response")
-                return await self._complete_privacy_flow(user_id, incoming_message.from_number, user_name)
+                
+                # 🆕 PASO 1: Actualizar el nombre en la memoria
+                self.memory_use_case.update_user_name(user_id, user_name)
+                debug_print(f"💾 Nombre '{user_name}' guardado en memoria", "_handle_name_response")
+
+                # 🆕 PASO 2: Activar el anuncio del curso automáticamente
+                debug_print("🚀 Activando flujo de anuncio de curso...", "_handle_name_response")
+                
+                if self.course_announcement_use_case:
+                    # Crear un "mensaje falso" para activar el anuncio por defecto
+                    fake_message_for_announcement = IncomingMessage(
+                        from_number=incoming_message.from_number,
+                        body="#Experto_IA_GPT_Gemini",  # Hashtag por defecto
+                        message_sid=incoming_message.message_sid,
+                        to_number=incoming_message.to_number,
+                        timestamp=datetime.now(),
+                        raw_data={}
+                    )
+                    
+                    announcement_result = await self.course_announcement_use_case.handle_course_announcement(
+                        user_id, fake_message_for_announcement
+                    )
+                    
+                    if announcement_result.get('success'):
+                        debug_print("✅ Anuncio de curso enviado exitosamente", "_handle_name_response")
+                        # Ahora, después del anuncio, pedimos el rol
+                        return await self._request_user_role_after_announcement(user_id, incoming_message.from_number, user_name)
+                    else:
+                        debug_print("⚠️ Falló el envío del anuncio, pidiendo rol de todas formas", "_handle_name_response")
+                        return await self._request_user_role_after_announcement(user_id, incoming_message.from_number, user_name)
+                else:
+                    debug_print("❌ CourseAnnouncementUseCase no disponible, saltando al siguiente paso.", "_handle_name_response")
+                    return await self._request_user_role_after_announcement(user_id, incoming_message.from_number, user_name)
             else:
                 debug_print("❌ Nombre no válido - pidiendo nombre nuevamente", "_handle_name_response")
                 return await self._request_name_again(user_id, incoming_message.from_number)
@@ -426,6 +461,45 @@ class PrivacyFlowUseCase:
             debug_print(f"💥 ERROR PROCESANDO NOMBRE: {e}", "_handle_name_response")
             raise
     
+    
+    async def _request_user_role_after_announcement(
+        self,
+        user_id: str,
+        user_number: str,
+        user_name: str
+    ) -> Dict[str, Any]:
+        """
+        Después de enviar el anuncio, solicita el rol del usuario.
+        """
+        debug_print(f"👋 Solicitando rol para {user_name} después del anuncio.", "_request_user_role_after_announcement")
+        
+        # Configurar para esperar respuesta del rol
+        self.memory_use_case.set_waiting_for_response(user_id, "user_role")
+        debug_print("⏳ Configurado para esperar rol del usuario", "_request_user_role_after_announcement")
+        
+        # Enviar mensaje de confirmación y solicitud de rol
+        confirmation_message = self.templates.name_confirmed(user_name)
+        send_result = await self._send_message(user_number, confirmation_message)
+        
+        if send_result:
+            debug_print("✅ Mensaje de solicitud de rol enviado", "_request_user_role_after_announcement")
+            return {
+                'success': True,
+                'in_privacy_flow': True,
+                'stage': 'waiting_for_role',
+                'user_name': user_name,
+                'privacy_accepted': True,
+                'waiting_for_response': 'user_role',
+                'message_sent': True
+            }
+        else:
+            debug_print("❌ Error enviando solicitud de rol", "_request_user_role_after_announcement")
+            return {
+                'success': False,
+                'in_privacy_flow': True,
+                'error': 'Failed to send role request message'
+            }
+
     async def _handle_role_response(
         self,
         user_id: str,
