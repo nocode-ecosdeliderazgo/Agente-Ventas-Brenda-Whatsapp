@@ -543,11 +543,12 @@ class ProcessIncomingMessageUseCase:
         """
         # Respuesta básica con contexto de memoria si está disponible
         if user_memory and user_memory.name:
-            # Si conocemos el nombre del usuario, personalizar saludo
-            if user_memory.interaction_count <= 2:
-                return f"¡Hola {user_memory.name}! 👋 Gracias por escribirnos a Aprenda y Aplique IA. ¿En qué puedo ayudarte hoy?"
+            # Saludar solo en la PRIMERA interacción
+            if user_memory.interaction_count == 1 and user_memory.stage == "first_contact":
+                return f"¡Hola {user_memory.name}! 👋 Soy tu asesora de IA. ¿En qué puedo ayudarte hoy?"
             else:
-                return f"Hola de nuevo {user_memory.name} 😊 ¿Cómo puedo asistirte?"
+                # Respuesta neutra sin redundar en saludos
+                return "¡Claro! Cuéntame, ¿en qué puedo ayudarte?"
         elif user_memory and user_memory.interaction_count == 1:
             # Primera interacción, solicitar nombre
             return "¡Hola! 👋 Bienvenido/a a Aprenda y Aplique IA. Para brindarte una mejor atención, ¿me podrías decir tu nombre?"
