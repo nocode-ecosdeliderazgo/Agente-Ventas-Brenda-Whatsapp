@@ -390,20 +390,18 @@ Y me interesa conocer tu experiencia para seguir mejorando.
                 ]
             },
             "satisfaction_feedback": {
-                "message": f"""😊 **¡Noto que tu experiencia ha mejorado!**
-
-Es genial ver que la conversación tomó un rumbo positivo.
+                "message": f"""😊 **¡Tu experiencia ha mejorado!**
 
 **👍 ¿Qué cambió tu perspectiva?**
 
-**Califica tu satisfacción actual:**
+**Califica tu satisfacción:**
 • ⭐⭐⭐⭐⭐ Muy satisfecho
 • ⭐⭐⭐⭐ Satisfecho
 • ⭐⭐⭐ Neutral
 • ⭐⭐ Insatisfecho
 • ⭐ Muy insatisfecho
 
-**¿Qué fue lo que más te convenció o aclaró?**""",
+**¿Qué te convenció más?**""",
                 "questions": [
                     "¿Qué información cambió tu perspectiva?",
                     "¿El cambio en la conversación fue natural?",
@@ -413,20 +411,18 @@ Es genial ver que la conversación tomó un rumbo positivo.
             "departure_feedback": {
                 "message": f"""👋 **Antes de que te vayas...**
 
-Veo que no has respondido en un rato. Entiendo que puedas estar ocupado.
+**⚡ Solo 30 segundos:**
 
-**⚡ Solo 30 segundos de tu tiempo:**
-
-**¿Cómo fue tu experiencia conmigo?**
+**¿Cómo fue tu experiencia?**
 • ⭐⭐⭐⭐⭐ Muy útil
 • ⭐⭐⭐⭐ Útil
 • ⭐⭐⭐ Regular
 • ⭐⭐ Poco útil
 • ⭐ No útil
 
-**¿Algo específico que mejorarías?**
+**¿Algo que mejorarías?**
 
-¡Gracias y que tengas excelente día! 🚀""",
+¡Gracias y excelente día! 🚀""",
                 "questions": [
                     "¿Por qué no continuaste la conversación?",
                     "¿Qué te faltó para tomar una decisión?",

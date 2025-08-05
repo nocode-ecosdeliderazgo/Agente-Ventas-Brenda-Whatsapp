@@ -1128,34 +1128,34 @@ Los cambios profesionales son el momento perfecto para dominar nuevas tecnologí
         
         return f"""¡Excelente pregunta sobre ROI{', ' + name_part if name_part else ''}! 📊
 
-{role_context}te muestro resultados reales de profesionales como tú:
+{role_context}resultados reales de profesionales como tú:
 
 **💰 RESULTADOS COMPROBADOS:**
 {roi_text}
 
 **⚡ Beneficios inmediatos:**
-• Automatización de tareas repetitivas desde día 1
-• Mejora en calidad y consistencia del trabajo
-• Más tiempo para actividades estratégicas
+• Automatización tareas desde día 1
+• ↑ Calidad y consistencia
+• Más tiempo actividades estratégicas
 
-¿Te gustaría ver casos específicos de tu sector?"""
+¿Te gustaría casos específicos de tu sector?"""
     
     def _get_technical_objection_response(self, user_name: str, user_role: str) -> str:
         """Respuesta para objeciones técnicas (falta de equipo técnico)."""
         name_part = f"{user_name}, " if user_name else ""
         
-        return f"""Entiendo perfectamente tu preocupación{', ' + name_part if name_part else ''}! 🔧
+        return f"""Entiendo tu preocupación{', ' + name_part if name_part else ''}! 🔧
 
-**🎯 Nuestro enfoque está diseñado ESPECÍFICAMENTE para PyMEs sin equipo técnico:**
+**🎯 Diseñado para PyMEs SIN equipo técnico:**
 
-• **Sin programación**: Herramientas con interfaz visual
-• **Sin infraestructura**: Todo en la nube, listo para usar
-• **Sin mantenimiento**: Automatizado y escalable
-• **Soporte incluido**: Acompañamiento técnico completo
+• **Sin programación**: Interfaz visual
+• **Sin infraestructura**: Todo en la nube
+• **Sin mantenimiento**: Automatizado
+• **Soporte incluido**: Acompañamiento completo
 
-**📊 El 90% de nuestros estudiantes NO tienen background técnico** y obtienen resultados desde la primera semana.
+**📊 90% estudiantes SIN background técnico** obtienen resultados desde semana 1.
 
-¿Te gustaría ver ejemplos específicos de tu área sin complejidad técnica?"""
+¿Te gustaría ejemplos específicos de tu área?"""
     
     def _get_content_automation_response(self, user_name: str, user_role: str) -> str:
         """Respuesta específica para automatización de contenido."""
@@ -2088,31 +2088,29 @@ Mientras tanto, te comento que es una inversión única que incluye:
             debug_print(f"🤖 Generando respuesta FAQ inteligente para: {faq_context['category']}", "_generate_intelligent_faq_response")
             
             # Construir prompt para respuesta FAQ inteligente
-            system_prompt = f"""Eres Brenda, asistente inteligente de "Aprenda y Aplique IA".
+            system_prompt = f"""Eres Brenda, asistente de "Aprenda y Aplique IA".
 
-Responde de forma natural, conversacional y personalizada usando EXACTAMENTE la información proporcionada.
+Responde natural y personalizada usando SOLO la información proporcionada.
 
-INFORMACIÓN DEL USUARIO:
+USUARIO:
 - Nombre: {user_context.get('name', 'Usuario')}
 - Rol: {user_context.get('user_role', 'No especificado')}
 - Empresa: {user_context.get('company_size', 'No especificada')}
-- Industria: {user_context.get('industry', 'No especificada')}
 
 {faq_context['context_for_ai']}
 
-REGLAS IMPORTANTES:
-1. Usa SOLO la información proporcionada, no inventes datos
-2. Personaliza la respuesta según el rol y contexto del usuario
-3. Mantén un tono profesional pero amigable
-4. Si la FAQ requiere escalación, menciona que un especialista se contactará
-5. No excedas 1600 caracteres para WhatsApp
-6. Usa emojis moderadamente para hacer el mensaje más amigable
+REGLAS:
+1. Usa SOLO información proporcionada
+2. Personaliza según rol del usuario  
+3. Tono profesional pero amigable
+4. Máximo 1200 caracteres
+5. Emojis moderados
 
-Responde de forma natural y conversacional a la pregunta del usuario."""
+Responde natural y conversacional."""
 
-            user_prompt = f"""Pregunta del usuario: "{user_message}"
+            user_prompt = f"""Pregunta: "{user_message}"
 
-Genera una respuesta personalizada, natural y útil usando la información del contexto."""
+Respuesta personalizada y útil usando contexto."""
 
             # Generar respuesta con OpenAI
             if hasattr(self.openai_client, 'generate_completion'):
