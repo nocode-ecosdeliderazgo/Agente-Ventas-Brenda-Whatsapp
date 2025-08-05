@@ -67,16 +67,10 @@ ngrok http 8000
 # Tu URL será: https://xxxxx.ngrok-free.app
 ```
 
-### ✅ **Ejecutar Servidor de Desarrollo**
+### ✅ **Ejecutar Servedor de Desarrollo**
 ```bash
-# Opción 1: Servidor completo
-python run_development.py
-
-# Opción 2: Servidor con debug
-python run_webhook_server_debug.py
-
-# Opción 3: Simulación de webhooks
-python test_webhook_simulation.py
+# Ejecutar el servidor principal para desarrollo
+python run_webhook_server.py
 ```
 
 ### ✅ **Configurar Webhook para Desarrollo**
@@ -183,7 +177,7 @@ heroku ps:scale web=1 --app brenda-whatsapp-bot
 ### ✅ **Scripts de Desarrollo**
 ```bash
 # Ejecutar servidor de desarrollo
-python run_development.py
+python run_webhook_server.py
 
 # Probar conexión de WhatsApp
 python test_whatsapp_connection.py
@@ -307,7 +301,7 @@ python view_conversation_logs.py
 python clear_conversation_logs.py
 
 # Ver logs de simulación
-python test_webhook_simulation.py
+python view_conversation_logs.py
 ```
 
 ### ✅ **Monitoreo de Recursos**
@@ -329,7 +323,7 @@ heroku apps:info --app brenda-whatsapp-bot
 ### ✅ **Desarrollo**
 ```bash
 # Iniciar desarrollo
-python run_development.py
+python run_webhook_server.py
 
 # Probar conexión
 python test_whatsapp_connection.py

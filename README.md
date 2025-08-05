@@ -109,7 +109,7 @@ Agente-Ventas-Brenda-Whatsapp/
 ### 🔧 **Scripts de Desarrollo**
 ```bash
 # Servidor de desarrollo
-python run_development.py
+python run_webhook_server.py
 
 # Prueba de conexión
 python test_whatsapp_connection.py
@@ -140,9 +140,6 @@ python setup_whatsapp_sandbox.py
 
 # Obtener información de Twilio
 python get_twilio_info.py
-
-# Simular webhooks
-python test_webhook_simulation.py
 ```
 
 ---
@@ -282,5 +279,4 @@ Este proyecto es propiedad de **Ecos del Liderazgo** y está diseñado para auto
 
 *Última actualización: Agosto 2025*  
 *Versión: v13 (Heroku)*  
-*Estado: ✅ PRODUCCIÓN ACTIVA*#   T e s t   c o m m i t   f o r   p e r s o n a l   e m a i l   v e r i f i c a t i o n  
- 
+*Estado: ✅ PRODUCCIÓN ACTIVA*

@@ -537,7 +537,8 @@ class PrivacyFlowUseCase:
                 # ✍️ --- ¡CORRECCIÓN CLAVE! ---
                 # Finaliza el flujo de privacidad aquí y delega al procesador principal
                 debug_print("✅ Rol guardado. Finalizando flujo de privacidad y activando agente.", "_handle_role_response")
-                self.memory_use_case.set_stage(user_id, "sales_agent") # Transición al agente inteligente
+                #IMPORTANTE
+                self.memory_use_case.update_user_stage(user_id, "sales_agent") # Transición al agente inteligente
                 self.memory_use_case.set_waiting_for_response(user_id, "") # Ya no esperamos nada específico
                 
                 return {

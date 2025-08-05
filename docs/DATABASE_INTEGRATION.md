@@ -204,23 +204,11 @@ The system is designed with robust fallback:
 ### Dependencies
 
 ```bash
-# Added to requirements-clean.txt
+# Added to requirements.txt
 asyncpg>=0.28.0  # PostgreSQL async client
 ```
 
 ## Testing
-
-### Database Integration Test
-```bash
-# Test complete system with database
-python test_course_integration.py
-```
-
-This script tests:
-- Database connection
-- Course queries and recommendations
-- Enhanced conversation flow
-- Fallback behavior when database unavailable
 
 ### Manual Testing Commands
 

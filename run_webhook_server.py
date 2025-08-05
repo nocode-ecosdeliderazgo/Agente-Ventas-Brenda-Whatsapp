@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
 """
-Servidor webhook para Bot Brenda - Respuesta automática "Hola"
-============================================================
+Servidor webhook para el Bot Brenda
+====================================
 
-Este script inicia el servidor webhook que:
-1. Recibe mensajes de WhatsApp via Twilio
-2. Responde automáticamente "Hola" a cualquier mensaje
-3. Usa la arquitectura limpia implementada
+Este script inicia el servidor webhook principal para el Bot Brenda.
+Utiliza FastAPI y Uvicorn para levantar un servidor que recibe los 
+mensajes de WhatsApp a través de Twilio y los procesa utilizando
+la arquitectura limpia del proyecto.
 
-Para probar:
-1. Ejecuta este script
-2. Usa ngrok para exponer el webhook públicamente  
-3. Configura la URL del webhook en tu consola de Twilio
-4. Envía un mensaje WhatsApp a tu número de Twilio
+Funcionalidades principales:
+1.  Recibe webhooks de Twilio con los mensajes de WhatsApp.
+2.  Procesa los mensajes a través de los casos de uso de la aplicación.
+3.  Utiliza IA para analizar intenciones y generar respuestas.
+4.  Gestiona la memoria y el contexto de la conversación.
+5.  Envía respuestas (texto y multimedia) de vuelta al usuario.
+
+Para probar en desarrollo:
+1.  Ejecuta este script: `python run_webhook_server.py`
+2.  Usa ngrok para exponer el puerto 8000 públicamente: `ngrok http 8000`
+3.  Configura la URL de ngrok en la consola de Twilio para tu número de WhatsApp.
+4.  Envía un mensaje al número de WhatsApp para interactuar con el bot.
 
 Uso:
     python run_webhook_server.py
@@ -59,14 +66,14 @@ def main():
         print("   - Ve a tu consola de Twilio y configura esa URL como webhook")
         print("   - La URL completa sería: https://tu-ngrok-url.ngrok.io/webhook/whatsapp")
         print("\n🎯 FUNCIONALIDAD ACTUAL:")
-        print("- Recibe cualquier mensaje de WhatsApp")
-        print("- Responde automáticamente 'Hola'")
-        print("- Ignora mensajes SMS")
+        print("- Recibe y procesa mensajes de WhatsApp con IA")
+        print("- Mantiene el contexto de la conversación")
+        print("- Permite flujos de venta y consulta de cursos")
         print("- Logs detallados de toda la actividad")
         print("\n🔄 Para probar:")
         print("1. Configura el webhook en Twilio")
         print("2. Envía un mensaje WhatsApp a tu número de Twilio")
-        print("3. Deberías recibir 'Hola' como respuesta")
+        print("3. Interactúa con el bot para probar los diferentes flujos")
         print("=" * 50)
     
     try:

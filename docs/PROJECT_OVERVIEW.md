@@ -355,20 +355,6 @@ user_memory.get_buyer_persona_info()        # Info completa de personalización
 - Sistema de fallback envia solo mensaje de texto si falla carga de archivos
 - Recursos almacenados localmente en `resources/course_materials/`
 
-### 🔧 Tests y Documentación a Evitar
-
-#### Archivos Obsoletos (No Consultar):
-- `test_*.py` - Tests experimentales desactualizados
-- `legacy/` - Código anterior al refactor de Clean Architecture  
-- `docs/` carpetas con docs obsoletos
-- `.backup` archivos de memoria - solo para recuperación
-
-#### Scripts de Infraestructura Válidos:
-- `run_webhook_server.py` - Servidor de desarrollo
-- `deploy_heroku.py` - Despliegue a producción
-- `fix_twilio_credentials.py` - Configuración de credenciales
-- `requirements.txt` - Dependencias productivas
-
 ---
 
 ## 🚀 Arquitectura de Despliegue
@@ -385,8 +371,8 @@ Procfile: web: gunicorn app.presentation.api.webhook:app -w 1 -k uvicorn.workers
 
 ### Desarrollo Local
 ```bash
-python run_webhook_server.py  # Puerto 8000 con recarga automática
-python run_development.py     # Modo debug completo
+# Inicia el servidor de desarrollo para pruebas con Twilio
+python run_webhook_server.py
 ```
 
 **Dependencias críticas:**
