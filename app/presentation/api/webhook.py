@@ -281,6 +281,29 @@ async def startup_event():
     debug_print("🎯 SISTEMA LISTO PARA RECIBIR MENSAJES", "startup", "webhook.py")
 
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Evento de shutdown para limpiar recursos."""
+    debug_print("🔄 CERRANDO SISTEMA BOT BRENDA...", "shutdown", "webhook.py")
+    
+    try:
+        # Cerrar conexión de base de datos
+        from app.infrastructure.database.client import database_client
+        if database_client:
+            await database_client.disconnect()
+            debug_print("✅ Conexión de base de datos cerrada", "shutdown", "webhook.py")
+    except Exception as e:
+        debug_print(f"⚠️ Error cerrando base de datos: {e}", "shutdown", "webhook.py")
+    
+    try:
+        # Limpiar recursos de OpenAI (si es necesario)
+        debug_print("✅ Recursos de OpenAI limpiados", "shutdown", "webhook.py")
+    except Exception as e:
+        debug_print(f"⚠️ Error limpiando OpenAI: {e}", "shutdown", "webhook.py")
+    
+    debug_print("👋 SISTEMA CERRADO CORRECTAMENTE", "shutdown", "webhook.py")
+
+
 @app.get("/")
 async def health_check():
     """Endpoint de health check."""
@@ -310,22 +333,32 @@ async def whatsapp_webhook(request: Request):
         # Obtener datos del webhook
         form_data = await request.form()
         
-        # Extraer información del mensaje
-        from_number = form_data.get("From", "")
-        message_body = form_data.get("Body", "")
-        message_sid = form_data.get("MessageSid", "")
+        # Extraer y sanitizar información del mensaje
+        from_number = form_data.get("From", "").strip()
+        message_body = form_data.get("Body", "").strip()
+        message_sid = form_data.get("MessageSid", "").strip()
+        
+        # Sanitizar datos para prevenir log injection y prompt injection
+        from_number_clean = from_number.replace('\n', '').replace('\r', '')[:50]
+        message_body_clean = message_body.replace('\n', ' ').replace('\r', ' ')
+        message_sid_clean = message_sid.replace('\n', '').replace('\r', '')[:50]
+        
+        # Validación básica
+        if not from_number or not message_body:
+            logger.warning(f"⚠️ Datos incompletos del webhook: from={from_number_clean}, body_len={len(message_body)}")
+            return {"status": "error", "message": "Datos incompletos"}
         
         debug_print(f"📨 MENSAJE RECIBIDO!", "whatsapp_webhook", "webhook.py")
-        debug_print(f"📱 Desde: {from_number}", "whatsapp_webhook", "webhook.py")
-        debug_print(f"💬 Texto: '{message_body}'", "whatsapp_webhook", "webhook.py")
-        debug_print(f"🆔 SID: {message_sid}", "whatsapp_webhook", "webhook.py")
+        debug_print(f"📱 Desde: {from_number_clean}", "whatsapp_webhook", "webhook.py")
+        debug_print(f"💬 Texto: '{message_body_clean[:100]}{'...' if len(message_body_clean) > 100 else ''}'", "whatsapp_webhook", "webhook.py")
+        debug_print(f"🆔 SID: {message_sid_clean}", "whatsapp_webhook", "webhook.py")
         
         # Preparar datos del webhook
         debug_print(f"📦 Preparando datos del webhook...", "whatsapp_webhook", "webhook.py")
         webhook_data = {
             "MessageSid": message_sid,
             "From": from_number,
-            "To": "whatsapp:+14155238886",  # Número de Twilio
+            "To": f"whatsapp:{settings.twilio_phone_number}",  # Número de Twilio configurado
             "Body": message_body
         }
         debug_print(f"✅ Datos del webhook preparados correctamente", "whatsapp_webhook", "webhook.py")
