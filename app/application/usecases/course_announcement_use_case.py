@@ -579,6 +579,12 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 if course_id_interest not in user_memory.interests:
                     user_memory.interests.append(course_id_interest)
                 logger.info(f"💾 Hashtag {hashtag_clean} mapeado a course_id {course_id} y guardado en memoria")
+
+                # ✍️ --- ¡CORRECCIÓN CLAVE! ---
+                # Actualizar el curso seleccionado en la memoria.
+                user_memory.selected_course = course_id
+                logger.info(f"✅ Curso seleccionado actualizado en memoria: {course_id}")
+                # ✍️ --- FIN DE LA CORRECCIÓN ---
             
             # Agregar señal de compra
             buying_signal = f"Solicitó información de {course_code}"

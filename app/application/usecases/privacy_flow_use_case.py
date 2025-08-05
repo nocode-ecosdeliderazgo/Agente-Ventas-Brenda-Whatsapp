@@ -530,23 +530,24 @@ class PrivacyFlowUseCase:
             if user_role:
                 debug_print(f"✅ Rol válido recibido: {user_role}", "_handle_role_response")
                 
-                # Crear mensaje original si está almacenado en memoria
-                original_message = None
-                if user_memory.original_message_body and user_memory.original_message_sid:
-                    from app.domain.entities.message import IncomingMessage
-                    original_message = IncomingMessage(
-                        from_number=incoming_message.from_number,
-                        body=user_memory.original_message_body,
-                        message_sid=user_memory.original_message_sid,
-                        to_number=incoming_message.to_number,
-                        timestamp=incoming_message.timestamp,
-                        raw_data=incoming_message.raw_data
-                    )
-                    debug_print(f"📝 Mensaje original recuperado: {user_memory.original_message_body}", "_handle_role_response")
-                else:
-                    debug_print(f"⚠️ No hay mensaje original almacenado en memoria", "_handle_role_response")
+                # Guardar el rol en memoria
+                self.memory_use_case.update_user_role(user_id, user_role)
+                debug_print(f"💾 Rol '{user_role}' guardado en memoria", "_handle_role_response")
+
+                # ✍️ --- ¡CORRECCIÓN CLAVE! ---
+                # Finaliza el flujo de privacidad aquí y delega al procesador principal
+                debug_print("✅ Rol guardado. Finalizando flujo de privacidad y activando agente.", "_handle_role_response")
+                self.memory_use_case.set_stage(user_id, "sales_agent") # Transición al agente inteligente
+                self.memory_use_case.set_waiting_for_response(user_id, "") # Ya no esperamos nada específico
                 
-                return await self._complete_role_collection(user_id, incoming_message.from_number, user_role, original_message)
+                return {
+                    'success': True,
+                    'in_privacy_flow': False,
+                    'should_continue_normal_flow': True, # Indica al procesador que continúe
+                    'stage': 'privacy_flow_completed',
+                    'message_sent': False # No enviamos mensaje aquí
+                }
+                # ✍️ --- FIN DE LA CORRECCIÓN ---
             else:
                 debug_print("❌ Rol no válido - pidiendo rol nuevamente", "_handle_role_response")
                 return await self._request_role_again(user_id, incoming_message.from_number)
