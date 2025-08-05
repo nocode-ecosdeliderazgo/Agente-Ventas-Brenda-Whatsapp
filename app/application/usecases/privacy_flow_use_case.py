@@ -83,8 +83,15 @@ class PrivacyFlowUseCase:
             
             # Si está esperando respuesta de consentimiento de privacidad
             elif user_memory.waiting_for_response == "privacy_acceptance":
-                debug_print("⏳ Esperando respuesta de consentimiento")
-                return await self._handle_privacy_response(user_id, incoming_message, user_memory)
+                debug_print("⏳ Esperando respuesta de consentimiento - IGNORANDO (hardcodeado)")
+                # 🆕 IGNORAR RESPUESTA DE PRIVACIDAD - YA ESTÁ ACEPTADA AUTOMÁTICAMENTE
+                # Simplemente continuar con el flujo normal
+                return {
+                    'success': True,
+                    'in_privacy_flow': False,
+                    'should_continue_normal_flow': True,
+                    'stage': 'privacy_flow_completed'
+                }
             
             # Si está esperando nombre del usuario
             elif user_memory.waiting_for_response == "user_name":
@@ -155,9 +162,16 @@ class PrivacyFlowUseCase:
             
             self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
             
-            # Iniciar flujo de privacidad
-            self.memory_use_case.start_privacy_flow(user_id)
-            debug_print("📝 Flujo iniciado - Stage: privacy_flow, Esperando: privacy_acceptance", "_initiate_privacy_flow")
+            # 🆕 HARDCODEAR ACEPTACIÓN DE PRIVACIDAD - NO ESPERAR RESPUESTA
+            debug_print("🔐 ACEPTACIÓN AUTOMÁTICA DE PRIVACIDAD - Hardcodeada", "_initiate_privacy_flow")
+            
+            # Marcar privacidad como aceptada automáticamente
+            updated_memory = self.memory_use_case.accept_privacy(user_id)
+            updated_memory.stage = "privacy_flow"
+            
+            # Establecer que esperamos el nombre del usuario
+            self.memory_use_case.set_waiting_for_response(user_id, "user_name")
+            debug_print("⏳ Establecido esperando nombre del usuario", "_initiate_privacy_flow")
             
             # Enviar mensaje de consentimiento
             consent_message = self.templates.privacy_consent_request(whatsapp_name)
@@ -165,14 +179,28 @@ class PrivacyFlowUseCase:
             
             if send_result:
                 debug_print("✅ Mensaje de consentimiento enviado exitosamente", "_initiate_privacy_flow")
-                return {
-                    'success': True,
-                    'in_privacy_flow': True,
-                    'stage': 'privacy_consent_requested',
-                    'privacy_accepted': False,
-                    'message_sent': True,
-                    'waiting_for': 'privacy_acceptance'
-                }
+                
+                # 🆕 ENVIAR INMEDIATAMENTE EL MENSAJE PIDIENDO EL NOMBRE
+                name_request_message = self.templates.privacy_accepted_name_request()
+                name_send_result = await self._send_message(incoming_message.from_number, name_request_message)
+                
+                if name_send_result:
+                    debug_print("✅ Mensaje de solicitud de nombre enviado automáticamente", "_initiate_privacy_flow")
+                    return {
+                        'success': True,
+                        'in_privacy_flow': True,
+                        'stage': 'name_requested',
+                        'privacy_accepted': True,
+                        'message_sent': True,
+                        'waiting_for': 'user_name'
+                    }
+                else:
+                    debug_print("❌ Error enviando solicitud de nombre", "_initiate_privacy_flow")
+                    return {
+                        'success': False,
+                        'in_privacy_flow': True,
+                        'error': 'Failed to send name request message'
+                    }
             else:
                 debug_print("❌ Error enviando mensaje de consentimiento", "_initiate_privacy_flow")
                 return {

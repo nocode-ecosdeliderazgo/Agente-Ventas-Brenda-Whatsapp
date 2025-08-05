@@ -32,7 +32,7 @@ Soy **Brenda**, tu asesora especializada en cursos de Inteligencia Artificial. �
 
 📋 **Aviso de Privacidad:**
 https://aviso-privacidad-ecos-b6b7ad47fe00.herokuapp.com/
-https ://aviso-privacidad-ecos-b6b7ad47fe00.herokuapp.com/
+https://aviso-privacidad -ecos-b6b7ad47fe00.herokuapp.com/
 
 **Al continuar, estás aceptando nuestro aviso de privacidad y autorizas el procesamiento de tus datos personales para brindarte la mejor asesoría.**
 """
@@ -45,13 +45,7 @@ https ://aviso-privacidad-ecos-b6b7ad47fe00.herokuapp.com/
         Returns:
             Mensaje solicitando nombre preferido
         """
-        return """¡Gracias por aceptar! 😊
-
-**¿Cómo te gustaría que te llamemos?**
-
-_Puedes escribir tu nombre como prefieres que nos dirijamos a ti (ejemplo: "Juan", "Dr. García", "María José", etc.)_
-
-Esto me ayudará a personalizar nuestras conversaciones y hacer que te sientas más cómodo/a."""
+        return """¿Con quién tengo el gusto de hablar? 😊"""
 
     @staticmethod
     def privacy_rejected() -> str:
