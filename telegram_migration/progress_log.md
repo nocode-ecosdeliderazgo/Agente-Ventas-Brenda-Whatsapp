@@ -38,6 +38,14 @@
 - [x] **CRÍTICO:** Corregidos errores de linter (bonuses_block)
 - [x] Verificación de integración con `get_response_generation_prompt()`
 
+### 🚨 REFUERZO CRÍTICO ANTI-REPETICIÓN (2025-01-22)
+- [x] **PROBLEMA DETECTADO:** Bot seguía usando "🚀 TRANSFORMACIÓN REAL" repetitivo
+- [x] **CRÍTICO:** Implementada advertencia inmediata al inicio del prompt
+- [x] **CRÍTICO:** Agregados encabezados específicos por tipo de pregunta
+- [x] **CRÍTICO:** Implementado checklist de verificación obligatorio
+- [x] **CRÍTICO:** Prohibiciones explícitas de repetición
+- [x] **CRÍTICO:** Testing cases específicos definidos
+
 ---
 
 ## 🎯 RESULTADO FINAL CONSEGUIDO
