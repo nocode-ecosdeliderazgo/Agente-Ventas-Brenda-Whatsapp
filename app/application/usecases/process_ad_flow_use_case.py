@@ -84,25 +84,39 @@ class ProcessAdFlowUseCase:
             if course_id:
                 await self._save_selected_course_to_memory(user_id, course_id)
             
-            # 9. REACTIVAR AGENTE - Combinar todas las respuestas
-            combined_response = "\n\n".join(responses)
+            # 9. REACTIVAR AGENTE - ENVIAR MENSAJES POR SEPARADO (no combinar)
+            # Para evitar límite de 1600 caracteres de WhatsApp
             
-            # 10. ENVIAR REALMENTE EL MENSAJE A TWILIO
-            response_sid = None
+            # 10. ENVIAR REALMENTE LOS MENSAJES A TWILIO UNO POR UNO
+            response_sids = []
+            combined_response = ""  # Para logging
+            
             if self.twilio_client:
                 from app.domain.entities.message import OutgoingMessage, MessageType
-                outgoing_message = OutgoingMessage(
-                    to_number=user_id,
-                    body=combined_response,
-                    message_type=MessageType.TEXT
-                )
-                twilio_result = await self.twilio_client.send_message(outgoing_message)
-                response_sid = twilio_result.get('message_sid')
+                
+                for i, response_text in enumerate(responses):
+                    if response_text.strip():  # Solo enviar si no está vacío
+                        outgoing_message = OutgoingMessage(
+                            to_number=user_id,
+                            body=response_text.strip(),
+                            message_type=MessageType.TEXT
+                        )
+                        twilio_result = await self.twilio_client.send_message(outgoing_message)
+                        response_sids.append(twilio_result.get('message_sid'))
+                        combined_response += response_text + "\n\n"  # Solo para logging
+                        
+                        # Pequeña pausa entre mensajes para orden correcto
+                        import asyncio
+                        await asyncio.sleep(0.5)
+            
+            # Si no hay Twilio, combinar para respuesta (testing)
+            if not self.twilio_client:
+                combined_response = "\n\n".join(responses)
             
             return {
                 'success': True,
                 'response_text': combined_response,
-                'response_sid': response_sid,
+                'response_sid': response_sids, # Cambiado para devolver los SIDs
                 'processed': True,
                 'ad_flow_completed': True,
                 'course_id': course_id

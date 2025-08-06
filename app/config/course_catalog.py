@@ -4,31 +4,88 @@ Este archivo contiene las descripciones de cursos que se usan cuando la BD no es
 """
 
 # Descripciones del curso EXPERTO_IA_GPT_GEMINI
-EXPERTO_IA_SHORT_DESCRIPTION = """Domina ChatGPT + Gemini para PyMEs — Programa intensivo (12 h, 4 sesiones en vivo)  
-Un programa práctico para líderes y profesionales de PyME que te lleva desde los fundamentos de la IA generativa hasta la implementación real con ChatGPT y Google Gemini.  
+EXPERTO_IA_SHORT_DESCRIPTION = """🎓 **Experto en IA para Profesionales: Dominando ChatGPT y Gemini para la Productividad**
 
-**¿Qué aprenderás?**  
-• Configurar y dominar ChatGPT y Gemini en escenarios de negocio.  
-• Prompting de básico → avanzado, con plantillas reutilizables.  
-• Customización: crea tu Custom GPT y tu Custom Gem (agentes y flujos a medida).  
-• Framework **IMPULSO** aplicado a retos reales de PyME.  
-• Proyecto final con KPIs SMART para demostrar ahorro de tiempo y dinero.  
+Domina ChatGPT + Gemini para PyMEs — Programa intensivo (12 h, 4 sesiones en vivo)
+Un programa práctico para líderes y profesionales de PyME que te lleva desde los fundamentos de la IA generativa hasta la implementación real con ChatGPT y Google Gemini."""
 
-**Metodología (4 sesiones online, 12 h)**  
-Talleres en vivo, ejercicios supervisados y acompañamiento para diseñar tu plan IA que ahorra hasta **10 h/semana** en reportes y contenidos.  
+EXPERTO_IA_CURRICULUM = """¿Qué aprenderás?
 
-**Beneficios clave**  
-Productividad inmediata, claridad de ROI y posicionamiento como referente de innovación.  
-Resultado en 30 días: flujo IA operativo y ROI estimado **$8 000 MXN** el primer mes.*  
+Configurar y dominar ChatGPT y Gemini en escenarios de negocio.
 
-*El ROI puede variar según el caso de uso.*
 
-**Instructores**  
-• *Ernesto H. Martínez* – Ingeniero, +200 proyectos de transformación digital; "El Pastor Cibernético".  
-• *Ale Rodríguez Escobar* – Maestra en Diseño Multimedia (en curso); "La Arquitecta Audiovisual".  
+Prompting de básico → avanzado, con plantillas reutilizables.
 
-Incluye PDF, plantillas, grabaciones, 2 Q&A en vivo y comunidad privada.  
-**Inversión:** $2 990 MXN (2 pagos o 10 % descuento grupal)."""
+
+Customización: crea tu Custom GPT y tu Custom Gem (agentes y flujos a medida).
+
+
+Framework IMPULSO aplicado a retos reales de PyME (procesos, ventas, operaciones, contenido).
+
+
+Proyecto final con KPIs SMART para demostrar ahorro de tiempo y dinero.
+
+
+Metodología (4 sesiones online, 12 h)
+
+Talleres en vivo, demostraciones guiadas y ejercicios supervisados.
+
+
+Acompañamiento para diseñar tu plan IA que ahorra hasta 10 h/semana en reportes y contenidos.
+
+
+Cierre con entrega de proyecto y métricas claras de impacto."""
+
+EXPERTO_IA_BENEFITS = """Beneficios clave
+
+Productividad inmediata y automatización de tareas repetitivas.
+
+
+Claridad de ROI con indicadores concretos desde el día 1.
+
+
+Posicionamiento como referente de innovación en tu organización.
+
+
+Resultado en 30 días: flujo de trabajo IA operativo y ROI estimado de $8,000 MXN el primer mes.*
+
+
+*El ROI y horas ahorradas pueden variar según el caso de uso y nivel de adopción."""
+
+EXPERTO_IA_INSTRUCTORS = """Instructores
+
+Ernesto H. Martínez – "El Pastor Cibernético"
+
+Ingeniero y cofundador de Aprende y Aplica IA. +200 proyectos de transformación digital. Promueve un "Liderazgo Áureo" que integra IA con principios humanos.
+
+
+Ale Rodríguez Escobar – "La Arquitecta Audiovisual"
+
+Maestra en Diseño Multimedia (en curso). Experta en contenidos IA-driven que elevan el engagement +30 %."""
+
+EXPERTO_IA_INCLUDES = """Incluye
+
+PDF del programa y plantillas de prompting.
+
+
+Grabaciones de las sesiones.
+
+
+2 Q&A en vivo adicionales.
+
+
+Comunidad privada para soporte entre cohortes."""
+
+EXPERTO_IA_INVESTMENT = """Inversión
+$2,990 MXN
+
+Opciones: 2 pagos o 10 % de descuento grupal."""
+
+EXPERTO_IA_BASIC_INFO = """⏱️ **Duración**: 12 horas
+📊 **Nivel**: Avanzado
+💰 **Inversión**: $2990 MXN
+
+¿Qué te gustaría saber más sobre este curso?"""
 
 EXPERTO_IA_LONG_DESCRIPTION = """# 🚀 **EXPERTO EN IA PARA PROFESIONALES**
 ## Domina ChatGPT + Google Gemini desde Cero hasta Implementación Completa en PyMEs
@@ -193,7 +250,14 @@ FALLBACK_COURSES = {
         'long': EXPERTO_IA_LONG_DESCRIPTION,
         'name': 'Experto en IA para Profesionales - ChatGPT + Gemini',
         'price': 2990.00,
-        'currency': 'MXN'
+        'currency': 'MXN',
+        # Nuevas secciones divididas
+        'curriculum': EXPERTO_IA_CURRICULUM,
+        'benefits': EXPERTO_IA_BENEFITS,
+        'instructors': EXPERTO_IA_INSTRUCTORS,
+        'includes': EXPERTO_IA_INCLUDES,
+        'investment': EXPERTO_IA_INVESTMENT,
+        'basic_info': EXPERTO_IA_BASIC_INFO
     }
 }
 
@@ -210,6 +274,33 @@ def get_fallback_course_description(course_code: str, level: str = 'short') -> s
     """
     course_data = FALLBACK_COURSES.get(course_code, {})
     return course_data.get(level, '')
+
+def get_fallback_course_parts(course_code: str) -> list:
+    """
+    Obtiene el curso dividido en partes para evitar límite de WhatsApp.
+    
+    Args:
+        course_code: Código del curso
+        
+    Returns:
+        Lista de strings con las partes del curso
+    """
+    course_data = FALLBACK_COURSES.get(course_code, {})
+    if not course_data:
+        return []
+    
+    parts = [
+        course_data.get('short', ''),
+        course_data.get('curriculum', ''),
+        course_data.get('benefits', ''),
+        course_data.get('instructors', ''),
+        course_data.get('includes', ''),
+        course_data.get('investment', ''),
+        course_data.get('basic_info', '')
+    ]
+    
+    # Filtrar partes vacías
+    return [part for part in parts if part.strip()]
 
 def get_fallback_course_info(course_code: str) -> dict:
     """
