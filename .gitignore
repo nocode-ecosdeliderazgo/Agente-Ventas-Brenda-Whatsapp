@@ -57,3 +57,4 @@ app\infrastructure\database\estructura_db.sql
 # Temporary files
 *.tmp
 *.temp
+.env*
