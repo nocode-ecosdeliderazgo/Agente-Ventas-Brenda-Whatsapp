@@ -88,24 +88,17 @@ Responde "Sí" o "Confirmo" para continuar, o cuéntame si necesitas ajustar alg
         """
         return f"""¡Excelente {user_name}! 🎉
 
-✅ **Tu solicitud de contacto ha sido enviada exitosamente**
+✅ **Solicitud enviada exitosamente**
 
-📞 **Lo que sucede ahora:**
-• Tu solicitud está siendo revisada por nuestro equipo
-• Un asesor especializado te contactará en las próximas 2-4 horas
-• Tendrás una consulta personalizada y sin compromiso
-
-⏰ **Tiempo de respuesta:** 2-4 horas (horario laboral)
-
-📱 **Formas de contacto del asesor:**
-• WhatsApp (este mismo número)
-• Llamada telefónica
-• Email (si lo prefieres)
+📞 **Próximos pasos:**
+• Un asesor te contactará en 2-4 horas
+• Consulta personalizada sin compromiso
+• Contacto por WhatsApp, llamada o email
 
 💡 **Mientras esperas:**
-¿Te gustaría que te envíe información adicional sobre nuestros cursos o casos de éxito? Solo dime qué te interesa más.
+¿Te interesa información adicional sobre cursos o casos de éxito?
 
-¡Gracias por tu paciencia! Tu asesor se pondrá en contacto contigo muy pronto. 😊"""
+¡Tu asesor se pondrá en contacto muy pronto! 😊"""
     
     @staticmethod
     def get_contact_retry_message(user_name: str) -> str:
@@ -120,18 +113,14 @@ Responde "Sí" o "Confirmo" para continuar, o cuéntame si necesitas ajustar alg
         """
         return f"""No hay problema {user_name}! 😊
 
-Entiendo que quizás necesitas ajustar algo o tienes dudas. 
-
-Por favor, cuéntame nuevamente:
-
 🤔 **¿Cuál es el motivo principal de tu consulta?**
 
-O si prefieres, puedes ser más específico sobre:
-• ¿Qué tipo de información necesitas?
+Puedes contarme sobre:
+• ¿Qué información necesitas?
 • ¿Tienes alguna duda específica?
-• ¿Hay algo en particular que te preocupe?
+• ¿Algo en particular te preocupa?
 
-Estoy aquí para ayudarte a conectar con el asesor perfecto para tu situación. 📞"""
+Estoy aquí para conectarte con el asesor perfecto. 📞"""
     
     @staticmethod
     def get_contact_pending_message(user_name: str) -> str:

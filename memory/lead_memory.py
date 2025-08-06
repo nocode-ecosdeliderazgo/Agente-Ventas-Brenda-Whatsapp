@@ -29,11 +29,15 @@ class LeadMemory:
     brenda_introduced: bool = False
     # Indica si ya se envió el anuncio completo de curso en esta conversación
     course_announcement_sent: bool = False
+    sector_info_sent: bool = False  # True si ya se envió la info del sector
     
     # Nuevos campos para flujos personalizados
     current_flow: str = "none"  # none, privacy, course_selection, sales_conversation
     flow_step: int = 0  # paso actual dentro del flujo
     waiting_for_response: str = ""  # qué tipo de respuesta espera (name, privacy_acceptance, course_choice, etc.)
+    
+    # Campo para tracking de envío de datos bancarios
+    purchase_bonus_sent: bool = False  # True si ya se enviaron datos bancarios + bonus
     
     # 🆕 CAMPOS PARA MENSAJE ORIGINAL (para activación automática de flujo de anuncios)
     original_message_body: Optional[str] = None  # Cuerpo del mensaje original que inició el flujo
@@ -59,6 +63,35 @@ class LeadMemory:
     response_style_preference: str = "business"  # business, technical, casual, executive
     communication_frequency: str = "standard"  # low, standard, high
     preferred_examples: Optional[List[str]] = None  # types of examples that resonate
+    
+    # 🆕 SISTEMA DE EMOCIONES Y PATRONES
+    emotion_history: Optional[List[Dict]] = None  # historial de emociones detectadas
+    current_emotion: str = 'neutral'  # emoción actual detectada
+    emotion_confidence: float = 0.0  # confianza en la detección emocional
+    pattern_history: Optional[List[Dict]] = None  # patrones de comportamiento detectados
+    
+    # 🆕 SISTEMA DE FEEDBACK Y EXPERIENCIA
+    feedback_history: Optional[List[Dict]] = None  # historial de feedback del usuario
+    last_feedback_date: Optional[str] = None  # fecha del último feedback
+    latest_satisfaction_rating: int = 0  # última calificación de satisfacción
+    
+    # 🆕 ASSESSMENTS Y DIAGNÓSTICOS
+    assessment_history: Optional[List[Dict]] = None  # historial de assessments completados
+    last_assessment: Optional[str] = None  # tipo del último assessment
+    last_assessment_date: Optional[str] = None  # fecha del último assessment
+    digital_maturity_score: int = 0  # puntuación de madurez digital
+    ai_readiness_level: str = 'low'  # nivel de preparación para IA
+    
+    # 🆕 PERSONALIZACIÓN DINÁMICA
+    historical_preferences: Optional[Dict[str, Any]] = None  # preferencias históricas
+    interaction_patterns: Optional[Dict[str, Any]] = None  # patrones de interacción
+    conversion_indicators: Optional[List[str]] = None  # indicadores de conversión
+    
+    # 🆕 CAMPOS ADICIONALES DE CONTEXTO
+    first_interaction: Optional[str] = None  # timestamp primera interacción
+    company_info: Optional[Dict[str, Any]] = None  # información de la empresa del usuario
+    purchase_completed: bool = False  # si completó una compra
+    problem_resolved: bool = False  # si se resolvió algún problema
     
     def is_first_interaction(self) -> bool:
         """Verifica si es la primera interacción del usuario."""
@@ -337,6 +370,10 @@ class MemoryManager:
             data['flow_step'] = 0
         if 'waiting_for_response' not in data:
             data['waiting_for_response'] = ""
+        if 'purchase_bonus_sent' not in data:
+            data['purchase_bonus_sent'] = False
+        if 'sector_info_sent' not in data:
+            data['sector_info_sent'] = False
         
         # Migrar stage antiguo a nuevo sistema
         if data.get('stage') == 'initial':

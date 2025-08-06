@@ -35,12 +35,14 @@ class PurchaseBonusUseCase:
             'BUYING_SIGNALS_EXECUTIVE'
         ]
     
-    def should_activate_purchase_bonus(self, intent_analysis: Dict[str, Any]) -> bool:
+    def should_activate_purchase_bonus(self, intent_analysis: Dict[str, Any], user_id: str = None) -> bool:
         """
         Determina si se debe activar el bono por intención de compra.
+        Evita re-envío si ya se enviaron datos bancarios.
         
         Args:
             intent_analysis: Análisis de intención del mensaje
+            user_id: ID del usuario para verificar historial
             
         Returns:
             True si debe activar bonos, False en caso contrario
@@ -48,6 +50,11 @@ class PurchaseBonusUseCase:
         try:
             category = intent_analysis.get('category', '')
             confidence = intent_analysis.get('confidence', 0.0)
+            
+            # 🚨 NUEVO: Verificar si ya se enviaron datos bancarios previamente
+            if user_id and self._has_purchase_data_been_sent(user_id):
+                logger.info(f"💳 Datos bancarios ya enviados previamente para usuario {user_id}, evitando re-envío")
+                return False
             
             # Verificar si es una categoría de compra con suficiente confianza
             if category in self.purchase_intent_categories and confidence >= 0.7:
@@ -64,6 +71,73 @@ class PurchaseBonusUseCase:
             
         except Exception as e:
             logger.error(f"Error verificando activación de bono: {e}")
+            return False
+    
+    def _has_purchase_data_been_sent(self, user_id: str) -> bool:
+        """
+        Verifica si ya se enviaron datos bancarios a este usuario.
+        
+        Args:
+            user_id: ID del usuario
+            
+        Returns:
+            True si ya se enviaron datos bancarios, False en caso contrario
+        """
+        try:
+            if not self.memory_use_case:
+                return False
+            
+            user_memory = self.memory_use_case.get_user_memory(user_id)
+            
+            # 🚨 PRIORITARIO: Verificar flag directo primero
+            if user_memory and hasattr(user_memory, 'purchase_bonus_sent') and user_memory.purchase_bonus_sent:
+                logger.info(f"💳 Flag purchase_bonus_sent=True para usuario {user_id}")
+                return True
+            
+            # Verificar en message_history si hay envío previo de datos bancarios
+            if user_memory and user_memory.message_history:
+                for event in user_memory.message_history:
+                    if (event.get('action') == 'purchase_bonus_sent' or 
+                        'banking_data_sent' in event.get('description', '') or
+                        'datos bancarios' in event.get('description', '').lower()):
+                        logger.info(f"📋 Encontrado envío previo de datos bancarios: {event.get('timestamp')}")
+                        return True
+            
+            # También verificar en buying_signals
+            if user_memory and user_memory.buying_signals:
+                for signal in user_memory.buying_signals:
+                    if 'datos bancarios enviados' in signal.lower() or 'purchase_bonus_sent' in signal:
+                        logger.info(f"🔍 Señal de envío previo encontrada: {signal}")
+                        return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error verificando envío previo de datos bancarios: {e}")
+            return False
+    
+    def is_post_purchase_intent(self, intent_analysis: Dict[str, Any]) -> bool:
+        """
+        Determina si el mensaje es una intención post-compra (confirmación, pago realizado, etc).
+        
+        Args:
+            intent_analysis: Análisis de intención del mensaje
+            
+        Returns:
+            True si es intención post-compra, False en caso contrario
+        """
+        try:
+            category = intent_analysis.get('category', '')
+            post_purchase_categories = [
+                'PAYMENT_CONFIRMATION',
+                'PAYMENT_COMPLETED', 
+                'COMPROBANTE_UPLOAD'
+            ]
+            
+            return category in post_purchase_categories
+            
+        except Exception as e:
+            logger.error(f"Error verificando intención post-compra: {e}")
             return False
     
     async def get_workbook_bonuses(self, course_id: str = None) -> List[Dict[str, Any]]:
@@ -333,3 +407,51 @@ El curso incluye múltiples recursos prácticos y bonos exclusivos que te permit
             
         except Exception as e:
             logger.error(f"Error actualizando memoria con intención de compra: {e}")
+    
+    async def mark_purchase_data_sent(self, user_id: str) -> None:
+        """
+        Marca en la memoria del usuario que ya se enviaron los datos bancarios.
+        
+        Args:
+            user_id: ID del usuario
+        """
+        try:
+            if not self.memory_use_case:
+                return
+            
+            user_memory = self.memory_use_case.get_user_memory(user_id)
+            
+            # 🚨 CRÍTICO: Marcar flag de datos bancarios enviados
+            user_memory.purchase_bonus_sent = True
+            
+            # Agregar señal de que se enviaron datos bancarios
+            banking_data_signal = "Datos bancarios enviados - BBVA CLABE: 012345678901234567"
+            if banking_data_signal not in user_memory.buying_signals:
+                user_memory.buying_signals.append(banking_data_signal)
+            
+            # Agregar al historial de mensajes
+            if user_memory.message_history is None:
+                user_memory.message_history = []
+            
+            user_memory.message_history.append({
+                'timestamp': datetime.now().isoformat(),
+                'action': 'purchase_bonus_sent',
+                'description': 'Datos bancarios y bono workbook enviados al usuario',
+                'banking_data_sent': True,
+                'clabe': '012345678901234567',
+                'banco': 'BBVA'
+            })
+            
+            # Aumentar lead score por haber enviado datos de compra
+            user_memory.lead_score += 15
+            
+            # Actualizar stage si no está ya en purchase
+            if user_memory.stage != 'purchase_intent':
+                user_memory.stage = 'purchase_intent'
+                
+            # Guardar memoria actualizada
+            self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+            logger.info(f"💾 Marcado envío de datos bancarios para usuario {user_id} (purchase_bonus_sent=True)")
+            
+        except Exception as e:
+            logger.error(f"Error marcando envío de datos bancarios: {e}")

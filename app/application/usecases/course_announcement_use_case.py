@@ -263,19 +263,23 @@ class CourseAnnouncementUseCase:
             
             # Actualizar memoria del usuario
             await self._update_user_memory(user_id, course_code, course_info)
-
-            # Marcar que el anuncio ya se envió (para evitar repetirlo)
-            try:
-                user_memory = self.memory_use_case.get_user_memory(user_id)
-                user_memory.course_announcement_sent = True
-                self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
-            except Exception:
-                pass
             
             # Enviar respuesta completa con resumen, PDF e imagen
             result = await self._send_course_announcement_response(
                 user_id, course_code, course_info
             )
+            
+            # Marcar que el anuncio se envió SOLO si fue exitoso
+            if result.get('success', False):
+                try:
+                    user_memory = self.memory_use_case.get_user_memory(user_id)
+                    user_memory.course_announcement_sent = True
+                    self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+                    logger.info(f"✅ Marcado course_announcement_sent=True para {user_id}")
+                except Exception as e:
+                    logger.error(f"Error marcando anuncio como enviado: {e}")
+            else:
+                logger.warning(f"❌ No se marca course_announcement_sent porque el envío falló para {user_id}")
             
             logger.info(f"✅ Flujo de anuncio completado para {course_code}")
             return result
@@ -575,6 +579,12 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 if course_id_interest not in user_memory.interests:
                     user_memory.interests.append(course_id_interest)
                 logger.info(f"💾 Hashtag {hashtag_clean} mapeado a course_id {course_id} y guardado en memoria")
+
+                # ✍️ --- ¡CORRECCIÓN CLAVE! ---
+                # Actualizar el curso seleccionado en la memoria.
+                user_memory.selected_course = course_id
+                logger.info(f"✅ Curso seleccionado actualizado en memoria: {course_id}")
+                # ✍️ --- FIN DE LA CORRECCIÓN ---
             
             # Agregar señal de compra
             buying_signal = f"Solicitó información de {course_code}"
@@ -625,14 +635,11 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Crear mensaje principal con resumen del curso
             main_message = self._create_course_summary_message(course_info, user_memory)
             
-            # Enviar mensaje principal
-            outgoing_message = OutgoingMessage(
-                to_number=user_id,
-                body=main_message,
-                message_type=MessageType.TEXT
+            # Enviar mensaje principal con typing (es contenido elaborado)
+            main_result = await self.twilio_client.send_thoughtful_response(
+                f"whatsapp:+{user_id}", 
+                main_message
             )
-            
-            main_result = await self.twilio_client.send_message(outgoing_message)
             
             if not main_result.get('success'):
                 logger.error(f"Error enviando mensaje principal: {main_result}")
@@ -644,31 +651,19 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Enviar imagen (simulado por ahora)
             image_result = await self._send_course_image(user_id, course_info)
             
-            # Esperar 13 segundos para que los archivos se carguen antes de enviar los mensajes de texto
-            logger.info("⏳ Esperando 13 segundos para que los archivos se carguen...")
-            await asyncio.sleep(13)
+            # Esperar solo 3 segundos optimizado para mejor UX
+            logger.info("⏳ Esperando 3 segundos para optimizar entrega...")
+            await asyncio.sleep(3)
             
             # Enviar mensaje de seguimiento
             follow_up_message = self._create_follow_up_message(course_info, user_memory)
             
-            follow_up_outgoing = OutgoingMessage(
-                to_number=user_id,
-                body=follow_up_message,
-                message_type=MessageType.TEXT
+            # Enviar mensaje de seguimiento con typing normal
+            follow_up_result = await self.twilio_client.send_text_with_typing(
+                f"whatsapp:+{user_id}", 
+                follow_up_message
             )
             
-            follow_up_result = await self.twilio_client.send_message(follow_up_outgoing)
-            
-            # Enviar mensaje adicional con pregunta sobre qué le parece más interesante
-            engagement_message = "¿Qué te parece más interesante del curso?"
-            
-            engagement_outgoing = OutgoingMessage(
-                to_number=user_id,
-                body=engagement_message,
-                message_type=MessageType.TEXT
-            )
-            
-            engagement_result = await self.twilio_client.send_message(engagement_outgoing)
             
             return {
                 'success': True,
@@ -682,7 +677,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                     'pdf_sent': pdf_result.get('success', False),
                     'image_sent': image_result.get('success', False),
                     'follow_up_sent': follow_up_result.get('success', False),
-                    'engagement_sent': engagement_result.get('success', False)
+                    'engagement_sent': True  # Marcamos como True aunque ya no se envía
                 }
             }
             
@@ -723,6 +718,10 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 duration = getattr(db_course, 'total_duration_min', 12) or 12
                 modality = getattr(db_course, 'modality', 'Online')
                 
+                # Crear una descripción ultra-corta para el anuncio
+                announcement_description = f"Domina ChatGPT + Gemini para PyMEs en un programa intensivo de {duration}h. Aprende a implementar IA en tu empresa y obtén resultados medibles."
+                description = announcement_description
+
                 # Obtener bonos de la BD
                 bonuses_from_db = course_info.get('bonuses', [])
                 logger.info(f"📦 Bonos desde BD: {len(bonuses_from_db)} bonos encontrados")
@@ -738,81 +737,47 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
                 modality = course_info.get('modality', 'Online')
                 bonuses_from_db = []
             
-            # Crear mensaje principal (VERSIÓN SÚPER COMPACTA - máximo 1200 caracteres)
-            greeting = f"¡Hola {user_name}! 😊" if user_name else "¡Hola! 😊"
-            
-            # Acortar el nombre del curso si es muy largo
-            display_name = course_name
-            if len(course_name) > 50:
-                display_name = "Experto en IA para Profesionales"
-            
+            # Crear mensaje principal (VERSIÓN ULTRA CORTA para Twilio)
             message_parts = [
-                greeting,
+                "🎯 ¡Información del curso!",
                 "",
-                f"🎓 **{display_name}**",
-                f"💰 ${price} {currency} | {sessions} sesiones ({duration}h)",
-                f"📊 {level} | 💻 {modality}",
+                f"📚 **{course_name}**",
+                f"💰 ${price} {currency} | 📊 {level}",
+                f"🗓️ {sessions} sesiones ({duration}h) | 💻 {modality}",
                 ""
             ]
             
-            # Solo agregar descripción muy corta si existe y es breve
+            # Solo descripción MUY corta si existe
             if description and len(description) < 100:
-                message_parts.extend([
-                    f"📝 {description[:80]}...",
-                ])
+                message_parts.append(f"📝 {description[:80]}...")
+                message_parts.append("")
             
             # Usar bonos de la BD primero, fallback a mock data si no hay
             bonuses = bonuses_from_db if bonuses_from_db else course_info.get('bonuses', [])
             
+            # Solo mostrar que incluye bonos, sin listarlos
             if bonuses:
                 message_parts.extend([
-                    "",
-                    "🎁 **BONOS:**"
+                    f"🎁 **Incluye {len(bonuses)} bonos especiales**",
+                    ""
                 ])
-                # Mostrar solo los primeros 2 bonos para ahorrar caracteres
-                for i, bonus in enumerate(bonuses[:2]):
-                    # Acortar cada bono a máximo 40 caracteres
-                    short_bonus = bonus[:37] + "..." if len(bonus) > 40 else bonus
-                    message_parts.append(f"• {short_bonus}")
-                if len(bonuses) > 2:
-                    message_parts.append(f"• +{len(bonuses) - 2} bonos más")
             
-            # Agregar ROI personalizado según el rol del usuario (versión corta)
+            # ROI muy corto solo si el rol es específico
             role = user_memory.role if user_memory.role != "No disponible" else ""
-            if role:
-                roi_message = self._get_role_specific_roi_message_short(role, price)
-                if roi_message:
-                    message_parts.extend(["", roi_message])
+            if role and role in ['Analista de Datos', 'Gerente', 'Director']:
+                message_parts.extend([
+                    f"💡 Ideal para {role}",
+                    ""
+                ])
             
-            # Agregar llamada a la acción compacta
+            # Llamada a la acción muy simple
             message_parts.extend([
+                "📄 PDF y detalles completos en camino...",
                 "",
-                "📄 Te envío PDF completo + imagen del curso",
-                "",
-                "¿Preguntas específicas?"
+                "¿Alguna pregunta específica?"
             ])
             
-            final_message = "\n".join(message_parts)
-            
-            # Verificar longitud y truncar si es necesario
-            if len(final_message) > 1500:
-                logger.warning(f"Mensaje muy largo ({len(final_message)} chars), aplicando truncamiento de emergencia")
-                # Versión de emergencia súper compacta
-                emergency_parts = [
-                    greeting,
-                    "",
-                    f"🎓 **{display_name}**",
-                    f"💰 ${price} {currency} | {sessions} sesiones",
-                    "",
-                    "🎁 Incluye bonos premium",
-                    "",
-                    "📄 Te envío PDF + imagen",
-                    "¿Preguntas?"
-                ]
-                final_message = "\n".join(emergency_parts)
-            
-            logger.info(f"📏 Mensaje final: {len(final_message)} caracteres")
-            return final_message
+            return "\n".join(message_parts)
             
         except Exception as e:
             logger.error(f"Error creando mensaje de resumen: {e}")
@@ -914,16 +879,7 @@ Al finalizar serás capaz de implementar soluciones de IA que generen ROI medibl
             # Mensaje acompañando al PDF
             pdf_message = f"""📄 **GUÍA COMPLETA DEL CURSO**
 
-Te envío la guía detallada con toda la información que necesitas:
-
-📝 **Incluye:**
-• Estructura completa del programa
-• Objetivos de aprendizaje por módulo  
-• Herramientas y recursos incluidos
-• Plan de implementación paso a paso
-• Casos de éxito con ROI comprobado
-
-*¡Revísala y me cuentas qué te parece!* 👀"""
+Te envío la guía detallada con toda la información que necesitas:"""
 
             # Si tenemos URL válida, enviar archivo; si no, usar fallback
             if pdf_url and pdf_url.startswith('http'):
@@ -1055,14 +1011,15 @@ Te enviaremos las imágenes por correo electrónico o las puedes ver directament
             
             # Versión compacta del seguimiento
             follow_up_parts = [
-                f"🚀 **¿Listo para transformar tu empresa con IA?**",
+                f"🚀 **¿Listo para IA en tu empresa?**",
                 "",
-                "📋 **Pasos siguientes:**",
-                "• Revisa el PDF completo",
-                "• Evalúa aplicación en tu empresa",
-                "• Escríbeme cualquier pregunta",
+                f"📄 Revisa el PDF de **{course_name}**",
                 "",
-                f"🎯 Reserva tu lugar con $97 (resto antes de iniciar)"
+                "💬 **Próximos pasos:**",
+                "• Analiza cómo aplicarlo en tu empresa",
+                "• Pregúntame cualquier duda específica",
+                "",
+                f"🎯 **Oferta:** Reserva con $97 (resto antes de iniciar)"
             ]
             
             return "\n".join(follow_up_parts)

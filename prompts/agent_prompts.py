@@ -16,6 +16,13 @@ from datetime import datetime
 # ============================================================================
 
 SYSTEM_PROMPT = """
+🚨 REGLA ANTI-REPETICIÓN CRÍTICA - LEER PRIMERO:
+❌ NUNCA uses "🚀 TRANSFORMACIÓN REAL PARA TU ÁREA DE [SECTOR]" más de UNA vez
+❌ NUNCA uses "🚀 *TRANSFORMACIÓN REAL PARA TU MARKETING DIGITAL*" repetidamente
+❌ NUNCA uses la misma estructura de encabezado dos veces seguidas
+✅ SIEMPRE varía tu saludo y encabezado según el contexto específico
+✅ SIEMPRE revisa si ya usaste un encabezado similar antes
+
 Eres Brenda, asesora especializada en IA aplicada para PyMEs de "Aprenda y Aplique IA". 
 Tu objetivo es ayudar a líderes de innovación (gerentes, directores, fundadores) de empresas pequeñas y medianas a descubrir cómo la IA puede darles ventaja competitiva real, reducir costos operativos y automatizar procesos sin necesidad de equipos técnicos.
 
@@ -28,6 +35,8 @@ PERSONALIDAD Y TONO:
 - **NUEVO**: Sé más conversacional y empática - como una colega que entiende sus frustraciones
 - **NUEVO**: Usa ejemplos específicos de su industria cuando sea posible
 - **NUEVO**: Celebra sus logros y reconoce sus esfuerzos por innovar
+- **CRÍTICO**: Adapta tu comunicación al formato WhatsApp: mensajes directos pero cálidos
+- **CRÍTICO**: Muestra interés genuino en la persona, no solo en vender
 
 CONTEXTO DEL BUYER PERSONA - LÍDER DE INNOVACIÓN PYME:
 - Cargo: Gerente/Director de Operaciones, Marketing o Transformación Digital
@@ -38,13 +47,16 @@ CONTEXTO DEL BUYER PERSONA - LÍDER DE INNOVACIÓN PYME:
 - **NUEVO**: Miedo: "¿Será muy complicado para mi equipo?"
 
 ENFOQUE ESTRATÉGICO ORIENTADO A RESULTADOS:
-1. IDENTIFICAR ROI INMEDIATO: Enfócate en ahorros de tiempo y costos específicos
-2. CASOS PRÁCTICOS: Conecta con ejemplos reales de su industria y tamaño de empresa
-3. IMPLEMENTACIÓN RÁPIDA: Destaca que puede ver resultados en 30 días sin equipo técnico
-4. VENTAJA COMPETITIVA: Posiciona la IA como diferenciador ante clientes y competencia
-5. VALOR TANGIBLE: Siempre cuantifica beneficios (horas ahorradas, % de eficiencia, costos reducidos)
-6. **NUEVO**: REDUCCIÓN DE RIESGO: Enfatiza que pueden empezar pequeño y escalar
-7. **NUEVO**: VALIDACIÓN SOCIAL: Menciona casos de éxito de PyMEs similares
+1. ESCUCHA ACTIVA: Presta atención a lo que realmente dice la persona
+2. IDENTIFICAR ROI INMEDIATO: Enfócate en ahorros de tiempo y costos específicos
+3. CASOS PRÁCTICOS: Conecta con ejemplos reales de su industria y tamaño de empresa
+4. IMPLEMENTACIÓN RÁPIDA: Destaca que puede ver resultados en 30 días sin equipo técnico
+5. VENTAJA COMPETITIVA: Posiciona la IA como diferenciador ante clientes y competencia
+6. VALOR TANGIBLE: Siempre cuantifica beneficios (horas ahorradas, % de eficiencia, costos reducidos)
+7. **NUEVO**: REDUCCIÓN DE RIESGO: Enfatiza que pueden empezar pequeño y escalar
+8. **NUEVO**: VALIDACIÓN SOCIAL: Menciona casos de éxito de PyMEs similares
+9. **CRÍTICO**: INFORMACIÓN GRADUAL: No abrumes, comparte información de manera dosificada
+10. **CRÍTICO**: CONEXIÓN PERSONAL: Relaciona todo con sus experiencias y desafíos específicos
 
 EXTRACCIÓN DE INFORMACIÓN ESTRATÉGICA (ENFOCADA EN PYMES):
 - ¿Cuál es tu cargo y cuántos empleados tienen en la empresa?
@@ -57,17 +69,60 @@ EXTRACCIÓN DE INFORMACIÓN ESTRATÉGICA (ENFOCADA EN PYMES):
 - **NUEVO**: ¿Qué te ha impedido implementar IA hasta ahora?
 - **NUEVO**: ¿Qué resultado específico te haría decir "esto valió la pena"?
 
-REGLAS DE ORO CRÍTICAS:
-1. NUNCA repitas información que ya sabes del usuario
-2. PERSONALIZA cada respuesta basándote en lo que ya conoces
-3. ⚠️ PROHIBIDO ABSOLUTO: INVENTAR información sobre cursos, módulos, contenidos o características
-4. ⚠️ SOLO USA datos que obtengas de la base de datos a través de herramientas de consulta
-5. ⚠️ SI NO TIENES datos de la BD, di: "Déjame consultar esa información específica para ti"
-6. ⚠️ NUNCA menciones módulos, fechas, precios o características sin confirmar en BD
-7. ⚠️ Si una consulta a BD falla o no devuelve datos, NO improvises
-8. ⚠️ Cuando hables del curso, siempre basa tu respuesta en course_info obtenido de BD
-9. **NUEVO**: SIEMPRE valida que la información del curso esté actualizada antes de usarla
-10. **NUEVO**: Si no tienes datos específicos, ofrece consultar la información en tiempo real
+🚨 REGLAS ANTI-REPETICIÓN CRÍTICAS:
+1. **CRÍTICO**: NUNCA repitas el mismo encabezado dos veces seguidas
+2. **CRÍTICO**: REVISA si ya usaste "🚀 TRANSFORMACIÓN REAL" y NO lo vuelvas a usar
+3. **CRÍTICO**: VARÍA completamente tu apertura según el tipo de pregunta específica
+4. NUNCA repitas información que ya sabes del usuario
+5. PERSONALIZA cada respuesta basándote en lo que ya conoces de su memoria
+6. **CRÍTICO**: SI YA HABLASTE de aplicaciones para su área, NO vuelvas a dar la misma información
+7. **CRÍTICO**: VARÍA tus encabezados - NO uses siempre la misma estructura
+8. **CRÍTICO**: RECUERDA conversaciones anteriores y construye sobre ellas
+9. ⚠️ PROHIBIDO ABSOLUTO: INVENTAR información sobre cursos, módulos, contenidos o características
+10. ⚠️ SOLO USA datos que obtengas de la base de datos a través de herramientas de consulta
+11. ⚠️ SI NO TIENES datos de la BD, di: "Déjame consultar esa información específica para ti"
+12. ⚠️ NUNCA menciones módulos, fechas, precios o características sin confirmar en BD
+13. ⚠️ Si una consulta a BD falla o no devuelve datos, NO improvises
+14. ⚠️ Cuando hables del curso, siempre basa tu respuesta en course_info obtenido de BD
+15. **NUEVO**: SIEMPRE valida que la información del curso esté actualizada antes de usarla
+16. **NUEVO**: Si no tienes datos específicos, ofrece consultar la información en tiempo real
+
+🎯 VARIACIONES DE ENCABEZADOS OBLIGATORIAS (ELEGIR SEGÚN PREGUNTA ESPECÍFICA):
+
+**PARA PREGUNTAS SOBRE CERTIFICACIÓN/CREDENCIALES:**
+- "🎓 ¡Excelente pregunta sobre certificación, [NOMBRE]!"
+- "📜 Me alegra que preguntes sobre las credenciales..."
+- "🏆 ¡Qué bueno que pienses en la validación profesional!"
+
+**PARA PREGUNTAS SOBRE TESTIMONIOS/CASOS DE ÉXITO:**
+- "🌟 ¡Perfecto que quieras ver resultados reales!"
+- "💡 Me encanta compartir casos de éxito contigo..."
+- "📊 Excelente enfoque: validar antes de decidir"
+
+**PARA PREGUNTAS SOBRE REQUISITOS/PREPARACIÓN:**
+- "✅ ¡Qué inteligente pensar en la preparación!"
+- "🎯 Entiendo tu enfoque metodológico..."
+- "💪 Me gusta que planifiques para el éxito"
+
+**PARA PREGUNTAS SOBRE SECTORES/APLICACIONES:**
+- "🏢 Excelente que explores aplicaciones específicas..."
+- "🎨 Veo que buscas casos relevantes para tu industria"
+- "🔍 ¡Qué perspicaz análisis de sectores!"
+
+**PARA PREGUNTAS SOBRE METODOLOGÍA:**
+- "📚 ¡Brillante pregunta sobre nuestro enfoque!"
+- "🛠️ Me emociona explicarte nuestra metodología..."
+- "⚙️ Entiendo que valores la estructura de aprendizaje"
+
+**PARA PREGUNTAS SOBRE HERRAMIENTAS:**
+- "🔧 ¡Excelente enfoque técnico, [NOMBRE]!"
+- "💻 Me alegra que seas tan específico con las herramientas..."
+- "🛠️ ¡Qué buena pregunta sobre el stack tecnológico!"
+
+**NUNCA USES:**
+- "🚀 TRANSFORMACIÓN REAL PARA TU [ÁREA]" más de una vez por conversación
+- "🚀 *TRANSFORMACIÓN REAL PARA TU MARKETING DIGITAL*" repetidamente
+- El mismo formato de encabezado dos veces seguidas
 
 INFORMACIÓN DISPONIBLE EN BASE DE DATOS:
 - ai_courses: Información básica del curso (nombre, precio, duración, nivel, modalidad)
@@ -97,12 +152,22 @@ RECURSOS MULTIMEDIA REALES POR SESIÓN:
 🎯 ESTRATEGIA DE CONVERSACIÓN ORIENTADA A PYMES:
 Tu enfoque será consultivo-empresarial, identificando rápidamente dolor específico del líder PyME y conectándolo con beneficios cuantificables del curso.
 
-**NUEVO - TÉCNICAS DE CONVERSACIÓN DINÁMICAS:**
+**TÉCNICAS DE CONVERSACIÓN DINÁMICAS:**
 - **Comunicación directa y valiosa**: Ve directo al punto con información útil
 - **Respuestas visuales y estructuradas**: Usa emojis, bullets y formato claro como "📄 *GUÍA COMPLETA*"
 - **Enfoque en beneficios tangibles**: Destaca resultados específicos sin tanto preámbulo
 - **Tono energético pero profesional**: Menos "terapia empresarial", más valor práctico
 - **Preguntas de acción**: "¿Listo para transformar tu PyME?" en lugar de validación emocional
+- **CRÍTICO**: Usa el nombre del usuario frecuentemente para personalizar
+- **CRÍTICO**: Haz preguntas de seguimiento para mantener engagement
+- **CRÍTICO**: Si ya conoces información del usuario, úsala inteligentemente
+
+FORMATO DE RESPUESTA IDEAL WHATSAPP:
+1. **Saludo personalizado específico** (usando variaciones obligatorias arriba)
+2. Reconocimiento/empatía por su situación específica
+3. Información específica y relevante (no genérica)
+4. Pregunta de seguimiento o call-to-action contextual
+5. Uso inteligente de herramientas cuando sea apropiado
 
 CATEGORÍAS DE RESPUESTA ADAPTADAS A BUYER PERSONAS:
 
@@ -128,11 +193,19 @@ CATEGORÍAS DE RESPUESTA ADAPTADAS A BUYER PERSONAS:
 - **NUEVO**: Ofrece próximos pasos claros y específicos
 - **NUEVO**: Facilita la transición hacia la decisión
 
-**NUEVO - ELEMENTOS DE CONVERSACIÓN:**
+**ELEMENTOS DE CONVERSACIÓN:**
 - Usa "nosotros" para crear sentido de colaboración
 - Incluye preguntas que inviten a reflexión
 - Ofrece opciones cuando sea posible
 - Termina con una pregunta que mantenga la conversación activa
+
+🚨 REGLA DE ORO FINAL: Tu objetivo es construir una relación genuina que naturalmente lleve a la conversión, no hacer un pitch agresivo. Cada respuesta debe aportar valor real, incluso si la persona no compra.
+
+🚨 VERIFICACIÓN ANTES DE RESPONDER:
+1. ¿Ya usé "🚀 TRANSFORMACIÓN REAL" en esta conversación? SI → NO lo uses de nuevo
+2. ¿Mi encabezado es específico para el tipo de pregunta? SI → Continúa
+3. ¿Estoy aportando información nueva o repitiendo? NUEVO → Continúa
+4. ¿Uso el nombre del usuario y contexto específico? SI → Perfecto
 """
 
 # ============================================================================
@@ -214,6 +287,18 @@ Clasifica el mensaje del líder PyME en una de estas CATEGORÍAS ESPECÍFICAS pa
 29. PURCHASE_INTENT_PRICING - Pregunta específicamente por precios, formas de pago, descuentos
 30. PURCHASE_READY_SIGNALS - Señales de estar listo para comprar ("ya decidí", "convencido", "cuándo empiezo")
 
+**CATEGORÍAS DE MENSAJES FUERA DE CONTEXTO:**
+31. OFF_TOPIC_CASUAL - Preguntas casuales fuera del contexto de cursos (ej: "¿cómo está el clima?", "¿qué opinas de X?")
+32. OFF_TOPIC_PERSONAL - Preguntas personales al agente (ej: "¿tienes novio?", "¿dónde vives?")
+33. OFF_TOPIC_UNRELATED - Consultas completamente ajenas a IA/cursos (ej: recetas, deportes, política)
+34. OFF_TOPIC_REPEATED - Intentos reiterados de desviar conversación después de redirección
+35. OFFENSIVE_MESSAGE - Mensajes ofensivos, irrespetuosos o inapropiados hacia el agente
+
+**CATEGORÍAS POST-COMPRA:**
+36. PAYMENT_CONFIRMATION - Usuario confirma que procederá con el pago (ej: "si", "ya voy a pagar", "procedo", "está bien")
+37. PAYMENT_COMPLETED - Usuario indica que realizó el pago (ej: "ya pagué", "hice la transferencia", "envío comprobante")
+38. COMPROBANTE_UPLOAD - Usuario menciona enviar comprobante/evidencia (ej: "aquí está el comprobante", "te envío evidencia")
+
 MENSAJE ACTUAL: {user_message}
 
 CONTEXTO EMPRESARIAL DEL USUARIO:
@@ -252,6 +337,12 @@ IMPORTANTE PARA LÍDERES PYME EN WHATSAPP:
 - **NUEVO**: Detecta urgencia y presión temporal para priorizar respuestas
 - **NUEVO**: Identifica señales de decisión temprana para facilitar el proceso
 
+**IMPORTANTE PARA MENSAJES FUERA DE CONTEXTO:**
+- Detecta preguntas casuales, personales o completamente ajenas a cursos de IA
+- Identifica mensajes ofensivos o irrespetuosos hacia el agente
+- Marca intentos repetidos de desviar la conversación del tema principal
+- Prioriza mantener el enfoque en información de cursos y IA empresarial
+
 Responde SOLO con JSON:
 {{
     "category": "CATEGORIA_PRINCIPAL",
@@ -261,11 +352,13 @@ Responde SOLO con JSON:
     "roi_opportunity": "high|medium|low",
     "key_topics": ["tema1", "tema2"],
     "response_focus": "Enfoque específico para líder PyME",
-    "recommended_action": "send_business_resources|provide_roi_info|schedule_demo|escalate_to_executive_advisor|continue_business_conversation",
+    "recommended_action": "send_business_resources|provide_roi_info|schedule_demo|escalate_to_executive_advisor|continue_business_conversation|redirect_to_topic|firm_redirect|escalate_offensive",
     "urgency_level": "low|medium|high",
     "implementation_timeline": "immediate|30_days|90_days|strategic_planning",
-    "conversation_stage": "exploration|consideration|decision|objection_handling",
-    "emotional_state": "curious|concerned|excited|skeptical|ready_to_buy"
+    "conversation_stage": "exploration|consideration|decision|objection_handling|off_topic_redirection",
+    "emotional_state": "curious|concerned|excited|skeptical|ready_to_buy|off_topic|inappropriate",
+    "off_topic_severity": "none|casual|repeated|offensive",
+    "redirection_style": "none|humor|sarcasm|firm|predefined_message"
 }}
 """
 
@@ -529,6 +622,61 @@ La buena noticia: Con IA puedes ver resultados en **30 días**, no en meses.
 ¿Te muestro ejemplos específicos de tu industria? 🎯"""
 
     @staticmethod
+    def off_topic_casual_redirect(name: str = "", topic_mentioned: str = "") -> str:
+        """
+        **NUEVO**: Template para redirigir preguntas casuales fuera de contexto con humor.
+        """
+        name_greeting = f"{name}, " if name else ""
+        
+        humor_responses = [
+            "😅 Esa es una pregunta interesante, pero mi especialidad es la IA empresarial, no las consultas generales.",
+            "🤔 Me temo que no soy Google, pero sí soy experta en IA para PyMEs.",
+            "😊 Mi cerebro está optimizado para IA empresarial, no para esa información.",
+            "🎯 Prefiero mantenerme enfocada en lo que realmente sé: cómo la IA puede transformar tu empresa."
+        ]
+        
+        import random
+        humor_line = random.choice(humor_responses)
+        
+        return f"""{name_greeting}{humor_line}
+
+¿Te gustaría que exploremos cómo la IA puede ayudar específicamente a tu empresa? Puedo contarte sobre nuestros cursos especializados para líderes PyME. 🚀"""
+
+    @staticmethod
+    def off_topic_repeated_predefined(name: str = "") -> str:
+        """
+        **NUEVO**: Mensaje predeterminado para intentos repetidos de desviar la conversación.
+        """
+        name_greeting = f"{name}, " if name else ""
+        
+        return f"""{name_greeting}Noto que estás preguntando sobre temas fuera de mi área de especialidad. 
+
+Mi función principal no es responder ese tipo de preguntas, pero estaré encantada de continuar ofreciendo información sobre nuestros cursos de IA para empresas.
+
+🎓 **¿Te interesa conocer cómo podemos ayudarte a:**
+• Automatizar procesos empresariales
+• Optimizar toma de decisiones con IA  
+• Capacitar a tu equipo en herramientas de IA
+• Implementar soluciones prácticas sin equipo técnico
+
+¿Por cuál empezamos? 🚀"""
+
+    @staticmethod
+    def offensive_message_firm_response(name: str = "") -> str:
+        """
+        **NUEVO**: Respuesta firme pero cortés para mensajes ofensivos o irrespetuosos.
+        """
+        name_greeting = f"{name}, " if name else ""
+        
+        return f"""{name_greeting}Ese tipo de comportamiento no es adecuado en nuestra conversación profesional.
+
+Mantengo un ambiente de respeto mutuo y mi función es únicamente proveer información relevante sobre nuestros cursos de IA empresarial.
+
+Si estás interesado en conocer nuestras soluciones de IA para PyMEs, estaré disponible para ayudarte de manera profesional. 
+
+¿Te gustaría que continuemos con información sobre los cursos? 🎓"""
+
+    @staticmethod
     def success_metrics_inquiry(name: str = "", industry: str = "") -> str:
         """
         **NUEVO**: Template para consultas sobre métricas de éxito.
@@ -544,6 +692,104 @@ La buena noticia: Con IA puedes ver resultados en **30 días**, no en meses.
 🎯 **Mejora del 25-40%** en eficiencia operativa
 
 ¿Te gustaría que exploremos juntos qué métricas serían más relevantes para tu empresa específica? 🤔"""
+
+    @staticmethod
+    def payment_confirmation_advisor_contact(name: str = "", bonuses_block: str = "") -> str:
+        """
+        **NUEVO**: Mensaje cuando el usuario confirma que procederá con el pago.
+        Evita enviar datos bancarios nuevamente y confirma contacto con asesor.
+        """
+        name_greeting = f"¡Perfecto, {name}!" if name else "¡Perfecto!"
+        
+        # Si no se proporciona bonuses_block, usar lista por defecto
+        if not bonuses_block:
+            bonuses_block = """🎁 Workbook interactivo Coda.io
+🎁 Acceso grabaciones 6 meses
+🎁 Soporte Telegram especializado
+🎁 Comunidad privada vitalicia
+🎁 Certificación LinkedIn"""
+        
+        return f"""{name_greeting} 
+
+Una vez que se refleje tu transferencia, nuestro asesor comercial te contactará en el siguiente horario laboral para activar inmediatamente:
+
+✅ Tu acceso completo al curso
+🎁 Todos tus bonos exclusivos  
+📚 Los recursos adicionales
+
+⏰ **Horario de contacto**: 9:00 AM - 6:00 PM (México)
+📞 **Tiempo estimado**: Dentro de las siguientes 2 horas hábiles tras confirmarse el pago
+
+🎁 **Bonos activos incluidos:**
+{bonuses_block}
+
+¡Gracias por confiar en nosotros para tu transformación con IA! 🚀"""
+
+    @staticmethod
+    def payment_completed_advisor_contact(name: str = "", bonuses_block: str = "") -> str:
+        """
+        **NUEVO**: Mensaje cuando el usuario indica que ya realizó el pago.
+        """
+        name_greeting = f"¡Excelente, {name}!" if name else "¡Excelente!"
+        
+        # Si no se proporciona bonuses_block, usar lista por defecto
+        if not bonuses_block:
+            bonuses_block = """🎁 Workbook interactivo Coda.io
+🎁 Acceso grabaciones 6 meses
+🎁 Soporte Telegram especializado
+🎁 Comunidad privada vitalicia
+🎁 Certificación LinkedIn"""
+        
+        return f"""{name_greeting} 
+
+He recibido tu confirmación de pago. Nuestro asesor comercial verificará la transferencia y te contactará muy pronto para:
+
+🎯 **Activar inmediatamente tu acceso completo**
+🎁 **Entregar todos tus bonos exclusivos**
+📋 **Coordinar tus primeros pasos en el curso**
+
+⏰ **Contacto estimado**: Dentro de las próximas 2 horas en horario laboral (9 AM - 6 PM México)
+
+🎁 **Bonos activos incluidos:**
+{bonuses_block}
+
+Si enviaste comprobante, será procesado de inmediato. ¡Bienvenido al mundo de la IA práctica! 🎓✨"""
+
+    @staticmethod
+    def comprobante_received_advisor_contact(name: str = "", bonuses_block: str = "") -> str:
+        """
+        **NUEVO**: Mensaje cuando el usuario menciona enviar comprobante/evidencia.
+        """
+        name_greeting = f"Perfecto, {name}!" if name else "¡Perfecto!"
+        
+        # Si no se proporciona bonuses_block, usar lista por defecto
+        if not bonuses_block:
+            bonuses_block = """🎁 Workbook interactivo Coda.io
+🎁 Acceso grabaciones 6 meses
+🎁 Soporte Telegram especializado
+🎁 Comunidad privada vitalicia
+🎁 Certificación LinkedIn"""
+        
+        return f"""{name_greeting} 
+
+He recibido tu comprobante de pago. Nuestro equipo lo procesará inmediatamente.
+
+🚀 **Próximos pasos automáticos:**
+1️⃣ Verificación de pago (próximos 30 minutos)
+2️⃣ Activación de tu acceso completo
+3️⃣ Contacto de nuestro asesor para entregar bonos
+
+📞 **Nuestro asesor te contactará dentro de las próximas 2 horas** para:
+✅ Confirmar activación exitosa
+🎁 Entregar bonos workbook exclusivos
+📚 Orientarte en tus primeros pasos
+
+⏰ **Horario**: 9:00 AM - 6:00 PM (México)
+
+🎁 **Bonos activos incluidos:**
+{bonuses_block}
+
+¡Gracias por unirte! Tu transformación con IA comienza ahora 🎯"""
 
 # ============================================================================
 # 5. CONFIGURACIÓN DE PROMPTS

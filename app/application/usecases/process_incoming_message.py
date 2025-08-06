@@ -2,7 +2,7 @@
 Caso de uso para procesar mensajes entrantes de WhatsApp.
 """
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from app.domain.entities.message import IncomingMessage, OutgoingMessage, MessageType
 from app.infrastructure.twilio.client import TwilioWhatsAppClient
@@ -27,15 +27,15 @@ class ProcessIncomingMessageUseCase:
         self, 
         twilio_client: TwilioWhatsAppClient, 
         memory_use_case: ManageUserMemoryUseCase,
-        intelligent_response_use_case: GenerateIntelligentResponseUseCase = None,
-        privacy_flow_use_case: PrivacyFlowUseCase = None,
-        tool_activation_use_case: ToolActivationUseCase = None,
-        course_announcement_use_case: CourseAnnouncementUseCase = None,
-        detect_ad_hashtags_use_case: DetectAdHashtagsUseCase = None,
-        process_ad_flow_use_case: ProcessAdFlowUseCase = None,
-        welcome_flow_use_case: WelcomeFlowUseCase = None,
-        advisor_referral_use_case: AdvisorReferralUseCase = None,
-        faq_flow_use_case: FAQFlowUseCase = None
+        intelligent_response_use_case: Optional[GenerateIntelligentResponseUseCase] = None,
+        privacy_flow_use_case: Optional[PrivacyFlowUseCase] = None,
+        tool_activation_use_case: Optional[ToolActivationUseCase] = None,
+        course_announcement_use_case: Optional[CourseAnnouncementUseCase] = None,
+        detect_ad_hashtags_use_case: Optional[DetectAdHashtagsUseCase] = None,
+        process_ad_flow_use_case: Optional[ProcessAdFlowUseCase] = None,
+        welcome_flow_use_case: Optional[WelcomeFlowUseCase] = None,
+        advisor_referral_use_case: Optional[AdvisorReferralUseCase] = None,
+        faq_flow_use_case: Optional[FAQFlowUseCase] = None
     ):
         """
         Inicializa el caso de uso.
@@ -330,53 +330,53 @@ class ProcessIncomingMessageUseCase:
                 except Exception as e:
                     logger.error(f"❌ Error procesando flujo de bienvenida: {e}")
                     # Continuar con procesamiento normal
-            
+           
             # PRIORIDAD 1.8: Verificar si el usuario solicita contacto con un asesor
-            if self.advisor_referral_use_case:
-                try:
-                    user_memory = self.memory_use_case.get_user_memory(user_id)
+            # if self.advisor_referral_use_case:
+            #     try:
+            #         user_memory = self.memory_use_case.get_user_memory(user_id)
                     
-                    advisor_result = await self.advisor_referral_use_case.handle_advisor_request(
-                        incoming_message, user_memory
-                    )
+            #         advisor_result = await self.advisor_referral_use_case.handle_advisor_request(
+            #             incoming_message, user_memory
+            #         )
                     
-                    if advisor_result.should_refer:
-                        logger.info(f"👨‍💼 Referencia al asesor activada para {user_id} - Tipo: {advisor_result.referral_type}, Urgencia: {advisor_result.urgency_level}")
+            #         if advisor_result.should_refer:
+            #             logger.info(f"👨‍💼 Referencia al asesor activada para {user_id} - Tipo: {advisor_result.referral_type}, Urgencia: {advisor_result.urgency_level}")
                         
-                        # Enviar mensaje de referencia al asesor
-                        outgoing_message = OutgoingMessage(
-                            to_number=incoming_message.from_number,
-                            body=advisor_result.referral_message,
-                            message_type=MessageType.TEXT
-                        )
+            #             # Enviar mensaje de referencia al asesor
+            #             outgoing_message = OutgoingMessage(
+            #                 to_number=incoming_message.from_number,
+            #                 body=advisor_result.referral_message,
+            #                 message_type=MessageType.TEXT
+            #             )
                         
-                        response_sid = await self.twilio_client.send_message(outgoing_message)
+            #             response_sid = await self.twilio_client.send_message(outgoing_message)
                         
-                        # Guardar memoria actualizada usando el memory_manager
-                        self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
+            #             # Guardar memoria actualizada usando el memory_manager
+            #             self.memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
                         
-                        logger.info(f"✅ Referencia al asesor enviada para {user_id}")
+            #             logger.info(f"✅ Referencia al asesor enviada para {user_id}")
                         
-                        return {
-                            'success': True,
-                            'processed': True,
-                            'incoming_message': {
-                                'from': incoming_message.from_number,
-                                'body': incoming_message.body,
-                                'message_sid': incoming_message.message_sid
-                            },
-                            'response_sent': True,
-                            'response_sid': response_sid,
-                            'response_text': advisor_result.referral_message,
-                            'processing_type': 'advisor_referral',
-                            'referral_type': advisor_result.referral_type,
-                            'urgency_level': advisor_result.urgency_level,
-                            'advisor_contact_provided': True
-                        }
+            #             return {
+            #                 'success': True,
+            #                 'processed': True,
+            #                 'incoming_message': {
+            #                     'from': incoming_message.from_number,
+            #                     'body': incoming_message.body,
+            #                     'message_sid': incoming_message.message_sid
+            #                 },
+            #                 'response_sent': True,
+            #                 'response_sid': response_sid,
+            #                 'response_text': advisor_result.referral_message,
+            #                 'processing_type': 'advisor_referral',
+            #                 'referral_type': advisor_result.referral_type,
+            #                 'urgency_level': advisor_result.urgency_level,
+            #                 'advisor_contact_provided': True
+            #             }
                     
-                except Exception as e:
-                    logger.error(f"❌ Error procesando referencia al asesor: {e}")
-                    # Continuar con procesamiento normal como fallback
+            #     except Exception as e:
+            #         logger.error(f"❌ Error procesando referencia al asesor: {e}")
+            #         # Continuar con procesamiento normal como fallback
             
             # PRIORIDAD 2: Usar respuesta inteligente si está disponible
             if self.intelligent_response_use_case:
@@ -438,40 +438,40 @@ class ProcessIncomingMessageUseCase:
                     # Continuar con respuesta básica si falla la inteligente
             
             # FALLBACK INTELIGENTE: Verificar si es una FAQ (en caso de que el agente inteligente haya fallado)
-            if self.faq_flow_use_case:
-                try:
-                    user_memory = self.memory_use_case.get_user_memory(user_id)
+            # if self.faq_flow_use_case:
+            #     try:
+            #         user_memory = self.memory_use_case.get_user_memory(user_id)
                     
-                    # Verificar si el mensaje indica intención de FAQ como fallback
-                    if await self.faq_flow_use_case.detect_faq_intent(incoming_message.body):
-                        logger.info(f"❓ FAQ FALLBACK activado para usuario {user_id}")
+            #         # Verificar si el mensaje indica intención de FAQ como fallback
+            #         if await self.faq_flow_use_case.detect_faq_intent(incoming_message.body):
+            #             logger.info(f"❓ FAQ FALLBACK activado para usuario {user_id}")
                         
-                        faq_result = await self.faq_flow_use_case.execute(
-                            webhook_data, 
-                            {'id': user_id, 'first_name': getattr(user_memory, 'name', 'Usuario') if user_memory else 'Usuario'}
-                        )
+            #             faq_result = await self.faq_flow_use_case.execute(
+            #                 webhook_data, 
+            #                 {'id': user_id, 'first_name': getattr(user_memory, 'name', 'Usuario') if user_memory else 'Usuario'}
+            #             )
                         
-                        if faq_result['success'] and faq_result.get('is_faq'):
-                            logger.info(f"✅ FAQ fallback procesada para {user_id} - Categoría: {faq_result.get('faq_category')}")
-                            return {
-                                'success': True,
-                                'processed': True,
-                                'incoming_message': {
-                                    'from': incoming_message.from_number,
-                                    'body': incoming_message.body,
-                                    'message_sid': incoming_message.message_sid
-                                },
-                                'response_sent': True,
-                                'response_sid': None,  # FAQ flow sends message internally
-                                'response_text': faq_result.get('response_text', ''),
-                                'processing_type': 'faq_flow_fallback',
-                                'faq_category': faq_result.get('faq_category'),
-                                'escalation_needed': faq_result.get('escalation_needed', False)
-                            }
+            #             if faq_result['success'] and faq_result.get('is_faq'):
+            #                 logger.info(f"✅ FAQ fallback procesada para {user_id} - Categoría: {faq_result.get('faq_category')}")
+            #                 return {
+            #                     'success': True,
+            #                     'processed': True,
+            #                     'incoming_message': {
+            #                         'from': incoming_message.from_number,
+            #                         'body': incoming_message.body,
+            #                         'message_sid': incoming_message.message_sid
+            #                     },
+            #                     'response_sent': True,
+            #                     'response_sid': None,  # FAQ flow sends message internally
+            #                     'response_text': faq_result.get('response_text', ''),
+            #                     'processing_type': 'faq_flow_fallback',
+            #                     'faq_category': faq_result.get('faq_category'),
+            #                     'escalation_needed': faq_result.get('escalation_needed', False)
+            #                 }
                     
-                except Exception as e:
-                    logger.error(f"❌ Error procesando FAQ fallback: {e}")
-                    # Continuar con fallback básico
+            #     except Exception as e:
+            #         logger.error(f"❌ Error procesando FAQ fallback: {e}")
+            #         # Continuar con fallback básico
             
             # Fallback: Procesamiento básico con memoria
             try:

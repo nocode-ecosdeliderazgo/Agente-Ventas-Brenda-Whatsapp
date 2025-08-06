@@ -92,11 +92,6 @@ async def startup_event():
     memory_use_case = ManageUserMemoryUseCase(memory_manager)
     debug_print("✅ Sistema de memoria inicializado correctamente", "startup", "webhook.py")
 
-    # Inicializar flujo de privacidad
-    debug_print("🔐 Inicializando flujo de privacidad...", "startup", "webhook.py")
-    privacy_flow_use_case = PrivacyFlowUseCase(memory_use_case, twilio_client)
-    debug_print("✅ Flujo de privacidad inicializado correctamente", "startup", "webhook.py")
-
     # Inicializar sistema con OpenAI (sin PostgreSQL por ahora)
     try:
         debug_print("🤖 Inicializando cliente OpenAI...", "startup", "webhook.py")
@@ -148,6 +143,7 @@ async def startup_event():
                 intent_analyzer, 
                 twilio_client, 
                 openai_client, 
+                memory_use_case, # Añadido
                 db_client,
                 course_repository,
                 course_query_use_case
@@ -174,6 +170,11 @@ async def startup_event():
             twilio_client
         )
         debug_print("✅ Sistema de anuncios de cursos inicializado correctamente", "startup", "webhook.py")
+
+        # Inicializar flujo de privacidad AHORA que course_announcement_use_case existe
+        debug_print("🔐 Inicializando flujo de privacidad...", "startup", "webhook.py")
+        privacy_flow_use_case = PrivacyFlowUseCase(memory_use_case, twilio_client, course_announcement_use_case)
+        debug_print("✅ Flujo de privacidad inicializado correctamente", "startup", "webhook.py")
         
         # Inicializar sistema de flujo de anuncios
         debug_print("📢 Inicializando sistema de flujo de anuncios...", "startup", "webhook.py")
@@ -190,7 +191,7 @@ async def startup_event():
         debug_print("🎯 Inicializando flujo de bienvenida genérico...", "startup", "webhook.py")
         try:
             welcome_flow_use_case = WelcomeFlowUseCase(
-                privacy_flow_use_case, course_query_use_case, memory_use_case, twilio_client
+                privacy_flow_use_case, course_query_use_case, memory_use_case, twilio_client, course_announcement_use_case
             )
             debug_print("✅ Flujo de bienvenida genérico inicializado correctamente", "startup", "webhook.py")
         except Exception as e:
@@ -254,7 +255,7 @@ async def startup_event():
         
         # Crear flujo de bienvenida básico
         welcome_flow_use_case = WelcomeFlowUseCase(
-            privacy_flow_use_case, course_query_use_case, memory_use_case, twilio_client
+            privacy_flow_use_case, course_query_use_case, memory_use_case, twilio_client, course_announcement_use_case
         )
         
         # Crear sistema de referencia a asesores básico

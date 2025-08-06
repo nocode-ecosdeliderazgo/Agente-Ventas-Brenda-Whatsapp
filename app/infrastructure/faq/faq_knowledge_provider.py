@@ -119,117 +119,112 @@ INFORMACIÓN ADICIONAL DE PRECIOS:
 """,
             
             'duración': f"""
-INFORMACIÓN ADICIONAL DE DURACIÓN:
-- Estructura: 4 sesiones en vivo con práctica guiada inmediata
-- Contenido principal: 12 horas + 8 horas ejercicios + 4 horas casos
-- Proyecto real: Entregable práctico para tu organización
-- Tiempo total: 8 semanas (2-3 horas/semana)
-- Flexibilidad: Grabaciones disponibles + acceso 12 meses
-- Para {user_role}: Aplicación inmediata en tu contexto profesional
+📅 **DURACIÓN DEL CURSO:**
+• 4 sesiones en vivo + práctica guiada
+• 12 horas contenido + 8 horas ejercicios
+• 8 semanas (2-3 horas/semana)
+• Grabaciones + acceso por 12 meses
+• Para {user_role}: Aplicación inmediata
 """,
             
             'implementación': f"""
-INFORMACIÓN ADICIONAL DE IMPLEMENTACIÓN:
-- Proceso en 5 fases: Evaluación → Configuración → Entrenamiento → Piloto → Despliegue
-- Tiempo total: 6 semanas típicamente
-- Para industria {industry}: Casos específicos disponibles
-- Empresa {company_size}: Proceso adaptado a tu estructura
-- IMPORTANTE: Esta pregunta requiere consultoría especializada
+🚀 **IMPLEMENTACIÓN:**
+• 5 fases: Evaluación → Configuración → Entrenamiento → Piloto → Despliegue
+• Tiempo total: 6 semanas
+• Para {industry}: Casos específicos disponibles
+• Empresa {company_size}: Proceso adaptado
+• 📞 Consultoría especializada requerida
 """,
             
             'requisitos': f"""
-INFORMACIÓN ADICIONAL DE REQUISITOS:
-- Tecnológicos: Computadora + Internet
-- Conocimientos: Básicos de computación + gestión de equipos
-- NO necesitas: Programación ni experiencia previa en IA
-- DIRIGIDO A: Ejecutivos y managers (optimizar procesos), Emprendedores y consultores (escalar servicios), Equipos PYMES (automatización inteligente)
-- NECESIDADES: Potenciar decisiones con IA, reducir tareas manuales, generar insights rápidos
-- Para {user_role}: Perfil ideal para liderazgo en transformación digital
+✅ **REQUISITOS:**
+• Computadora + Internet
+• Conocimientos básicos de computación
+• NO necesitas programación ni experiencia en IA
+• Dirigido a: Ejecutivos, managers, emprendedores, PyMEs
+• Para {user_role}: Perfil ideal para transformación digital
 """,
             
             'casos_éxito': f"""
-CASOS DE ÉXITO DESTACADOS:
-- Tecnológica (200 empleados): 50% reducción tiempo desarrollo, $150K ahorro anual
-- Hospital (500 empleados): 30% mejora atención paciente, 45% menos errores
-- Manufactura (150 empleados): 60% mejora eficiencia, 25% reducción costos
-- Para industria {industry}: Casos específicos disponibles
+🏆 **CASOS DE ÉXITO:**
+• Tecnológica: 50% ↓ tiempo desarrollo, $150K ahorro
+• Hospital: 30% ↑ atención paciente, 45% ↓ errores  
+• Manufactura: 60% ↑ eficiencia, 25% ↓ costos
+• Para {industry}: Casos específicos disponibles
 """,
             
             'roi': f"""
-INFORMACIÓN DETALLADA DE ROI:
-- ROI promedio: 300-500% en primeros 6 meses
-- Ahorros típicos: Tiempo, productividad, costos operativos
-- Para {user_role}: Impacto directo en resultados empresariales
-- Empresa {company_size}: ROI escalable según tamaño
-- IMPORTANTE: Cálculo personalizado disponible con especialista
+💰 **ROI ESPERADO:**
+• 300-500% en primeros 6 meses
+• Ahorros: Tiempo, productividad, costos
+• Para {user_role}: Impacto directo en resultados
+• Empresa {company_size}: ROI escalable
+• 📊 Cálculo personalizado disponible
 """,
             
             'certificado': f"""
-INFORMACIÓN DEL CERTIFICADO:
-- Certificado digital "Experto en IA para Profesionales" con código único
-- Examen práctico: proyecto integrador + casos (90 minutos)
-- Requisitos: 75% asistencia + 70% calificación mínima  
-- Preparación: Plantillas IMPULSO, Custom GPTs, workflows diarios
-- Reconocido por empresas y válido para CV/LinkedIn
-- Para {user_role}: Credencial de liderazgo en transformación digital
+🎓 **CERTIFICADO:**
+• "Experto en IA para Profesionales" con código único
+• Examen práctico: proyecto + casos (90 min)
+• Requisitos: 75% asistencia + 70% calificación
+• Reconocido por empresas, válido CV/LinkedIn
+• Para {user_role}: Credencial liderazgo digital
 """,
             
             'soporte': f"""
-INFORMACIÓN DE SOPORTE COMPLETO:
-- 2 sesiones Q&A en vivo para dudas directas
-- Foro privado para networking con otros participantes
-- Agente "AplicaAI Helper" disponible 24/7
-- Comunidad exclusiva post-curso
-- Actualizaciones continuas del contenido
-- Para {user_role}: Soporte especializado para líderes
+🤝 **SOPORTE:**
+• 2 sesiones Q&A en vivo
+• Foro privado + networking
+• "AplicaAI Helper" 24/7
+• Comunidad exclusiva post-curso
+• Para {user_role}: Soporte especializado
 """,
             
             'acceso': f"""
-INFORMACIÓN DE ACCESO COMPLETO:
-- Acceso total por 12 meses
-- Grabaciones de las 4 sesiones disponibles inmediatamente
-- Materiales descargables: manual PDF, plantillas, documentación
-- Foro privado y comunidad exclusiva
-- Todas las actualizaciones incluidas durante el período
-- Acceso desde cualquier dispositivo 24/7
+🔓 **ACCESO:**
+• 12 meses acceso total
+• Grabaciones inmediatas (4 sesiones)
+• Materiales: PDF, plantillas, docs
+• Foro privado + comunidad
+• Actualizaciones incluidas
+• 24/7 desde cualquier dispositivo
 """,
             
             'garantía': f"""
-INFORMACIÓN DE GARANTÍA:
-- Garantía de satisfacción: 30 días
-- Devolución completa sin preguntas
-- Política clara y transparente
-- Para {user_role}: Inversión sin riesgo
+🛡️ **GARANTÍA:**
+• 30 días satisfacción garantizada
+• Devolución completa sin preguntas
+• Para {user_role}: Inversión sin riesgo
 """,
             
             'incluye': f"""
-INFORMACIÓN DETALLADA DE LO QUE INCLUYE:
-- Manual completo en PDF con documentación detallada
-- Plantillas de prompting, Gems y GPTs personalizados
-- Acceso a grabaciones de las 4 sesiones
-- 2 sesiones Q&A en vivo para resolver dudas
-- Foro privado para networking y dudas
-- Para {user_role}: Recursos específicos para tu nivel de liderazgo
-- Empresa {company_size}: Plantillas adaptadas a tu estructura organizacional
+📦 **INCLUYE:**
+• Manual PDF completo
+• Plantillas prompting + GPTs personalizados
+• Grabaciones 4 sesiones
+• 2 sesiones Q&A en vivo
+• Foro privado + networking
+• Para {user_role}: Recursos específicos
+• Empresa {company_size}: Plantillas adaptadas
 """,
             
             'ventajas': f"""
-VENTAJAS ÚNICAS DEL PROGRAMA:
-- Práctica guiada en vivo: Cada concepto se aplica inmediatamente
-- Recursos premium: Plantillas diseñadas específicamente para productividad
-- Soporte post-curso: Agente "AplicaAI Helper" 24/7 + foro exclusivo
-- Proyecto real: Entregable práctico para tu organización
-- Para {user_role}: Aplicación directa en tu contexto profesional
-- Industria {industry}: Casos específicos de tu sector
+⭐ **VENTAJAS ÚNICAS:**
+• Práctica guiada en vivo
+• Recursos premium para productividad
+• Soporte post-curso 24/7 + foro exclusivo
+• Proyecto real para tu organización
+• Para {user_role}: Aplicación directa
+• Industria {industry}: Casos específicos
 """,
             
             'examen': f"""
-INFORMACIÓN DETALLADA DEL EXAMEN:
-- Formato: 100% práctico (proyecto integrador + casos, 90 minutos)
-- Tipo de preguntas: Escenarios reales, diseño de prompts, análisis
-- Preparación recomendada: Plantillas IMPULSO, Custom GPTs, workflows
-- Para {user_role}: Evaluación práctica de aplicación profesional
-- Objetivo: Demostrar capacidad real de implementar IA
+📋 **EXAMEN:**
+• 100% práctico (proyecto + casos, 90 min)
+• Escenarios reales + diseño de prompts
+• Preparación: Plantillas IMPULSO + Custom GPTs
+• Para {user_role}: Evaluación aplicación profesional
+• Objetivo: Demostrar capacidad real IA
 """
         }
         
