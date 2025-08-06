@@ -67,7 +67,6 @@ class GenerateIntelligentResponseUseCase:
         self.intent_analyzer = intent_analyzer
         self.twilio_client = twilio_client
         self.openai_client = openai_client
-        self.course_repository = course_repository
         self.course_query_use_case = course_query_use_case
         self.course_system_available = course_query_use_case is not None
         
@@ -163,26 +162,6 @@ class GenerateIntelligentResponseUseCase:
             
             if send_result['success']:
                 debug_print(f"✅ MENSAJE ENVIADO EXITOSAMENTE!\n🔗 SID: {send_result.get('message_sid', 'N/A')}", "execute", "generate_intelligent_response.py")
-                
-                # 🆕 IMPORTANTE: Marcar que se enviaron los datos bancarios DESPUÉS del envío exitoso
-                try:
-                    intent_analysis = analysis_result.get('intent_analysis', {})
-                    if (self.purchase_bonus_use_case.should_activate_purchase_bonus(intent_analysis, user_id) and
-                        'Cuenta CLABE' in response_text):
-                        debug_print("🏦 Mensaje contiene datos bancarios - Marcando purchase_bonus_sent", "execute", "generate_intelligent_response.py")
-                        
-                        # Configurar memory_use_case temporalmente
-                        from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
-                        from memory.lead_memory import MemoryManager
-                        memory_manager = MemoryManager()
-                        memory_use_case = ManageUserMemoryUseCase(memory_manager)
-                        self.purchase_bonus_use_case.memory_use_case = memory_use_case
-                        
-                        await self.purchase_bonus_use_case.mark_purchase_data_sent(user_id)
-                        debug_print("✅ purchase_bonus_sent marcado exitosamente", "execute", "generate_intelligent_response.py")
-                except Exception as e:
-                    debug_print(f"❌ Error marcando purchase_bonus_sent: {e}", "execute", "generate_intelligent_response.py")
-                    self.logger.error(f"Error marcando purchase_bonus_sent: {e}")
             else:
                 debug_print(f"❌ ERROR ENVIANDO MENSAJE: {send_result.get('error', 'Error desconocido')}", "execute", "generate_intelligent_response.py")
             
@@ -273,13 +252,8 @@ class GenerateIntelligentResponseUseCase:
                 debug_print("✅ Respuesta FAQ inteligente generada", "_generate_contextual_response")
                 return faq_response
             
-            # 🏦 PRIORIDAD 2: Verificar intenciones post-compra (confirmación, pago realizado, comprobante)
-            if self.purchase_bonus_use_case.is_post_purchase_intent(intent_analysis):
-                debug_print(f"🏦 Intención post-compra detectada: {category}", "_generate_contextual_response")
-                return await self._handle_post_purchase_intent(category, user_memory, user_id)
-            
-            # 🎁 PRIORIDAD 3: Verificar intención de compra para activar bonos workbook
-            if self.purchase_bonus_use_case.should_activate_purchase_bonus(intent_analysis, user_id):
+            # 🎁 PRIORIDAD 2: Verificar intención de compra para activar bonos workbook
+            if self.purchase_bonus_use_case.should_activate_purchase_bonus(intent_analysis):
                 debug_print("🎁 Intención de compra detectada - Activando bonos workbook", "_generate_contextual_response")
                 
                 # Configurar memory_use_case temporalmente
@@ -326,7 +300,28 @@ class GenerateIntelligentResponseUseCase:
                 
                 if inquiry_type:
                     debug_print(f"🎯 Usando respuesta concisa para consulta específica: {inquiry_type} (categoría: {category})", "_generate_contextual_response")
-                    return await self._get_concise_specific_response(inquiry_type, user_name, user_role, user_memory, incoming_message.body)
+                    return await self._get_concise_specific_response(inquiry_type, user_name, user_role, user_memory)
+            
+            # 🆕 MANEJO ESPECIAL: Escalación gradual para mensajes fuera de contexto
+            off_topic_categories = ['OFF_TOPIC_CASUAL', 'OFF_TOPIC_PERSONAL', 'OFF_TOPIC_UNRELATED']
+            if category in off_topic_categories:
+                user_name = user_memory.name if user_memory and user_memory.name != "Usuario" else ""
+                
+                # Verificar historial de intentos fuera de contexto
+                escalation_level = self._determine_off_topic_escalation_level(user_memory)
+                
+                if escalation_level >= 3:
+                    # Usar respuesta predeterminada para intentos repetidos
+                    debug_print(f"🚫 Escalación nivel {escalation_level}: usando respuesta predeterminada", "_generate_contextual_response")
+                    return self._get_off_topic_repeated_response(user_name)
+                elif escalation_level == 2:
+                    # Respuesta más firme pero aún con algo de humor
+                    debug_print(f"⚠️ Escalación nivel {escalation_level}: respuesta firme con redirección", "_generate_contextual_response")
+                    return self._get_off_topic_firm_redirect(user_name)
+                else:
+                    # Primera vez o pocas veces: humor ligero
+                    debug_print(f"😊 Escalación nivel {escalation_level}: respuesta con humor", "_generate_contextual_response")
+                    return self._get_off_topic_casual_response(user_name, incoming_message.body, user_memory)
             
             # Fallback para PRICE_INQUIRY que no sea específica
             if category == 'PRICE_INQUIRY':
@@ -2000,7 +1995,7 @@ Mientras tanto, te comento que es una inversión única que incluye:
             months_to_break_even = max(1, round(price_numeric / estimated_monthly_savings, 1))
             return f"**💡 Inversión inteligente:** Recuperas el costo en {months_to_break_even} {'mes' if months_to_break_even == 1 else 'meses'} con automatización de procesos"
     
-    async def _get_concise_specific_response(self, inquiry_type: str, user_name: str, user_role: str, user_memory, message_text: str = "") -> str:
+    async def _get_concise_specific_response(self, inquiry_type: str, user_name: str, user_role: str, user_memory) -> str:
         """
         Genera respuestas concisas para consultas específicas (precio, sesiones, duración, etc.).
         Solo muestra: título del curso + información específica + pregunta final.
@@ -2018,17 +2013,6 @@ Mientras tanto, te comento que es una inversión única que incluye:
 ¿Te gustaría conocer más detalles del curso?"""
             
             elif inquiry_type == 'sessions':
-                # Verificar si la pregunta es realmente sobre instructores
-                instructor_keywords = ['instructor', 'instructores', 'profesor', 'profesores', 'enseñar', 'quien', 'quién']
-                if any(keyword in message_text.lower() for keyword in instructor_keywords):
-                    # Redirigir a descripción detallada sobre instructores
-                    level = self._determine_description_level(message_text)
-                    course_description = await self.course_repository.get_course_description('EXPERTO_IA_GPT_GEMINI', level)
-                    
-                    if course_description:
-                        return course_description
-                
-                # Respuesta normal sobre sesiones
                 session_count = course_data['session_count']
                 duration_formatted = course_data['total_duration_formatted']
                 return f"""🎓 **{course_name}**
@@ -2193,35 +2177,6 @@ Mientras tanto, te comento que es una inversión única que incluye:
             return 'affirmative_detailed'
         
         return None
-    
-    def _determine_description_level(self, message_text: str) -> str:
-        """
-        Determina si usar descripción 'short' o 'long' basado en las palabras clave del mensaje.
-        
-        Args:
-            message_text: Texto del mensaje del usuario
-            
-        Returns:
-            'short' para preguntas genéricas, 'long' para solicitudes detalladas
-        """
-        message_lower = message_text.lower()
-        
-        # Palabras clave que indican necesidad de descripción detallada/larga
-        detailed_keywords = [
-            'temario detallado', 'temario a detalle', 'programa completo', 'programa detallado',
-            'beneficios completos', 'contenido completo', 'información completa',
-            'detalle', 'detalles', 'completo', 'todo sobre', 'todo acerca', 'todo el contenido',
-            'módulos', 'sesiones completas', 'cronograma',
-            'instructor', 'instructores', 'profesor', 'profesores', 'quien enseña', 'quién enseña', 'enseñar',
-            'certificación', 'material incluido', 'recursos incluidos'
-        ]
-        
-        # Si el mensaje contiene palabras clave de detalle, usar descripción larga
-        if any(keyword in message_lower for keyword in detailed_keywords):
-            return 'long'
-        
-        # Por defecto, usar descripción corta para preguntas genéricas
-        return 'short'
     
     def _should_use_concise_response(self, category: str, message_body: str) -> bool:
         """
@@ -2524,138 +2479,305 @@ Respuesta personalizada y útil usando contexto."""
         except Exception as e:
             debug_print(f"❌ Error actualizando memoria con comportamiento ofensivo: {e}", "_update_user_memory_with_offensive_behavior")
     
-    async def _handle_post_purchase_intent(
-        self,
-        category: str,
-        user_memory,
-        user_id: str
-    ) -> str:
+    def _get_off_topic_casual_response(self, user_name: str, message_body: str, user_memory) -> str:
         """
-        Maneja intenciones post-compra (confirmación de pago, pago realizado, comprobante).
+        Maneja mensajes casuales fuera de contexto con redirección amable y humor.
         
         Args:
-            category: Categoría de intención post-compra
-            user_memory: Memoria del usuario
-            user_id: ID del usuario
+            user_name: Nombre del usuario
+            message_body: Contenido del mensaje fuera de contexto
+            user_memory: Memoria del usuario para tracking
             
         Returns:
-            Mensaje apropiado de contacto con asesor con bonos activos
+            Respuesta con humor sutil redirigiendo al tema principal
         """
         try:
-            debug_print(f"🏦 Manejando intención post-compra: {category}", "_handle_post_purchase_intent")
+            # Importar templates después de asegurar que están disponibles
+            from prompts.agent_prompts import BusinessPromptTemplates
             
-            user_name = getattr(user_memory, 'name', '') if user_memory else ''
+            # Trackear mensaje fuera de contexto en memoria
+            if user_memory:
+                self._track_off_topic_attempt(user_memory, 'casual')
             
-            # Importar templates y tool_db
-            from prompts.agent_prompts import WhatsAppBusinessTemplates
-            from app.infrastructure.tools.tool_db import get_tool_db
+            # Usar template con humor para redirección
+            response = BusinessPromptTemplates.off_topic_casual_redirect(
+                name=user_name,
+                topic_mentioned=message_body[:50] + "..." if len(message_body) > 50 else message_body
+            )
             
-            # Actualizar memoria del usuario con la acción post-compra
-            await self._update_user_memory_with_post_purchase_action(user_id, user_memory, category)
-            
-            # Obtener bonos activos
-            tool_db = await get_tool_db()
-            bonuses = await tool_db.get_active_bonuses()
-            
-            # Construir bloque de bonos
-            if bonuses:
-                bonus_lines = "\n".join(f"• {b['content']} 👉 {b['bond_url']}" for b in bonuses)
-            else:
-                bonus_lines = "• (No hay bonos activos en este momento)"
-            
-            # Seleccionar template apropiado según la categoría y formatear con bonos
-            if category == 'PAYMENT_CONFIRMATION':
-                debug_print("✅ Confirmación de pago - Enviando mensaje de asesor con bonos", "_handle_post_purchase_intent")
-                response_template = WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
-                return response_template.format(bonuses_block=bonus_lines)
-            
-            elif category == 'PAYMENT_COMPLETED':
-                debug_print("✅ Pago completado - Enviando mensaje de verificación y asesor con bonos", "_handle_post_purchase_intent")
-                response_template = WhatsAppBusinessTemplates.payment_completed_advisor_contact(user_name)
-                return response_template.format(bonuses_block=bonus_lines)
-            
-            elif category == 'COMPROBANTE_UPLOAD':
-                debug_print("✅ Comprobante recibido - Enviando mensaje de procesamiento con bonos", "_handle_post_purchase_intent")
-                response_template = WhatsAppBusinessTemplates.comprobante_received_advisor_contact(user_name)
-                return response_template.format(bonuses_block=bonus_lines)
-            
-            else:
-                # Fallback genérico para cualquier post-purchase
-                debug_print("⚠️ Categoría post-compra no reconocida, usando fallback con bonos", "_handle_post_purchase_intent")
-                response_template = WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
-                return response_template.format(bonuses_block=bonus_lines)
+            self.logger.info(f"✅ Respuesta casual fuera de contexto enviada para: {user_name}")
+            return response
             
         except Exception as e:
-            debug_print(f"❌ Error manejando intención post-compra: {e}", "_handle_post_purchase_intent")
-            # Fallback seguro
-            from prompts.agent_prompts import WhatsAppBusinessTemplates
-            response_template = WhatsAppBusinessTemplates.payment_confirmation_advisor_contact(user_name)
-            return response_template.format(bonuses_block="• (No hay bonos activos en este momento)")
+            self.logger.error(f"Error generando respuesta casual fuera de contexto: {e}")
+            # Fallback directo
+            name_greeting = f"{user_name}, " if user_name else ""
+            return f"""{name_greeting}😊 Mi especialidad es la IA empresarial, no esas consultas generales.
+
+¿Te gustaría que exploremos cómo la IA puede ayudar específicamente a tu empresa? Puedo contarte sobre nuestros cursos especializados para líderes PyME. 🚀"""
     
-    async def _update_user_memory_with_post_purchase_action(
-        self,
-        user_id: str,
-        user_memory,
-        category: str
-    ) -> None:
+    def _get_off_topic_repeated_response(self, user_name: str) -> str:
         """
-        Actualiza la memoria del usuario con acciones post-compra.
+        Maneja intentos repetidos de desviar la conversación con mensaje predeterminado.
         
         Args:
-            user_id: ID del usuario
-            user_memory: Memoria actual del usuario  
-            category: Categoría de la acción post-compra
+            user_name: Nombre del usuario
+            
+        Returns:
+            Respuesta predeterminada firme pero cortés
         """
         try:
-            from app.application.usecases.manage_user_memory import ManageUserMemoryUseCase
-            from memory.lead_memory import MemoryManager
-            from datetime import datetime
+            # Importar templates después de asegurar que están disponibles
+            from prompts.agent_prompts import BusinessPromptTemplates
             
-            memory_manager = MemoryManager()
-            memory_use_case = ManageUserMemoryUseCase(memory_manager)
+            # Usar template predeterminado para intentos repetidos
+            response = BusinessPromptTemplates.off_topic_repeated_predefined(name=user_name)
             
-            if user_memory:
-                # Actualizar stage a post-purchase
-                user_memory.stage = 'post_purchase'
-                
-                # Incrementar lead score por acción post-compra
-                if hasattr(user_memory, 'lead_score'):
-                    if category == 'PAYMENT_CONFIRMATION':
-                        user_memory.lead_score += 10  # Confirmó que pagará
-                    elif category == 'PAYMENT_COMPLETED':
-                        user_memory.lead_score += 20  # Confirmó que ya pagó
-                    elif category == 'COMPROBANTE_UPLOAD':
-                        user_memory.lead_score += 25  # Envió comprobante
-                
-                # Agregar señal de comportamiento post-compra
-                if hasattr(user_memory, 'buying_signals'):
-                    action_descriptions = {
-                        'PAYMENT_CONFIRMATION': 'Confirmó que procederá con el pago',
-                        'PAYMENT_COMPLETED': 'Indicó que realizó el pago',
-                        'COMPROBANTE_UPLOAD': 'Mencionó envío de comprobante'
-                    }
-                    signal = action_descriptions.get(category, f'Acción post-compra: {category}')
-                    
-                    if signal not in user_memory.buying_signals:
-                        user_memory.buying_signals.append(signal)
-                
-                # Agregar al historial de mensajes
-                if hasattr(user_memory, 'message_history'):
-                    if user_memory.message_history is None:
-                        user_memory.message_history = []
-                    
-                    user_memory.message_history.append({
-                        'timestamp': datetime.now().isoformat(),
-                        'action': f'post_purchase_{category.lower()}',
-                        'category': category,
-                        'description': f'Usuario ejecutó acción post-compra: {category}',
-                        'advisor_contact_scheduled': True
-                    })
-                
-                # Guardar memoria actualizada
-                memory_use_case.memory_manager.save_lead_memory(user_id, user_memory)
-                
-            debug_print(f"✅ Memoria actualizada con acción post-compra {category} para usuario {user_id}", "_update_user_memory_with_post_purchase_action")
+            self.logger.info(f"✅ Respuesta predeterminada para intentos repetidos enviada para: {user_name}")
+            return response
             
         except Exception as e:
-            debug_print(f"❌ Error actualizando memoria con acción post-compra: {e}", "_update_user_memory_with_post_purchase_action")
+            self.logger.error(f"Error generando respuesta para intentos repetidos: {e}")
+            # Fallback directo
+            name_greeting = f"{user_name}, " if user_name else ""
+            return f"""{name_greeting}Noto que estás preguntando sobre temas fuera de mi área de especialidad. 
+
+Mi función principal no es responder ese tipo de preguntas, pero estaré encantada de continuar ofreciendo información sobre nuestros cursos de IA para empresas.
+
+🎓 **¿Te interesa conocer cómo podemos ayudarte a:**
+• Automatizar procesos empresariales
+• Optimizar toma de decisiones con IA  
+• Capacitar a tu equipo en herramientas de IA
+• Implementar soluciones prácticas sin equipo técnico
+
+¿Por cuál empezamos? 🚀"""
+    
+    def _get_offensive_message_response(self, user_name: str) -> str:
+        """
+        Maneja mensajes ofensivos con respuesta firme pero profesional.
+        
+        Args:
+            user_name: Nombre del usuario
+            
+        Returns:
+            Respuesta firme estableciendo límites profesionales
+        """
+        try:
+            # Importar templates después de asegurar que están disponibles
+            from prompts.agent_prompts import BusinessPromptTemplates
+            
+            # Usar template firme para mensajes ofensivos
+            response = BusinessPromptTemplates.offensive_message_firm_response(name=user_name)
+            
+            self.logger.info(f"✅ Respuesta firme para mensaje ofensivo enviada para: {user_name}")
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error generando respuesta para mensaje ofensivo: {e}")
+            # Fallback directo
+            name_greeting = f"{user_name}, " if user_name else ""
+            return f"""{name_greeting}Ese tipo de comportamiento no es adecuado en nuestra conversación profesional.
+
+Mantengo un ambiente de respeto mutuo y mi función es únicamente proveer información relevante sobre nuestros cursos de IA empresarial.
+
+Si estás interesado en conocer nuestras soluciones de IA para PyMEs, estaré disponible para ayudarte de manera profesional. 
+
+¿Te gustaría que continuemos con información sobre los cursos? 🎓"""
+    
+    def _track_off_topic_attempt(self, user_memory, attempt_type: str) -> None:
+        """
+        Rastrea intentos de mensajes fuera de contexto en la memoria del usuario.
+        
+        Args:
+            user_memory: Memoria del usuario
+            attempt_type: Tipo de intento (casual, personal, unrelated)
+        """
+        try:
+            if not hasattr(user_memory, 'off_topic_attempts'):
+                user_memory.off_topic_attempts = []
+            
+            user_memory.off_topic_attempts.append({
+                'type': attempt_type,
+                'timestamp': datetime.now().isoformat(),
+                'count': len(user_memory.off_topic_attempts) + 1
+            })
+            
+            # Si hay demasiados intentos, marcar para escalación
+            if len(user_memory.off_topic_attempts) >= 3:
+                if not hasattr(user_memory, 'pain_points'):
+                    user_memory.pain_points = []
+                user_memory.pain_points.append("repeated_off_topic_attempts")
+            
+            debug_print(f"✅ Intento fuera de contexto trackeado: {attempt_type}", "_track_off_topic_attempt")
+            
+        except Exception as e:
+            debug_print(f"❌ Error trackeando intento fuera de contexto: {e}", "_track_off_topic_attempt")
+    
+    def _determine_off_topic_escalation_level(self, user_memory) -> int:
+        """
+        Determina el nivel de escalación basado en el historial de intentos fuera de contexto.
+        
+        Args:
+            user_memory: Memoria del usuario
+            
+        Returns:
+            Nivel de escalación (0: primera vez, 1: pocas veces, 2: firme, 3+: predeterminado)
+        """
+        try:
+            if not user_memory or not hasattr(user_memory, 'off_topic_attempts'):
+                return 0
+            
+            attempts_count = len(user_memory.off_topic_attempts)
+            
+            # Determinar nivel basado en número de intentos
+            if attempts_count == 0:
+                return 0  # Primera vez
+            elif attempts_count == 1:
+                return 1  # Segunda vez - humor ligero
+            elif attempts_count == 2:
+                return 2  # Tercera vez - más firme
+            else:
+                return 3  # Cuarta vez o más - predeterminado
+                
+        except Exception as e:
+            debug_print(f"❌ Error determinando nivel de escalación: {e}", "_determine_off_topic_escalation_level")
+            return 0  # Default: primera vez
+    
+    def _get_off_topic_firm_redirect(self, user_name: str) -> str:
+        """
+        Respuesta más firme para el segundo nivel de escalación.
+        
+        Args:
+            user_name: Nombre del usuario
+            
+        Returns:
+            Respuesta firme pero aún amable redirigiendo al tema
+        """
+        name_greeting = f"{user_name}, " if user_name else ""
+        
+        return f"""{name_greeting}🎯 Noto que sigues preguntando sobre temas que no están relacionados con nuestros cursos de IA empresarial.
+
+Mi especialidad es ayudar a líderes PyME como tú a implementar IA en sus empresas de manera práctica y efectiva.
+
+**¿Te gustaría que enfoquemos la conversación en:**
+• Cómo la IA puede resolver problemas específicos de tu empresa
+• Qué curso se adapta mejor a tu situación actual
+• Casos de éxito en tu industria
+• ROI y beneficios concretos para tu PyME
+
+¿Por dónde empezamos? 🚀"""
+    
+    def _create_loop_break_response(self) -> Dict[str, Any]:
+        """Respuesta específica para romper bucles detectados."""
+        return {
+            'response_sent': True,
+            'response_text': "🤖 Te conectaré con un asesor para ayudarte mejor.\n\n👨‍💼 Enviaré tu consulta a nuestro equipo especializado.",
+            'processing_type': 'loop_break',
+            'escalate_to_advisor': True,
+            'should_stop_processing': True
+        }
+    
+    async def _handle_progressive_content_flow(self, course_data: Dict[str, Any], course_name: str, user_memory) -> str:
+        """
+        Maneja el flujo progresivo de contenido del curso:
+        1ra vez: Contenido básico + pregunta si quiere detalle
+        2da vez: Temario detallado
+        3ra vez: Recursos adicionales
+        """
+        try:
+            # Obtener user_id desde user_memory o usar un ID temporal
+            user_id = getattr(user_memory, 'user_id', 'unknown_user') if user_memory else 'unknown_user'
+            
+            # Verificar estado del flujo de contenido para este usuario
+            if user_id not in self._content_flow_state:
+                self._content_flow_state[user_id] = {
+                    'syllabus_basic_provided': False,
+                    'syllabus_detailed_provided': False
+                }
+            
+            state = self._content_flow_state[user_id]
+            syllabus_basic_provided = state['syllabus_basic_provided']
+            syllabus_detailed_provided = state['syllabus_detailed_provided']
+            
+            session_count = course_data['session_count']
+            
+            if not syllabus_basic_provided:
+                # Primera vez: contenido básico
+                long_description = course_data.get('long_description', '').strip()
+                
+                if long_description:
+                    # Limitar a ~300 caracteres para no exceder límite WhatsApp
+                    if len(long_description) > 300:
+                        long_description = long_description[:300] + "..."
+                    
+                    response = f"""🎓 **{course_name}**
+📚 **Contenido** ({session_count} sesiones):
+
+{long_description}
+
+¿Te gustaría conocer el temario detallado de cada sesión?"""
+                else:
+                    # Fallback si no hay descripción larga
+                    response = f"""🎓 **{course_name}**
+📚 **Contenido**: {session_count} sesiones prácticas de IA aplicada
+
+¿Te gustaría conocer el temario detallado?"""
+                
+                # Marcar como proporcionado en el estado interno
+                self._content_flow_state[user_id]['syllabus_basic_provided'] = True
+                
+                return response
+                
+            elif not syllabus_detailed_provided:
+                # Segunda vez: temario detallado
+                detailed_response = f"""🎓 **{course_name}**
+📋 **Temario Detallado** ({session_count} sesiones):
+
+📚 **Sesión 1: Fundamentos de Prompting Profesional**
+   • Técnicas avanzadas de prompting
+   • Optimización de instrucciones para resultados precisos
+   • Casos de uso empresariales específicos
+
+📚 **Sesión 2: ChatGPT Avanzado para Productividad**
+   • Automatización de tareas repetitivas
+   • Integración con workflows existentes
+   • Análisis y síntesis de información compleja
+
+📚 **Sesión 3: Gemini y Herramientas de Google**
+   • Capacidades multimodales (texto, imagen, código)
+   • Integración con Google Workspace
+   • Análisis avanzado de datos y documentos
+
+📚 **Sesión 4: Implementación y Casos Reales**
+   • Desarrollo de agentes GPT personalizados
+   • Medición de ROI y resultados
+   • Estrategias de adopción empresarial
+
+¿Te interesa alguna sesión en particular o quieres información sobre inscripciones?"""
+                
+                # Marcar como proporcionado en el estado interno
+                self._content_flow_state[user_id]['syllabus_detailed_provided'] = True
+                
+                return detailed_response
+                
+            else:
+                # Tercera vez: recursos adicionales
+                return """📋 Ya te compartí el temario completo del curso.
+
+🎯 **¿Te interesa alguna de estas opciones?**
+
+• 📄 Descargar PDF con información completa
+• 📞 Hablar con un asesor especializado  
+• 💰 Conocer opciones de inscripción y precios
+• 🎁 Ver bonos y materiales incluidos
+
+¿Cuál te interesa más?"""
+                
+        except Exception as e:
+            self.logger.error(f"Error en flujo progresivo de contenido: {e}")
+            # Fallback básico
+            session_count = course_data.get('session_count', 4)
+            return f"""🎓 **{course_name}**
+📚 **Contenido**: {session_count} sesiones prácticas de IA aplicada
+
+¿Te gustaría conocer el temario detallado?"""

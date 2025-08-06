@@ -10,7 +10,6 @@ from app.domain.entities.course import (
     Course, CourseSession, SessionActivity, Bond, ElementUrl,
     CourseInfo, CourseSearchFilters
 )
-from app.config.course_catalog import FALLBACK_COURSES, get_fallback_course_description
 
 logger = logging.getLogger(__name__)
 
@@ -470,50 +469,3 @@ Actividades:""")
         except Exception as e:
             logger.error(f"Error obteniendo estadísticas: {e}")
             return {}
-    
-    async def get_course_description(self, course_code: str, level: str = 'short') -> str:
-        """
-        Obtiene descripción de un curso por su código con fallback hard-codeado.
-        
-        Args:
-            course_code: Código del curso (ej: 'EXPERTO_IA_GPT_GEMINI')
-            level: Nivel de descripción ('short' para preguntas genéricas, 'long' para detalles completos)
-        
-        Returns:
-            Descripción del curso o string vacío si no existe ni en BD ni en fallback
-        """
-        try:
-            # Intentar obtener desde la base de datos
-            query = """
-                SELECT short_description, long_description 
-                FROM ai_courses 
-                WHERE course_code = $1
-            """
-            
-            records = await self.db.execute_query(query, course_code, fetch_mode="one")
-            
-            if records and len(records) > 0:
-                row = records[0]
-                description_field = f'{level}_description'
-                
-                # Verificar que el campo exista y no esté vacío
-                if description_field in row and row[description_field]:
-                    logger.info(f"✅ Descripción de curso {course_code} obtenida desde BD (level: {level})")
-                    return row[description_field]
-                else:
-                    logger.warning(f"⚠️ Campo {description_field} vacío para curso {course_code}, usando fallback")
-            else:
-                logger.warning(f"⚠️ Curso {course_code} no encontrado en BD, usando fallback")
-                
-        except Exception as e:
-            logger.error(f"❌ Error consultando BD para curso {course_code}: {e}, usando fallback")
-        
-        # Usar fallback hard-codeado si la BD falla o no tiene datos
-        fallback_description = get_fallback_course_description(course_code, level)
-        
-        if fallback_description:
-            logger.info(f"📋 Descripción de curso {course_code} obtenida desde fallback (level: {level})")
-            return fallback_description
-        else:
-            logger.error(f"❌ Curso {course_code} no encontrado ni en BD ni en fallback")
-            return ""
