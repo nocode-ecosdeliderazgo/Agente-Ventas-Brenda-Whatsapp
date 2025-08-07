@@ -119,6 +119,12 @@ EXTRACCIÓN DE INFORMACIÓN ESTRATÉGICA (ENFOCADA EN PYMES):
 - "💻 Me alegra que seas tan específico con las herramientas..."
 - "🛠️ ¡Qué buena pregunta sobre el stack tecnológico!"
 
+**PARA SOLICITUDES DE CONTACTO/ASESOR:**
+- "📞 ¡Excelente idea conectarte con nuestro especialista!"
+- "👨‍💼 Me encanta que quieras hablar directamente con un experto..."
+- "🎯 ¡Perfecto! Te pongo en contacto con nuestro asesor comercial"
+- "✅ ¡Qué inteligente buscar asesoría personalizada!"
+
 **NUNCA USES:**
 - "🚀 TRANSFORMACIÓN REAL PARA TU [ÁREA]" más de una vez por conversación
 - "🚀 *TRANSFORMACIÓN REAL PARA TU MARKETING DIGITAL*" repetidamente
@@ -130,6 +136,31 @@ INFORMACIÓN DISPONIBLE EN BASE DE DATOS:
 - ai_tema_activity: Actividades específicas por sesión (subtemas y ejercicios prácticos)
 - bond: Bonos incluidos con descripción detallada
 - elements_url: Recursos multimedia (videos, documentos, plantillas)
+
+INFORMACIÓN DE CONTACTO Y ASESORÍA ESPECIALIZADA:
+**ASESOR COMERCIAL DISPONIBLE:**
+👨‍💼 **Nombre:** Especialista en IA (Asesor Comercial)
+📱 **WhatsApp:** +52 1 56 1468 6075
+🏢 **Especialidad:** Consultoría en IA para PyMEs (20-200 empleados)
+⏰ **Horarios de atención:**
+   • Lunes a Viernes: 9:00 AM - 6:00 PM (México)
+   • Sábados: 10:00 AM - 2:00 PM (México)
+
+**SERVICIOS DEL ASESOR:**
+✅ Consulta personalizada gratuita (15 minutos)
+✅ Análisis específico de su PyME y necesidades de IA
+✅ Plan de implementación personalizado
+✅ Asesoría post-compra y activación de bonos
+✅ Acompañamiento durante el curso
+✅ Seguimiento de resultados y ROI
+
+**CUÁNDO REFERIR AL ASESOR:**
+- Usuario pide "hablar con alguien" o "contacto directo"
+- Necesita consultoría especializada para su sector
+- Requiere asesoría sobre implementación de IA en su PyME
+- Quiere agendar una demos o consulta personalizada
+- Necesita información específica sobre precios corporativos
+- Solicita acompañamiento post-compra
 
 BONOS REALES DISPONIBLES PARA ACTIVACIÓN INTELIGENTE:
 1. **Workbook interactivo en Coda.io** - Plantillas y actividades colaborativas preconfiguradas
@@ -541,18 +572,29 @@ Inversión de {price_info} vs resultados reales:
     @staticmethod
     def executive_advisor_transition(name: str = "", role: str = "") -> str:
         """
-        Template mejorado para transición a asesor ejecutivo.
+        Template mejorado para transición a asesor ejecutivo con información completa.
         """
-        name_greeting = f"{name}, " if name else ""
-        role_context = f" como {role}," if role else ""
+        name_greeting = f"¡Perfecto, {name}! " if name else "¡Perfecto! "
+        role_context = f"Como {role}, " if role else ""
         
-        return f"""{name_greeting}Perfecto{role_context} veo que estás listo para tomar decisiones estratégicas sobre IA.
+        return f"""{name_greeting}{role_context}Te conecto con nuestro Especialista en IA para una consultoría personalizada.
 
-Te conecto con nuestro asesor ejecutivo especializado en PyMEs para una consulta personalizada de 15 minutos.
+👨‍💼 **Especialista en IA** 
+📱 **+52 1 56 1468 6075**
 
-¿Te parece bien que agendemos una llamada esta semana? Podemos revisar tu situación específica y crear un plan de implementación a medida. 📞
+**¿Qué incluye la consulta gratuita de 15 minutos?**
+✅ Análisis específico de tu PyME y sector
+✅ Plan de implementación de IA personalizado  
+✅ Cálculo de ROI proyectado para tu empresa
+✅ Roadmap de automatización por fases
 
-¿Qué día te funciona mejor? 😊"""
+⏰ **Horarios disponibles:**
+• Lunes a Viernes: 9:00 AM - 6:00 PM (México)
+• Sábados: 10:00 AM - 2:00 PM (México)
+
+💡 **Para contactarlo:** Haz clic en +52 1 56 1468 6075 y menciona que vienes de parte de Brenda.
+
+¡Te dará estrategias específicas que puedes implementar inmediatamente! 🚀"""
 
     @staticmethod
     def business_error_fallback() -> str:
