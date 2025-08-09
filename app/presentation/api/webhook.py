@@ -25,6 +25,8 @@ from app.application.usecases.detect_ad_hashtags_use_case import DetectAdHashtag
 from app.application.usecases.process_ad_flow_use_case import ProcessAdFlowUseCase
 from app.application.usecases.advisor_referral_use_case import AdvisorReferralUseCase
 from app.application.usecases.faq_flow_use_case import FAQFlowUseCase
+from app.application.usecases.threads_integration_use_case import ThreadsIntegrationUseCase
+from app.presentation.api.webhook_openai import openai_webhook_handler
 
 logger = logging.getLogger(__name__)
 
@@ -73,11 +75,12 @@ detect_ad_hashtags_use_case = None
 process_ad_flow_use_case = None
 advisor_referral_use_case = None
 faq_flow_use_case = None
+threads_integration_use_case = None
 
 @app.on_event("startup")
 async def startup_event():
     """Evento de startup para inicializar todas las dependencias."""
-    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case, detect_ad_hashtags_use_case, process_ad_flow_use_case, advisor_referral_use_case, faq_flow_use_case
+    global twilio_client, memory_use_case, intent_analyzer, course_query_use_case, intelligent_response_use_case, process_message_use_case, privacy_flow_use_case, tool_activation_use_case, course_announcement_use_case, detect_ad_hashtags_use_case, process_ad_flow_use_case, advisor_referral_use_case, faq_flow_use_case, threads_integration_use_case
     
     debug_print("🚀 INICIANDO SISTEMA BOT BRENDA...", "startup", "webhook.py")
     
@@ -216,6 +219,32 @@ async def startup_event():
             debug_print(f"⚠️ Error con sistema de FAQ: {e}", "startup", "webhook.py")
             faq_flow_use_case = None
         
+        # Inicializar sistema de Threads Integration (OpenAI Assistants API)
+        debug_print("🧵 Verificando configuración de OpenAI Threads...", "startup", "webhook.py")
+        try:
+            if ThreadsIntegrationUseCase.is_enabled():
+                debug_print("🧵 ASSISTANT_ID configurado, inicializando Threads Integration...", "startup", "webhook.py")
+                threads_integration_use_case = ThreadsIntegrationUseCase(twilio_client, memory_use_case)
+                debug_print("✅ Sistema de Threads Integration inicializado correctamente", "startup", "webhook.py")
+                
+                # Inicializar webhook handler de OpenAI también
+                debug_print("🎯 Inicializando OpenAI Webhook Handler...", "startup", "webhook.py")
+                try:
+                    openai_handler_success = await openai_webhook_handler.initialize()
+                    if openai_handler_success:
+                        debug_print("✅ OpenAI Webhook Handler inicializado correctamente", "startup", "webhook.py")
+                    else:
+                        debug_print("⚠️ Error inicializando OpenAI Webhook Handler", "startup", "webhook.py")
+                except Exception as webhook_error:
+                    debug_print(f"⚠️ Error con OpenAI Webhook Handler: {webhook_error}", "startup", "webhook.py")
+            else:
+                debug_print("ℹ️ ASSISTANT_ID no configurado, Threads Integration deshabilitado", "startup", "webhook.py")
+                threads_integration_use_case = None
+        except Exception as e:
+            debug_print(f"⚠️ Error inicializando Threads Integration: {e}", "startup", "webhook.py")
+            debug_print("🔄 Continuando con flujo tradicional...", "startup", "webhook.py")
+            threads_integration_use_case = None
+        
         # Crear caso de uso de procesamiento con capacidades inteligentes
         debug_print("⚙️ Creando procesador de mensajes principal...", "startup", "webhook.py")
         process_message_use_case = ProcessIncomingMessageUseCase(
@@ -285,11 +314,25 @@ async def startup_event():
 @app.get("/")
 async def health_check():
     """Endpoint de health check."""
-    return {
+    health_info = {
         "status": "ok",
         "service": "Bot Brenda Webhook",
-        "environment": settings.app_environment
+        "environment": settings.app_environment,
+        "threads_integration": {
+            "enabled": threads_integration_use_case is not None,
+            "assistant_id_configured": bool(getattr(settings, 'assistant_id', None))
+        }
     }
+    
+    # Añadir estado detallado de threads si está habilitado
+    if threads_integration_use_case:
+        try:
+            threads_health = await threads_integration_use_case.health_check()
+            health_info["threads_integration"].update(threads_health)
+        except Exception as e:
+            health_info["threads_integration"]["health_check_error"] = str(e)
+    
+    return health_info
 
 
 @app.post("/")
@@ -331,9 +374,13 @@ async def whatsapp_webhook(request: Request):
         }
         debug_print(f"✅ Datos del webhook preparados correctamente", "whatsapp_webhook", "webhook.py")
         
-        # Procesar mensaje
-        debug_print(f"🚀 INICIANDO PROCESAMIENTO SÍNCRONO...", "whatsapp_webhook", "webhook.py")
-        result = await process_message_use_case.execute(webhook_data)
+        # Procesar mensaje - decidir entre Threads Integration o flujo tradicional
+        if threads_integration_use_case:
+            debug_print(f"🧵 PROCESANDO CON THREADS INTEGRATION...", "whatsapp_webhook", "webhook.py")
+            result = await threads_integration_use_case.execute(webhook_data)
+        else:
+            debug_print(f"🚀 PROCESANDO CON FLUJO TRADICIONAL...", "whatsapp_webhook", "webhook.py")
+            result = await process_message_use_case.execute(webhook_data)
         
         # Mostrar resultado completo
         debug_print(f"📊 Resultado del procesamiento: {result}", "whatsapp_webhook", "webhook.py")
@@ -367,6 +414,78 @@ async def whatsapp_webhook_verification(
     """
     logger.info("🔍 Solicitud de verificación de webhook recibida")
     return PlainTextResponse("OK", status_code=200)
+
+
+# === RUTAS DE OPENAI WEBHOOK ===
+
+@app.post("/webhooks/openai")
+async def openai_webhook_endpoint(request: Request, background_tasks: BackgroundTasks):
+    """
+    Endpoint para webhooks de OpenAI Assistants API.
+    
+    Permite manejo asíncrono de eventos de threads y runs.
+    Configurar esta URL en OpenAI Platform como webhook URL.
+    """
+    import json
+    from fastapi import HTTPException, BackgroundTasks
+    
+    try:
+        # Leer payload completo
+        payload = await request.body()
+        
+        # Verificar firma si está configurada
+        signature = request.headers.get('openai-signature', '')
+        if signature and not openai_webhook_handler.verify_signature(payload, signature):
+            debug_print("❌ Firma de webhook OpenAI inválida", "openai_webhook_endpoint", "webhook.py")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+        
+        # Parsear JSON
+        try:
+            event_data = json.loads(payload.decode('utf-8'))
+        except json.JSONDecodeError as e:
+            debug_print(f"❌ Error parseando JSON de OpenAI: {e}", "openai_webhook_endpoint", "webhook.py")
+            raise HTTPException(status_code=400, detail="Invalid JSON")
+        
+        debug_print(f"📨 Evento OpenAI recibido: {event_data.get('type', 'unknown')}", "openai_webhook_endpoint", "webhook.py")
+        
+        # Procesar evento
+        result = await openai_webhook_handler.handle_event(event_data, background_tasks)
+        
+        debug_print(f"✅ Evento OpenAI procesado: {result.get('status', 'unknown')}", "openai_webhook_endpoint", "webhook.py")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        debug_print(f"❌ Error en webhook OpenAI: {e}", "openai_webhook_endpoint", "webhook.py")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+@app.get("/webhooks/openai/health")
+async def openai_webhook_health():
+    """Health check específico para el webhook de OpenAI."""
+    try:
+        if not openai_webhook_handler.threads_adapter:
+            return {
+                "status": "disabled",
+                "reason": "OpenAI webhook handler not initialized"
+            }
+        
+        adapter_health = await openai_webhook_handler.threads_adapter.health_check()
+        
+        return {
+            "status": "healthy" if adapter_health else "degraded",
+            "handler_initialized": True,
+            "adapter_health": adapter_health,
+            "webhook_secret_configured": bool(openai_webhook_handler.webhook_secret),
+            "assistant_id_configured": bool(getattr(settings, 'assistant_id', None))
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 
 if __name__ == "__main__":

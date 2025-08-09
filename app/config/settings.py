@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     
     # === OPENAI CREDENTIALS ===
     openai_api_key: str
+    assistant_id: Optional[str] = None  # OpenAI Assistants API Assistant ID
     
     # === DATABASE ===
     database_url: Optional[str] = None
