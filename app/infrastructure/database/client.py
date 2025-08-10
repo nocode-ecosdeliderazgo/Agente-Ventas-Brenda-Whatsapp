@@ -65,6 +65,11 @@ class DatabaseClient:
         Returns:
             Lista de registros como diccionarios o None si hay error
         """
+        # Auto-conectar si no hay pool
+        if not self.pool:
+            logger.info("🔌 Auto-conectando a la base de datos...")
+            await self.connect()
+            
         if not self.pool:
             logger.error("❌ No hay conexión a la base de datos")
             return None
@@ -109,6 +114,11 @@ class DatabaseClient:
         Returns:
             True si la transacción fue exitosa
         """
+        # Auto-conectar si no hay pool
+        if not self.pool:
+            logger.info("🔌 Auto-conectando a la base de datos...")
+            await self.connect()
+            
         if not self.pool:
             logger.error("❌ No hay conexión a la base de datos")
             return False
